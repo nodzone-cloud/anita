@@ -1632,3 +1632,355 @@ window.anitaSemanticIntent = function(text,l){
 
 console.log("[ANITA v9] Semantic Intent Engine loaded");
 })();
+
+/* ================= ANITA v10 CONTEXT + STRICT TOKENS =================
+   Fixes:
+   - "parameters" must NEVER match computer RAM
+   - "paramedic", "paraglider", etc. must never match RAM
+   - strict whole-word / token matching for short IT terms
+   - distinguish PC/computer problem from Windows problem
+   - "weird / weirdly / strangely / somehow wrong / badly" becomes a
+     navigation intent: ask WHAT exactly is happening
+   - large natural-language phrase bank EN/RU/FI
+   - contextual handling of "internet parameters/settings"
+   ==================================================================== */
+(function(){
+"use strict";
+
+const V10 = {};
+V10.version = "10.0";
+V10.phraseBank = {"en":["my pc is not working properly","my computer is not working right","my computer works weirdly","my pc works weirdly","my pc is acting weird","my computer is acting weird","my laptop is acting weird","windows is acting weird","windows is behaving weirdly","windows behaves strangely","my pc behaves strangely","my computer is behaving strangely","something is weird with my pc","something is weird with windows","something is wrong with my computer","something is wrong with windows","my pc feels wrong","windows feels wrong","my computer feels weird","my laptop feels weird","my pc is doing weird stuff","windows is doing weird stuff","my computer is doing strange things","my pc is acting strange","windows is acting strange","my computer is acting funny","my pc is acting funny","windows is acting funny","my pc is glitching","my computer is glitching","windows is glitching","my laptop is glitching","windows works but something is off","my pc works but something is off","my computer works but something is off","my pc is kind of broken","my computer is kind of broken","windows is kind of broken","my pc is behaving badly","windows is behaving badly","my computer is behaving badly","my pc works badly","windows works badly","my computer works badly","my pc is weirdly slow","windows is weirdly slow","my computer is weirdly slow","my laptop is weirdly slow","my pc is weirdly behaving","windows is weirdly behaving","my computer behaves weird","the pc behaves weird","windows behaves weird","my system behaves weird","my system is acting weird","my system is not acting normal","my computer is not acting normal","windows is not acting normal","my pc is not acting normal","my pc does strange things","windows does strange things","computer does strange things","the computer is behaving oddly","windows is behaving oddly","my pc is behaving oddly","my pc works somehow wrong","windows works somehow wrong","my computer works somehow wrong","my computer is messed up","windows is messed up","my pc is messed up","something is off with windows","something is off with my pc","something is off with my laptop","my laptop is not working properly"],"ru":["мой компьютер работает странно","мой пк работает странно","виндовс работает странно","windows работает странно","компьютер ведет себя странно","пк ведет себя странно","виндовс ведет себя странно","windows ведет себя странно","что то странное с компьютером","что то странное с пк","что то странное с windows","что то странное с виндовс","мой компьютер работает неправильно","мой пк работает неправильно","windows работает неправильно","виндовс работает неправильно","комп работает как то не так","пк работает как то не так","windows работает как то не так","виндовс работает как то не так","компьютер как то глючит","пк как то глючит","виндовс как то глючит","windows как то глючит","компьютер глючит","пк глючит","windows глючит","виндовс глючит","ноутбук глючит","ноут работает странно","комп ведет себя непонятно","пк ведет себя непонятно","windows ведет себя непонятно","компьютер тупит как то странно","пк тупит как то странно","windows тупит как то странно","виндовс тупит","компьютер ведет себя плохо","пк ведет себя плохо","windows ведет себя плохо","компьютер работает плохо","пк работает плохо","windows работает плохо","компьютер странно тормозит","пк странно тормозит","windows странно тормозит","ноутбук странно тормозит","что то не так с компьютером","что то не так с пк","что то не так с windows","что то не так с виндовс","система ведет себя странно","система работает странно","система работает не так","система глючит","мой комп делает странные вещи","мой пк делает странные вещи","windows делает странные вещи","виндовс делает странные вещи","компьютер чудит","пк чудит","виндовс чудит","windows чудит","комп работает криво","пк работает криво","windows работает криво","виндовс работает криво","компьютер работает как попало","пк работает как попало","windows работает как попало","виндовс работает как попало","с ноутбуком что то не так","ноутбук работает неправильно","ноутбук ведет себя странно"],"fi":["tietokone toimii oudosti","pc toimii oudosti","windows toimii oudosti","kone toimii oudosti","tietokone käyttäytyy oudosti","pc käyttäytyy oudosti","windows käyttäytyy oudosti","kone käyttäytyy oudosti","jokin on vialla tietokoneessa","jokin on vialla pc ssä","jokin on vialla windowsissa","jokin on vialla koneessa","tietokone ei toimi oikein","pc ei toimi oikein","windows ei toimi oikein","kone ei toimi oikein","tietokone toimii jotenkin väärin","pc toimii jotenkin väärin","windows toimii jotenkin väärin","kone toimii jotenkin väärin","tietokone bugittaa","pc bugittaa","windows bugittaa","kone bugittaa","läppäri bugittaa","tietokone sekoilee","pc sekoilee","windows sekoilee","kone sekoilee","läppäri sekoilee","tietokone käyttäytyy kummallisesti","pc käyttäytyy kummallisesti","windows käyttäytyy kummallisesti","kone käyttäytyy kummallisesti","tietokone toimii huonosti","pc toimii huonosti","windows toimii huonosti","kone toimii huonosti","tietokone toimii hitaasti oudolla tavalla","pc toimii oudosti hitaasti","windows toimii oudosti hitaasti","kone toimii oudosti hitaasti","läppäri toimii oudosti","jokin ei täsmää tietokoneessa","jokin ei täsmää pc ssä","jokin ei täsmää windowsissa","jokin ei täsmää koneessa","järjestelmä toimii oudosti","järjestelmä käyttäytyy oudosti","järjestelmä ei toimi normaalisti","tietokone ei käyttäydy normaalisti","pc ei käyttäydy normaalisti","windows ei käyttäydy normaalisti","kone ei käyttäydy normaalisti","tietokone tekee outoja asioita","pc tekee outoja asioita","windows tekee outoja asioita","kone tekee outoja asioita","tietokone tekee kummia","pc tekee kummia","windows tekee kummia","kone tekee kummia","tietokone on jotenkin sekaisin","pc on jotenkin sekaisin","windows on jotenkin sekaisin","kone on jotenkin sekaisin","jokin on pielessä windowsissa","jokin on pielessä tietokoneessa","jokin on pielessä pc ssä","jokin on pielessä koneessa","läppäri ei toimi oikein","läppäri käyttäytyy oudosti","läppäri tekee outoja asioita","läppäri toimii jotenkin väärin"]};
+V10.lastSubject = null;
+V10.lastIntent = null;
+V10.lastUser = null;
+
+const lang = l => {
+  l=(l||"en").toLowerCase();
+  if(l.startsWith("ru")) return "ru";
+  if(l.startsWith("fi")) return "fi";
+  return "en";
+};
+
+const clean = s => (s||"").toLowerCase()
+ .replace(/[’`]/g,"'")
+ .replace(/[?!.,:;()[\]{}"“”]/g," ")
+ .replace(/\s+/g," ").trim();
+
+const tokens = s => clean(s).split(/\s+/).filter(Boolean);
+
+// STRICT token matching. "ram" only matches token "ram", never paRAMeters.
+V10.hasToken = function(text, word){
+  const w=clean(word);
+  return tokens(text).includes(w);
+};
+
+V10.hasPhrase = function(text, phrase){
+  const t=" "+clean(text)+" ";
+  const p=" "+clean(phrase)+" ";
+  return t.includes(p);
+};
+
+V10.anyToken = function(text, arr){
+  const ts=new Set(tokens(text));
+  return arr.some(x=>ts.has(clean(x)));
+};
+
+V10.anyPhrase = function(text, arr){
+  return arr.some(x=>V10.hasPhrase(text,x));
+};
+
+// Guard words that contain "ram" as letters but have nothing to do with RAM.
+V10.nonRamWords = [
+ "parameter","parameters","paramedic","paramedics","paramount","paramecium",
+ "parachute","paragliding","paraglider","paraplane","paraplan","paramara",
+ "program","programs","programming","programmer","telegram","instagram",
+ "grammar","diagram","panorama","camera","framework"
+];
+
+V10.isActualRamQuestion = function(text){
+  const t=clean(text);
+  // RAM must be a real standalone token or an explicit memory phrase.
+  if(V10.hasToken(t,"ram")) return true;
+  if(V10.anyPhrase(t,["random access memory","computer memory","system memory","memory usage","memory is full"])) return true;
+  return false;
+};
+
+// If legacy ANITA sees "ram" inside a longer word, block that interpretation.
+V10.containsFalseRamSubstring = function(text){
+  const t=clean(text);
+  if(V10.isActualRamQuestion(t)) return false;
+  return V10.nonRamWords.some(w=>V10.hasToken(t,w));
+};
+
+const subjects = {
+  pc:["pc","computer","laptop","desktop","machine","system","компьютер","пк","комп","ноутбук","ноут","tietokone","kone","läppäri"],
+  windows:["windows","виндовс","винда"]
+};
+
+const weirdWords = {
+  en:["weird","weirdly","strange","strangely","odd","oddly","wrong","badly","glitching","glitchy","funny","off","messed","broken","somehow"],
+  ru:["странно","странный","странная","глючит","глючит","глюки","неправильно","плохо","криво","непонятно","чудит","тупит","как-то","как","попало"],
+  fi:["oudosti","outo","kummallisesti","väärin","huonosti","bugittaa","sekoilee","pielessä","normaalisti","jotenkin"]
+};
+
+function detectSubject(text){
+  const t=clean(text);
+  // Windows is more specific than generic computer.
+  if(subjects.windows.some(x=>V10.hasToken(t,x))) return "windows";
+  if(subjects.pc.some(x=>V10.hasToken(t,x))) return "pc";
+  return null;
+}
+
+function hasWeirdMeaning(text,l){
+  const ll=lang(l), t=clean(text);
+  const all=[...weirdWords.en,...weirdWords.ru,...weirdWords.fi];
+  if(all.some(w => w.includes(" ") ? V10.hasPhrase(t,w) : V10.hasToken(t,w))) return true;
+
+  const phrases=[
+    "not working properly","not working right","does not work properly","doesn't work properly",
+    "working weirdly","working strangely","acting weird","acting strange","behaving weirdly",
+    "behaving strangely","something is wrong","something is off","not acting normal",
+    "not working normally","works somehow wrong","kind of broken","doing weird stuff",
+    "doing strange things","работает как то не так","работает как-то не так","что то не так",
+    "что-то не так","ведет себя странно","ведёт себя странно","работает неправильно",
+    "toimii jotenkin väärin","ei toimi oikein","käyttäytyy oudosti","jokin on vialla",
+    "jokin on pielessä","ei käyttäydy normaalisti"
+  ];
+  return V10.anyPhrase(t,phrases);
+}
+
+function phraseBankMatch(text,l){
+  const ll=lang(l), t=clean(text);
+  const bank=V10.phraseBank[ll]||[];
+  if(bank.some(p=>clean(p)===t)) return true;
+
+  // Robust semantic-like score for natural variants.
+  const ts=new Set(tokens(t));
+  let best=0;
+  for(const p of bank){
+    const ps=tokens(p);
+    let hit=0;
+    for(const w of ps) if(ts.has(w)) hit++;
+    const score=hit/Math.max(1,ps.length);
+    if(score>best) best=score;
+  }
+  return best>=0.72;
+}
+
+function navAnswer(subject,l,text){
+  const ll=lang(l);
+  const slow = V10.anyToken(text,["slow","slowly","sluggish","laggy","тормозит","тупит","медленно","hidas","hitaasti"]);
+  const name = subject==="windows"
+    ? {en:"Windows",ru:"Windows",fi:"Windows"}[ll]
+    : {en:"your computer",ru:"компьютер",fi:"tietokone"}[ll];
+
+  if(ll==="en"){
+    if(slow){
+      return `I understand that ${name} is behaving unusually and also feels slow. What exactly happens when it becomes slow?
+
+For example:
+1. Everything becomes slow
+2. Only the browser is slow
+3. Programs take a long time to open
+4. Mouse/window movement stutters
+5. Disk usage goes to 100%
+6. It becomes slow only after some time
+7. Something else
+
+Tell me what you notice. I’ll use that to choose the next diagnostic step.`;
+    }
+    return `I understand that ${name} is not behaving normally, but “weirdly” can mean many different things. What exactly is happening?
+
+For example:
+1. Programs freeze or close
+2. Screen flickers or shows visual glitches
+3. ${subject==="windows"?"Windows":"The computer"} becomes slow
+4. Internet/browser stops working
+5. Mouse or keyboard behaves strangely
+6. Error messages appear
+7. Sound, Bluetooth, USB or another device stops working
+8. Something else
+
+Describe what you actually see or what you were doing when it happens. Then I can narrow down the cause instead of guessing.`;
+  }
+
+  if(ll==="ru"){
+    if(slow){
+      return `Я понимаю, что ${name} ведёт себя необычно и при этом тормозит. Что именно происходит в момент замедления?
+
+Например:
+1. Тормозит вообще всё
+2. Медленный только браузер
+3. Программы долго открываются
+4. Дёргается мышь/окна
+5. Диск загружен на 100%
+6. Тормоза появляются только через некоторое время
+7. Что-то другое
+
+Опиши, что именно замечаешь — тогда я выберу следующий шаг диагностики.`;
+    }
+    return `Я понимаю, что ${name} работает не так, как обычно, но слово «странно» может означать очень разные проблемы. Что именно происходит?
+
+Например:
+1. Программы зависают или закрываются
+2. Экран мигает или появляются графические артефакты
+3. ${subject==="windows"?"Windows":"Компьютер"} тормозит
+4. Перестаёт работать интернет/браузер
+5. Странно работают мышь или клавиатура
+6. Появляются ошибки
+7. Пропадает звук, Bluetooth, USB или другое устройство
+8. Что-то другое
+
+Опиши, что именно видишь и что делаешь в момент проблемы. Тогда я смогу сузить причину, а не гадать.`;
+  }
+
+  if(slow){
+    return `Ymmärrän, että ${name} käyttäytyy epätavallisesti ja tuntuu myös hitaalta. Mitä tarkalleen tapahtuu hidastumisen aikana?
+
+Esimerkiksi:
+1. Kaikki hidastuu
+2. Vain selain on hidas
+3. Ohjelmat avautuvat hitaasti
+4. Hiiri/ikkunat nykivät
+5. Levyn käyttö nousee 100 %:iin
+6. Hidastuminen alkaa vasta jonkin ajan kuluttua
+7. Jotain muuta
+
+Kuvaile mitä huomaat, niin valitsen seuraavan diagnostiikkavaiheen.`;
+  }
+
+  return `Ymmärrän, että ${name} ei käyttäydy normaalisti, mutta “oudosti” voi tarkoittaa monta eri ongelmaa. Mitä tarkalleen tapahtuu?
+
+Esimerkiksi:
+1. Ohjelmat jumittuvat tai sulkeutuvat
+2. Näyttö vilkkuu tai kuvassa on häiriöitä
+3. ${subject==="windows"?"Windows":"Tietokone"} hidastuu
+4. Internet/selain lakkaa toimimasta
+5. Hiiri tai näppäimistö toimii oudosti
+6. Virheilmoituksia tulee
+7. Ääni, Bluetooth, USB tai muu laite lakkaa toimimasta
+8. Jotain muuta
+
+Kuvaile mitä näet ja mitä olit tekemässä ongelman tapahtuessa. Näin voin rajata syyn enkä arvailla.`;
+}
+
+function internetParametersAnswer(l){
+  const ll=lang(l);
+  if(ll==="ru") return `Да, это может быть связано с сетевыми параметрами, но сначала нужно понять симптом. Под «параметрами интернета» обычно могут иметься в виду DNS, IP‑адрес, DHCP, шлюз, прокси, VPN или настройки сетевого адаптера.
+
+Что именно происходит?
+1. Wi‑Fi подключён, но сайты не открываются
+2. Интернет пропадает время от времени
+3. Только один браузер не работает
+4. Интернет медленный
+5. Windows пишет “No Internet”
+6. Появляется конкретная ошибка
+
+Напиши номер или точную ошибку — тогда я скажу, какие именно сетевые параметры проверять.`;
+
+  if(ll==="fi") return `Kyllä, ongelma voi liittyä verkkoasetuksiin, mutta ensin pitää tietää oire. “Internet-asetuksilla” voidaan tarkoittaa esimerkiksi DNS:ää, IP-osoitetta, DHCP:tä, oletusyhdyskäytävää, välityspalvelinta, VPN:ää tai verkkosovittimen asetuksia.
+
+Mitä tarkalleen tapahtuu?
+1. Wi‑Fi on yhdistetty, mutta sivut eivät avaudu
+2. Internet katkeilee
+3. Vain yksi selain ei toimi
+4. Internet on hidas
+5. Windows näyttää “No Internet”
+6. Näkyy tarkka virhe
+
+Kerro numero tai tarkka virhe, niin voin neuvoa mitä verkkoasetusta tarkistaa.`;
+
+  return `Yes — it can be related to network/Internet settings, but we should identify the symptom first. By “Internet parameters/settings” you might mean DNS, IP address, DHCP, default gateway, proxy, VPN, or the network-adapter configuration.
+
+What exactly happens?
+1. Wi‑Fi says connected but websites do not open
+2. Internet disconnects randomly
+3. Only one browser does not work
+4. Internet is slow
+5. Windows says “No Internet”
+6. You see a specific error
+
+Tell me the number or the exact error. Then I can tell you which network setting to check.`;
+}
+
+V10.handle = function(text,l){
+  const t=clean(text), ll=lang(l);
+  V10.lastUser=t;
+
+  // 1) Specific fix for "internet parameters/settings" before any RAM logic.
+  const internetCtx = V10.anyToken(t,["internet","wifi","network","сеть","интернет","verkko","internet"]);
+  const paramCtx = V10.anyToken(t,["parameter","parameters","settings","setting","параметры","настройки","asetukset"]);
+  if(internetCtx && paramCtx){
+    V10.lastSubject="network";
+    V10.lastIntent="network_settings";
+    return {type:"answer",text:internetParametersAnswer(ll)};
+  }
+
+  // 2) Prevent false RAM interpretation of unrelated words.
+  if(V10.containsFalseRamSubstring(t)){
+    // If there is another recognizable context, let newer engines handle it.
+    // Otherwise do not answer as RAM.
+    if(internetCtx){
+      V10.lastSubject="network";
+      return {type:"answer",text:internetParametersAnswer(ll)};
+    }
+  }
+
+  // 3) "weird / weirdly / wrong / badly / somehow" navigation.
+  const sub=detectSubject(t);
+  if(sub && (hasWeirdMeaning(t,ll) || phraseBankMatch(t,ll))){
+    V10.lastSubject=sub;
+    V10.lastIntent="general_abnormal_behavior";
+    return {type:"answer",text:navAnswer(sub,ll,t)};
+  }
+
+  // 4) Contextual continuation: after user said PC/Windows is weird,
+  // recognize a newly mentioned subsystem and let older semantic engines solve it.
+  if(V10.lastIntent==="general_abnormal_behavior"){
+    if(V10.anyToken(t,["browser","chrome","firefox","edge","браузер","selain"])){
+      V10.lastSubject="browser";
+      // do not consume; v9 browser engine can now answer
+      return null;
+    }
+    if(V10.anyToken(t,["internet","wifi","network","интернет","сеть","verkko"])){
+      V10.lastSubject="network";
+      return null;
+    }
+  }
+
+  return null;
+};
+
+window.ANITA_V10=V10;
+
+// IMPORTANT: wrap the CURRENT V7 handler.
+// At this point it already contains v8/v9 wrappers, so v10 gets first chance.
+if(window.ANITA_V7 && typeof window.ANITA_V7.handle==="function"){
+  const previous = window.ANITA_V7.handle.bind(window.ANITA_V7);
+  window.ANITA_V7.handle=function(text,l){
+    const r=V10.handle(text,l);
+    if(r) return r;
+
+    // Hard protection against old substring-based RAM matcher.
+    // If "ram" is not a standalone token, legacy code must not answer RAM.
+    if(V10.containsFalseRamSubstring(text)){
+      const safeText = clean(text)
+        .replace(/\bparameters?\b/g,"settings")
+        .replace(/\bparamedic(s)?\b/g,"medical worker")
+        .replace(/\bparaglider\b/g,"glider")
+        .replace(/\bparaplane\b/g,"glider");
+      return previous(safeText,l);
+    }
+
+    return previous(text,l);
+  };
+}
+
+window.anitaStrictTokenMatch = V10.hasToken;
+window.anitaV10Intent = V10.handle;
+
+console.log("[ANITA v10] Context + Strict Tokens loaded. Phrase bank:",
+  V10.phraseBank.en.length,"EN,",
+  V10.phraseBank.ru.length,"RU,",
+  V10.phraseBank.fi.length,"FI");
+})();
