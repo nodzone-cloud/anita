@@ -234,9 +234,24 @@ function guidedChatIntent(q,l){
     {p:["bye","goodbye","see you","later","пока","до свидания","до встречи","näkemiin","heippa","nähdään"],
      a:{en:["See you 👋 I hope the computer behaves. Come back if you need more IT help."],ru:["До встречи 👋 Надеюсь, техника будет вести себя хорошо. Возвращайтесь, если понадобится IT-помощь."],fi:["Nähdään 👋 Toivottavasti tietokone käyttäytyy. Tule takaisin jos tarvitset lisää IT-apua."]}}
   ];
+  function phraseMatch(message, phrase){
+    const m=normalize(message), p=normalize(phrase);
+    if(!m||!p)return false;
+    if(m===p)return true;
+
+    // Never match very short chat words inside another word:
+    // "hi" must not match "this", "ok" must not match "broken", etc.
+    const esc=p.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+    const boundary=new RegExp("(^|\\s)"+esc+"(?=\\s|$)","i");
+
+    // Greetings/chat replies are allowed only as whole/standalone phrases.
+    // If the user writes "hi, my laptop is overheating", do NOT consume
+    // the whole message as a greeting; let the IT matcher handle the problem.
+    return boundary.test(m) && m.split(/\s+/).length <= p.split(/\s+/).length + 1;
+  }
+
   for(const g of G)for(const p of g.p){
-    let z=normalize(p);
-    if(x===z||x.includes(z))return g.a[l]||g.a.en;
+    if(phraseMatch(x,p))return g.a[l]||g.a.en;
   }
   return null;
 }
@@ -259,6 +274,7 @@ function guidedChatAnswer(a){return a[Math.floor(Math.random()*a.length)]}
   V.lastIntent = null;
   V.lastAnswer = null;
   V.lastUserText = null;
+  V.lastSubject = null;
   V.turns = 0;
 
   V.lang = function(l){ return ["ru","fi","en"].includes(l) ? l : "en"; };
@@ -315,6 +331,7 @@ function guidedChatAnswer(a){return a[Math.floor(Math.random()*a.length)]}
       [/\b(net|wifi|wi-fi|wlan)\b/gi, " internet "],
       [/\b(hustle|hassle|mess|issue|problem|trouble)\b/gi, " problem "],
       [/\b(laggy|sluggish|lagging|stuttery)\b/gi, " slow "],
+      [/\b(glitching|glitchy|glitches|bugging out|acting weird|acting strange|freaking out)\b/gi, " behaving strangely "],
       [/\b(dead|died|borked|busted|broken)\b/gi, " not working "],
       [/\b(hella hot|super hot|too hot|heating up|gets hot|getting hot)\b/gi, " overheating "],
       [/\b(what the hell|what is going on)\b/gi, " confused "]
@@ -622,9 +639,15 @@ function guidedChatAnswer(a){return a[Math.floor(Math.random()*a.length)]}
     return null;
   };
 
+  V.stripGreeting = function(text){
+    return (text||"").replace(/^\s*(hi|hello|hey|hiya|yo|sup|good morning|good afternoon|good evening|привет|здравствуйте|здравствуй|hei|moi|moikka|terve)[,!:.\s-]*/i,"").trim();
+  };
+
   V.handle = function(text,l){
     V.turns++;
     V.lastUserText=text;
+    const afterGreeting=V.stripGreeting(text);
+    if(afterGreeting && afterGreeting.length>=4) text=afterGreeting;
 
     // High-risk/advanced cases first.
     for(const a of V.advanced){
@@ -647,6 +670,24 @@ function guidedChatAnswer(a){return a[Math.floor(Math.random()*a.length)]}
 
     const follow=V.followup(text,l);
     if(follow) return {type:"answer",text:follow};
+
+    // Natural short continuation after ANITA asked for details.
+    // Example:
+    // User: "I have this problem with my Windows"
+    // ANITA: asks what happens
+    // User: "it's glitching"
+    // -> keep Windows as the subject and ask what "glitching" looks like.
+    const shortT=V.expandSlang(text);
+    if(V.lastSubject && /\b(behaving strangely|weird|strange|glitch|glitching|buggy|not right|messed up|frozen|freezing|slow|crash|crashing|error|not working)\b/i.test(shortT)){
+      const s=V.lastSubject;
+      const q={
+        en:`Got it — ${s} is behaving strangely. “Glitching” can mean a few different things, so let’s narrow it down. Which is closest: 1) screen/graphics flicker, 2) programs freeze or close, 3) Windows becomes slow, 4) error messages appear, 5) mouse/keyboard behave oddly, or 6) something else?`,
+        ru:`Поняла — ${s} ведёт себя странно. Под «глючит» может скрываться несколько разных проблем. Что ближе: 1) мигает/искажается изображение, 2) программы зависают или закрываются, 3) Windows тормозит, 4) появляются ошибки, 5) странно работают мышь/клавиатура, 6) что-то другое?`,
+        fi:`Selvä — ${s} käyttäytyy oudosti. “Glitching” voi tarkoittaa eri asioita. Mikä sopii parhaiten: 1) näyttö/grafiikka vilkkuu, 2) ohjelmat jumittuvat tai sulkeutuvat, 3) Windows on hidas, 4) virheilmoituksia tulee, 5) hiiri/näppäimistö toimii oudosti vai 6) jotain muuta?`
+      };
+      V.lastIntent="glitch_details";
+      return {type:"answer",text:q[V.lang(l)]};
+    }
 
     let r=V.matchConcept(text,l);
     if(r) return {type:"answer",text:r};
@@ -673,7 +714,14 @@ function guidedChatAnswer(a){return a[Math.floor(Math.random()*a.length)]}
     ];
     const objList = objects[V.lang(l)==="ru"?1:V.lang(l)==="fi"?2:0];
     const found = objList.find(o=>t.includes(o));
-    if(found && /\b(problem|kind of|help|confused|something|not sure|trouble|having)\b/i.test(t)){
+    // Remember the topic so short follow-ups like "it's glitching" refer to it.
+    if(found) V.lastSubject=found;
+
+    // Vague but clearly IT-related messages should trigger a navigation question.
+    // Examples: "I have this problem with my Windows", "hey, trouble with my laptop".
+    if(found && (/\b(problem|kind of|help|confused|something|not sure|trouble|having)\b/i.test(t)
+      || /\b(i have|i've got|got a|having a|issue with|problem with)\b/i.test(t))){
+      V.lastIntent="needs_details";
       const q={
         en:`Got it — the issue is around ${found}. What exactly happens when you try to use it: does it not open/turn on, show an error, run slowly, disconnect, or do something else?`,
         ru:`Поняла — проблема связана с ${found}. Что именно происходит: не открывается/не включается, появляется ошибка, всё работает медленно, отключается или что-то другое?`,
