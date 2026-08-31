@@ -1134,3 +1134,501 @@ if(window.ANITA_V7&&typeof window.ANITA_V7.handle==="function"){
 }
 console.log("[ANITA v8] IT Knowledge Core:",DB.length,"topics");
 })();
+
+/* ================= ANITA v9 SEMANTIC INTENT ENGINE =================
+   Deterministic, no external AI/API.
+   Purpose:
+   - understand natural, messy everyday phrases
+   - tolerate small typos and filler words
+   - detect "browser + page + starts + stops" style meaning
+   - keep short conversational context
+   - ask useful navigation questions instead of generic fallback
+   - preserve v8 IT knowledge definitions underneath
+   =================================================================== */
+(function(){
+"use strict";
+
+const V9 = {};
+V9.version = "9.0";
+V9.lastSubject = null;
+V9.lastIntent = null;
+V9.lastQuestion = null;
+V9.lastAnswer = null;
+V9.turn = 0;
+
+const L = l => {
+  l=(l||"en").toLowerCase();
+  if(l.startsWith("ru")) return "ru";
+  if(l.startsWith("fi")) return "fi";
+  return "en";
+};
+
+const raw = s => (s||"").toLowerCase()
+  .replace(/[’`]/g,"'")
+  .replace(/\s+/g," ")
+  .trim();
+
+const clean = s => raw(s)
+  .replace(/[?!.,:;()[\]{}"“”]/g," ")
+  .replace(/\s+/g," ")
+  .trim();
+
+const escapeRx = s => s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+
+V9.replacements = [
+  [/\bim\b/g,"i am"],
+  [/\bive\b/g,"i have"],
+  [/\bidk\b/g,"i do not know"],
+  [/\bdunno\b/g,"i do not know"],
+  [/\bcant\b/g,"cannot"],
+  [/\bwont\b/g,"will not"],
+  [/\bdoesnt\b/g,"does not"],
+  [/\bisnt\b/g,"is not"],
+  [/\bwasnt\b/g,"was not"],
+  [/\bkinda\b/g,"kind of"],
+  [/\bsorta\b/g,"sort of"],
+  [/\bwtf\b/g,"what is going on"],
+  [/\bwth\b/g,"what is going on"],
+  [/\bdafuck\b/g,"what is going on"],
+  [/\bdafuq\b/g,"what is going on"],
+  [/\bdafug\b/g,"what is going on"],
+  [/\bhassle\b/g,"problem"],
+  [/\bhustle\b/g,"problem"],
+  [/\bissue\b/g,"problem"],
+  [/\btrouble\b/g,"problem"],
+  [/\bglitchy\b/g,"glitching"],
+  [/\bbuggy\b/g,"glitching"],
+  [/\bacting weird\b/g,"glitching"],
+  [/\bacting strange\b/g,"glitching"],
+  [/\bfreaking out\b/g,"glitching"],
+  [/\bnot responding\b/g,"freezing"],
+  [/\bhangs\b/g,"freezing"],
+  [/\bhanging\b/g,"freezing"],
+  [/\blaggy\b/g,"slow"],
+  [/\bsluggish\b/g,"slow"],
+  [/\bpc\b/g,"computer"],
+  [/\bcomp\b/g,"computer"],
+  [/\brig\b/g,"computer"],
+  [/\blappy\b/g,"laptop"],
+  [/\bnotebook\b/g,"laptop"],
+  [/\bwi fi\b/g,"wifi"],
+  [/\bwi-fi\b/g,"wifi"],
+  [/\bwlan\b/g,"wifi"],
+  [/\bnet\b/g,"internet"],
+  [/\bweb page\b/g,"webpage"],
+  [/\bweb site\b/g,"website"],
+  [/\bchrome\b/g,"browser"],
+  [/\bfirefox\b/g,"browser"],
+  [/\bedge\b/g,"browser"],
+  [/\bopera\b/g,"browser"],
+  [/\bbrave\b/g,"browser"],
+  [/\bsafari\b/g,"browser"],
+  [/\boc\b/g,"computer"],   // common typo for PC in this context
+  [/\bwindwos\b/g,"windows"],
+  [/\bwidnows\b/g,"windows"],
+  [/\bwinodws\b/g,"windows"],
+  [/\bbroswer\b/g,"browser"],
+  [/\bbrower\b/g,"browser"],
+  [/\bbrwoser\b/g,"browser"],
+  [/\binterent\b/g,"internet"],
+  [/\bintenet\b/g,"internet"],
+  [/\bbluetooh\b/g,"bluetooth"],
+  [/\bbluetoth\b/g,"bluetooth"]
+];
+
+V9.normalize = function(s){
+  let t = " " + clean(s) + " ";
+  for(const [rx,to] of V9.replacements) t=t.replace(rx," "+to+" ");
+  return t.replace(/\s+/g," ").trim();
+};
+
+function dist(a,b){
+  const m=Array.from({length:a.length+1},()=>Array(b.length+1).fill(0));
+  for(let i=0;i<=a.length;i++)m[i][0]=i;
+  for(let j=0;j<=b.length;j++)m[0][j]=j;
+  for(let i=1;i<=a.length;i++){
+    for(let j=1;j<=b.length;j++){
+      m[i][j]=Math.min(
+        m[i-1][j]+1,
+        m[i][j-1]+1,
+        m[i-1][j-1]+(a[i-1]===b[j-1]?0:1)
+      );
+    }
+  }
+  return m[a.length][b.length];
+}
+
+V9.wordLike = function(word,target){
+  if(word===target) return true;
+  if(target.length<5 || word.length<4) return false;
+  return Math.abs(word.length-target.length)<=2 && dist(word,target)<=2;
+};
+
+V9.has = function(text, phrases){
+  const t=V9.normalize(text);
+  const words=t.split(/\s+/);
+  for(const p0 of phrases){
+    const p=V9.normalize(p0);
+    if(!p) continue;
+    if((" "+t+" ").includes(" "+p+" ")) return true;
+    if(!p.includes(" ") && words.some(w=>V9.wordLike(w,p))) return true;
+  }
+  return false;
+};
+
+V9.groups = {
+  browser:["browser","web browser"],
+  page:["page","webpage","website","site","tab"],
+  load:["load","loading","open","opening","render","display"],
+  partial:["stops loading","stops","freezes","hangs","half loads","partially loads","loads forever","keeps loading","spinning","blank after loading"],
+  notload:["does not load","will not load","cannot load","not loading","does not open","will not open","cannot open","blank page","white page"],
+  slow:["slow","takes forever","very slow","loads slowly"],
+  internet:["internet","wifi","connection","network"],
+  glitch:["glitching","weird","strange","not right","messed up","behaving strangely"],
+  windows:["windows","computer","laptop"],
+  crash:["crash","crashing","closes","closes itself","shuts down app","app closes"],
+  freeze:["freezing","frozen","stuck","not responding"],
+  error:["error","error message","code","warning","popup"],
+  download:["download","downloading","file download"],
+  upload:["upload","uploading"],
+  install:["install","installation","setup"],
+  uninstall:["uninstall","remove program","remove app","delete program"],
+  sound:["sound","audio","speaker","headphones"],
+  mic:["microphone","mic"],
+  camera:["camera","webcam"],
+  printer:["printer","printing"],
+  bluetooth:["bluetooth"],
+  usb:["usb","flash drive","memory stick"],
+  monitor:["monitor","screen","display"],
+  office:["word","excel","powerpoint","outlook","office","microsoft 365"],
+  email:["email","mail","outlook"],
+  update:["update","windows update"],
+  virus:["virus","malware","trojan","spyware","ransomware"],
+  hot:["overheating","hot","too hot","heating up"],
+  boot:["boot","startup","start windows","turn on"],
+  power:["power","turn on","switch on"],
+  storage:["disk","drive","storage","space","c drive"]
+};
+
+V9.phrases = {
+  browser_partial: [
+    "when i use my browser it loads page but then stops",
+    "my browser loads the page and then stops",
+    "page starts loading and then stops",
+    "website starts loading but never finishes",
+    "browser keeps loading forever",
+    "page half loads",
+    "site loads halfway",
+    "browser opens page but then freezes",
+    "page begins to load then gets stuck",
+    "it loads some of the page then nothing",
+    "the page spins forever",
+    "browser loads and then hangs",
+    "browser loads a bit and stops",
+    "webpage gets stuck while loading"
+  ],
+  browser_notload: [
+    "my browser is not loading the page",
+    "browser does not load pages",
+    "browser cannot open websites",
+    "my browser wont open websites",
+    "browser opens but pages do not",
+    "website not opening in browser",
+    "browser gives blank page",
+    "browser shows white page",
+    "i cannot use my browser because pages dont load",
+    "i cant use my browser because websites dont open",
+    "browser is open but nothing loads",
+    "pages are not loading"
+  ],
+  browser_slow: [
+    "browser is very slow",
+    "pages load slowly",
+    "browser takes forever to load sites",
+    "websites open very slowly",
+    "browser feels sluggish",
+    "browser takes ages to open pages"
+  ],
+  windows_glitch: [
+    "windows is glitching",
+    "windows works weirdly",
+    "windows acts weird",
+    "windows behaves strangely",
+    "my pc is glitching",
+    "my computer is acting weird",
+    "my laptop is acting strange",
+    "windows loads normally but glitches",
+    "computer works but something is wrong"
+  ]
+};
+
+V9.answers = {
+  browser_partial:{
+    en:`Got it — the browser begins loading the page, but the page does not finish. We need to separate a browser problem from a website or Internet problem.
+
+Please check these 3 things:
+1. Does this happen on every website, or only one specific website?
+2. Try the same page in another browser. Does it load there?
+3. Try the same website on another device using the same Wi‑Fi.
+
+Tell me the results of those three checks. If only one browser fails, we’ll check cache/extensions/settings. If every browser and device fails, we’ll look at the Internet/router/DNS side.`,
+    ru:`Поняла — браузер начинает загружать страницу, но загрузка не заканчивается. Нужно отделить проблему браузера от проблемы сайта или интернета.
+
+Проверьте 3 вещи:
+1. Это происходит на всех сайтах или только на одном?
+2. Откройте ту же страницу в другом браузере. Загружается?
+3. Откройте тот же сайт на другом устройстве в той же Wi‑Fi сети.
+
+Сообщите результаты. Если проблема только в одном браузере — проверим кэш/расширения/настройки. Если во всех браузерах и устройствах — будем проверять интернет/роутер/DNS.`,
+    fi:`Selvä — selain aloittaa sivun lataamisen, mutta sivu ei valmistu. Erotetaan selainongelma sivusto- tai internetongelmasta.
+
+Tarkista 3 asiaa:
+1. Tapahtuuko tämä kaikilla sivustoilla vai vain yhdellä?
+2. Avaa sama sivu toisella selaimella. Latautuuko se?
+3. Avaa sama sivusto toisella laitteella samassa Wi‑Fi-verkossa.
+
+Kerro tulokset. Jos vain yksi selain epäonnistuu, tarkistamme välimuistin/laajennukset/asetukset. Jos kaikki selaimet ja laitteet epäonnistuvat, tarkistamme internetin/reitittimen/DNS:n.`
+  },
+  browser_notload:{
+    en:`Understood — the browser opens, but pages are not loading.
+
+Let’s narrow it down:
+1. Does another website open?
+2. Does another browser work?
+3. Does the Internet work on another device on the same Wi‑Fi?
+4. Do you see an exact error such as "DNS_PROBE_FINISHED", "ERR_CONNECTION", "This site can’t be reached", 404, 403 or 500?
+
+Send me the exact error if there is one. That tells us whether the problem is browser, DNS, network, or the website itself.`,
+    ru:`Поняла — браузер открывается, но страницы не загружаются.
+
+Уточним:
+1. Открывается ли другой сайт?
+2. Работает ли другой браузер?
+3. Есть ли интернет на другом устройстве в той же Wi‑Fi сети?
+4. Есть ли точная ошибка: DNS_PROBE_FINISHED, ERR_CONNECTION, "This site can’t be reached", 404, 403, 500?
+
+Если есть ошибка — пришлите её полностью. По ней можно понять, проблема в браузере, DNS, сети или самом сайте.`,
+    fi:`Selvä — selain avautuu, mutta sivut eivät lataudu.
+
+Tarkistetaan:
+1. Aukeaako toinen sivusto?
+2. Toimiiko toinen selain?
+3. Toimiiko internet toisella laitteella samassa Wi‑Fi-verkossa?
+4. Näkyykö tarkka virhe, kuten DNS_PROBE_FINISHED, ERR_CONNECTION, "This site can’t be reached", 404, 403 tai 500?
+
+Lähetä tarkka virhe, jos sellainen näkyy.`
+  },
+  browser_slow:{
+    en:`If the browser works but is slow:
+1. Close unnecessary tabs.
+2. Try a private/incognito window.
+3. Disable unnecessary extensions temporarily.
+4. Clear cached files.
+5. Update the browser.
+6. Check Task Manager for high CPU/RAM/Disk usage.
+7. Compare with another browser.
+
+If every browser is slow, tell me whether other Internet apps are also slow — then we’ll check Wi‑Fi/Internet instead.`,
+    ru:`Если браузер работает, но медленно:
+1. Закройте лишние вкладки.
+2. Проверьте в приватном окне.
+3. Временно отключите ненужные расширения.
+4. Очистите кэш.
+5. Обновите браузер.
+6. Проверьте CPU/RAM/Диск в Диспетчере задач.
+7. Сравните с другим браузером.
+
+Если тормозят все браузеры, напишите, медленно ли работают другие интернет‑программы — тогда проверим Wi‑Fi/интернет.`,
+    fi:`Jos selain toimii mutta on hidas:
+1. Sulje turhat välilehdet.
+2. Kokeile yksityistä ikkunaa.
+3. Poista turhat laajennukset väliaikaisesti.
+4. Tyhjennä välimuisti.
+5. Päivitä selain.
+6. Tarkista Tehtävienhallinnasta CPU/RAM/Levy.
+7. Vertaa toiseen selaimeen.
+
+Jos kaikki selaimet ovat hitaita, kerro ovatko muut internet-sovellukset myös hitaita.`
+  },
+  windows_glitch:{
+    en:`Got it — Windows is running, but something behaves abnormally. “Glitching” can mean several different problems.
+
+Which is closest?
+1. Screen/graphics flicker or visual artifacts
+2. Programs freeze or close
+3. Windows becomes slow
+4. Error messages or popups appear
+5. Mouse/keyboard behaves oddly
+6. Explorer/taskbar/start menu stops responding
+7. Something else
+
+Tell me the number or describe what you see, and I’ll guide you from there.`,
+    ru:`Поняла — Windows загружается, но ведёт себя ненормально. Под «глючит» может скрываться несколько разных проблем.
+
+Что ближе?
+1. Мигает экран/артефакты
+2. Программы зависают или закрываются
+3. Windows тормозит
+4. Появляются ошибки/окна
+5. Странно работают мышь/клавиатура
+6. Зависают Проводник/панель задач/Пуск
+7. Что-то другое
+
+Напишите номер или опишите, что видите, и я продолжу диагностику.`,
+    fi:`Selvä — Windows käynnistyy, mutta jokin toimii epänormaalisti. “Glitching” voi tarkoittaa eri ongelmia.
+
+Mikä sopii parhaiten?
+1. Näyttö/grafiikka vilkkuu
+2. Ohjelmat jumittuvat tai sulkeutuvat
+3. Windows hidastuu
+4. Virheilmoituksia/ponnahdusikkunoita
+5. Hiiri/näppäimistö toimii oudosti
+6. Resurssienhallinta/tehtäväpalkki/Käynnistä jumittuu
+7. Jotain muuta
+
+Kerro numero tai kuvaile mitä näet.`
+  }
+};
+
+function exactPhraseIntent(text){
+  const t=V9.normalize(text);
+  let best=null,bestScore=0;
+  for(const [id,list] of Object.entries(V9.phrases)){
+    for(const p of list){
+      const n=V9.normalize(p);
+      if(t===n) return id;
+      let score=0;
+      const tw=t.split(" "), pw=n.split(" ");
+      for(const w of pw) if(tw.includes(w)) score++;
+      score/=Math.max(1,pw.length);
+      if(score>bestScore){bestScore=score;best=id;}
+    }
+  }
+  return bestScore>=0.72 ? best : null;
+}
+
+function semanticIntent(text){
+  const t=V9.normalize(text);
+
+  const browser = V9.has(t,V9.groups.browser);
+  const page = V9.has(t,V9.groups.page);
+  const load = V9.has(t,V9.groups.load);
+  const partial = V9.has(t,V9.groups.partial);
+  const notload = V9.has(t,V9.groups.notload);
+  const slow = V9.has(t,V9.groups.slow);
+
+  if(browser && (page||load) && partial) return "browser_partial";
+  if(browser && (page||load) && notload) return "browser_notload";
+  if(browser && slow) return "browser_slow";
+
+  if((V9.has(t,V9.groups.windows)) && V9.has(t,V9.groups.glitch)) return "windows_glitch";
+
+  // Natural "I can't use my browser because ..." patterns.
+  if(browser && /\b(cannot use|can't use|cant use|problem with|something wrong with)\b/i.test(raw(text))){
+    if(partial) return "browser_partial";
+    if(notload || page || load) return "browser_notload";
+  }
+
+  // Page loads then stops even when the user did not repeat "browser".
+  if((page||browser) && /\b(loads?|loading)\b/i.test(t) && /\b(stops?|stuck|freezing|hangs?|forever)\b/i.test(t))
+    return "browser_partial";
+
+  return null;
+}
+
+V9.askForDetails = function(text,l){
+  const lang=L(l), t=V9.normalize(text);
+
+  // Browser mentioned but symptom unclear.
+  if(V9.has(t,V9.groups.browser)){
+    V9.lastSubject="browser";
+    const q={
+      en:`I understand the problem is with your browser. What exactly happens?
+1. Browser does not open
+2. Browser opens but pages do not load
+3. Page starts loading and then stops
+4. Browser is very slow
+5. Browser freezes/crashes
+6. Downloads do not work
+7. Something else`,
+      ru:`Поняла, проблема с браузером. Что именно происходит?
+1. Браузер не открывается
+2. Браузер открывается, но страницы не грузятся
+3. Страница начинает грузиться и останавливается
+4. Браузер очень медленный
+5. Браузер зависает/вылетает
+6. Не работают загрузки
+7. Что-то другое`,
+      fi:`Ymmärsin, että ongelma liittyy selaimeen. Mitä tarkalleen tapahtuu?
+1. Selain ei avaudu
+2. Selain avautuu, mutta sivut eivät lataudu
+3. Sivu alkaa latautua ja pysähtyy
+4. Selain on hyvin hidas
+5. Selain jumittuu/kaatuu
+6. Lataukset eivät toimi
+7. Jotain muuta`
+    };
+    return q[lang];
+  }
+
+  if(V9.has(t,V9.groups.windows)){
+    V9.lastSubject="windows";
+    return V9.answers.windows_glitch[lang];
+  }
+
+  return null;
+};
+
+V9.handle = function(text,l){
+  V9.turn++;
+  const lang=L(l);
+  let id = exactPhraseIntent(text) || semanticIntent(text);
+
+  if(id && V9.answers[id]){
+    V9.lastIntent=id;
+    V9.lastAnswer=V9.answers[id][lang];
+    if(id.startsWith("browser")) V9.lastSubject="browser";
+    if(id==="windows_glitch") V9.lastSubject="windows";
+    return {type:"answer",text:V9.lastAnswer};
+  }
+
+  const q=V9.askForDetails(text,l);
+  if(q){
+    V9.lastIntent="needs_details";
+    V9.lastQuestion=q;
+    return {type:"answer",text:q};
+  }
+
+  // Contextual short answers after browser navigation.
+  const t=V9.normalize(text);
+  if(V9.lastSubject==="browser"){
+    if(/\b(stops?|stuck|forever|half|freezing|hangs?)\b/i.test(t))
+      return {type:"answer",text:V9.answers.browser_partial[lang]};
+    if(/\b(no|not|cannot|wont|won't|blank|white)\b/i.test(t) && /\b(load|open|page|site)\b/i.test(t))
+      return {type:"answer",text:V9.answers.browser_notload[lang]};
+    if(/\b(slow|slowly|ages|forever)\b/i.test(t))
+      return {type:"answer",text:V9.answers.browser_slow[lang]};
+  }
+
+  return null;
+};
+
+window.ANITA_V9 = V9;
+
+// Wrap v7 first if present.
+if(window.ANITA_V7 && typeof window.ANITA_V7.handle==="function"){
+  const oldV7 = window.ANITA_V7.handle.bind(window.ANITA_V7);
+  window.ANITA_V7.handle=function(text,l){
+    const r=V9.handle(text,l);
+    if(r) return r;
+    return oldV7(text,l);
+  };
+}
+
+// Also expose a standalone hook.
+window.anitaSemanticIntent = function(text,l){
+  return V9.handle(text,l);
+};
+
+console.log("[ANITA v9] Semantic Intent Engine loaded");
+})();
