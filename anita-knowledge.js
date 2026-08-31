@@ -247,6 +247,10 @@ let l=languageMode==="auto"?detectLanguage(q):languageMode;currentLanguage=l;upd
 if(specialistIntent(q,l)){failedAttempts=0;previousQuestion=q;previousCategory=null;excludedCategories.clear();showHuman(l);return}
 let core=directCoreIntent(q,l);if(core){failedAttempts=0;previousQuestion=q;previousCategory=core;excludedCategories.clear();addMessage(core.a[l]||core.a.en,"bot");return}
 let gc=guidedChatIntent(q,l);if(gc){failedAttempts=0;addMessage(guidedChatAnswer(gc),"bot");return}
+if(window.ANITA_SMART){
+  let extra=window.ANITA_SMART.lookup(q,l);
+  if(extra){failedAttempts=0;previousCategory=null;excludedCategories.clear();addMessage(extra,"bot");return}
+}
 let si=smartMatch(q,l);if(si){failedAttempts=0;previousCategory=null;excludedCategories.clear();addMessage(smartAnswer(si,l),"bot");return}
 let cf=contextualFollowup(q,l);if(cf){addMessage(cf,"bot");return}
 let st=findSmallTalk(q,l);if(st){failedAttempts=0;previousCategory=null;excludedCategories.clear();addMessage(smallTalkAnswer(st,l),"bot");return}
@@ -255,7 +259,11 @@ if(isContact(q,l)){failedAttempts=0;previousCategory=null;alexCard(l);return}
 let tech=findTech(q,l);if(tech){failedAttempts=0;previousCategory=null;excludedCategories.clear();addMessage(tech.answers[l],"bot");return}
 if(previousCategory&&containsPhrase(q,rejectWords[l])){excludedCategories.add(previousCategory.id);addMessage(UI[l].wrong,"bot");let r=findBest(previousQuestion+" "+q,l);if(r.item&&r.score>=4){previousCategory=r.item;addMessage(r.item.a[l],"bot")}else previousCategory=null;return}
 if(previousCategory&&containsPhrase(q,failWords[l])){failedAttempts++;if(failedAttempts>=7){showEscalation(l);failedAttempts=0;previousCategory=null;excludedCategories.clear();return}addMessage(UI[l].retry(failedAttempts+1),"bot");return}
-excludedCategories.clear();let r=findBest(q,l);previousQuestion=q;failedAttempts=0;if(!r.item||r.score<3.5){previousCategory=null;addMessage(UI[l].unknown,"bot");return}previousCategory=r.item;addMessage(r.item.a[l],"bot");if(r.score<6||r.difference<1){let name=r.item.p[l][0];addMessage(l==="ru"?`Я правильно понимаю, что вопрос относится к теме «${name}»? Если нет, напишите: «Нет, я не это имел в виду».`:l==="fi"?`Ymmärsinkö oikein, että kysymys liittyy aiheeseen “${name}”? Jos ei, kirjoita: “Ei, en tarkoittanut sitä.”`:`Am I right that your question is related to “${name}”? If not, write: “No, that's not what I meant.”`,"bot")}
+excludedCategories.clear();let r=findBest(q,l);previousQuestion=q;failedAttempts=0;if(!r.item||r.score<3.5){
+  previousCategory=null;
+  if(window.ANITA_SMART){addMessage(window.ANITA_SMART.fallback(q,l),"bot");return}
+  addMessage(UI[l].unknown,"bot");return
+}previousCategory=r.item;addMessage(r.item.a[l],"bot");if(r.score<6||r.difference<1){let name=r.item.p[l][0];addMessage(l==="ru"?`Я правильно понимаю, что вопрос относится к теме «${name}»? Если нет, напишите: «Нет, я не это имел в виду».`:l==="fi"?`Ymmärsinkö oikein, että kysymys liittyy aiheeseen “${name}”? Jos ei, kirjoita: “Ei, en tarkoittanut sitä.”`:`Am I right that your question is related to “${name}”? If not, write: “No, that's not what I meant.”`,"bot")}
 }
 
 function updateInterface(g=true){let l=languageMode==="auto"?currentLanguage:languageMode,u=UI[l];input.placeholder=u.placeholder;send.textContent=u.send;online.textContent=u.online;footer.textContent=u.footer;suggestions.innerHTML="";u.chips.forEach(t=>{let b=document.createElement("button");b.className="chip";b.type="button";b.textContent=t;b.onclick=()=>{input.value=t;form.requestSubmit()};suggestions.appendChild(b)});document.querySelectorAll(".langBtn").forEach(b=>b.classList.toggle("active",b.dataset.lang===languageMode));if(g)addMessage(u.hello,"bot")}
@@ -271,3 +279,307 @@ Hei! Olen ANITA — Alex Node IT Assistancen virtuaalinen IT-avustaja.
 
 или просто начните писать — я попробую определить язык автоматически.`,"bot");
 updateInterface(false);
+
+/* =========================================================
+   ANITA SMARTER SUPPORT LAYER v6
+   Deterministic, non-AI support intelligence
+   Adds:
+   - slang + normalization
+   - typo tolerance helpers
+   - richer IT glossary
+   - diagnostic flows
+   - contextual follow-up handling
+   - many everyday home-IT support intents
+   ========================================================= */
+
+(function(){
+  const ANITA_SMART = window.ANITA_SMART || {};
+
+  ANITA_SMART.aliases = {
+    pc:["pc","computer","desktop","machine","rig","comp","комп","компик","компьютер","пк","kone","tietokone"],
+    laptop:["laptop","notebook","lappy","ноут","ноутбук","läppäri","kannettava"],
+    internet:["internet","net","wifi","wi-fi","wlan","интернет","инет","вайфай","сеть","netti","verkko"],
+    slow:["slow","sluggish","laggy","lags","lagging","freezing","stutters","тормозит","тупит","лагает","медленно","hidas","lagaa","jumittaa"],
+    broken:["broken","dead","died","stopped working","doesnt work","doesn't work","not working","не работает","сломался","умер","перестал работать","ei toimi","rikki"],
+    screen:["screen","monitor","display","экран","монитор","näyttö"],
+    sound:["sound","audio","speaker","speakers","headphones","звук","аудио","динамики","наушники","ääni","kaiutin","kuulokkeet"],
+    printer:["printer","print","печать","принтер","tulostin"],
+    bluetooth:["bluetooth","bt","блютуз","sinuhammas"],
+    update:["update","windows update","обновление","обновления","päivitys","windows päivitys"],
+    password:["password","passcode","pin","пароль","пин","salasana","pin-koodi"],
+    usb:["usb","flash drive","flashdrive","pendrive","memory stick","флешка","usb tikku","muistitikku"]
+  };
+
+  ANITA_SMART.glossary = {
+    cpu:{
+      en:"CPU is the main processor of the computer. It executes instructions and affects overall performance.",
+      ru:"CPU — центральный процессор компьютера. Он выполняет инструкции и сильно влияет на общую производительность.",
+      fi:"CPU on tietokoneen keskusprosessori. Se suorittaa käskyjä ja vaikuttaa yleiseen suorituskykyyn."
+    },
+    ram:{
+      en:"RAM is short-term working memory. Too little RAM can make the computer slow when many programs are open.",
+      ru:"RAM — оперативная память. Если её мало, компьютер может тормозить при большом количестве открытых программ.",
+      fi:"RAM on työmuisti. Liian pieni määrä RAM-muistia voi hidastaa tietokonetta, kun ohjelmia on paljon auki."
+    },
+    ssd:{
+      en:"An SSD is a fast storage drive. Replacing an old HDD with an SSD is one of the biggest speed upgrades for an older PC.",
+      ru:"SSD — быстрый накопитель. Замена старого HDD на SSD часто даёт очень заметное ускорение старого компьютера.",
+      fi:"SSD on nopea tallennusasema. Vanhan HDD-levyn vaihtaminen SSD:hen on yksi tehokkaimmista tavoista nopeuttaa vanhaa tietokonetta."
+    },
+    gpu:{
+      en:"GPU is the graphics processor. It renders games, video and visual effects. Some PCs use integrated graphics inside the CPU.",
+      ru:"GPU — графический процессор. Он отвечает за игры, видео и графику. В некоторых компьютерах используется встроенная графика процессора.",
+      fi:"GPU on näytönohjainprosessori. Se käsittelee pelejä, videota ja grafiikkaa. Joissain tietokoneissa käytetään prosessoriin integroitua grafiikkaa."
+    },
+    psu:{
+      en:"PSU is the power supply unit. It converts wall power and supplies the PC components with the voltages they need.",
+      ru:"PSU — блок питания. Он преобразует питание из розетки и подаёт нужное напряжение компонентам ПК.",
+      fi:"PSU on virtalähde. Se muuntaa verkkovirran ja syöttää tietokoneen komponenteille tarvittavat jännitteet."
+    },
+    hdmi:{
+      en:"HDMI is a cable and port standard for digital video and audio between computers, monitors and TVs.",
+      ru:"HDMI — стандарт кабеля и разъёма для передачи цифрового изображения и звука между компьютером, монитором и телевизором.",
+      fi:"HDMI on digitaalisen kuvan ja äänen siirtämiseen käytetty kaapeli- ja liitäntästandardi."
+    }
+  };
+
+  ANITA_SMART.knowledge = [
+    {
+      id:"bluetooth_not_working",
+      keys:["bluetooth not working","bluetooth doesnt work","bluetooth doesn't work","bluetooth missing","cant find bluetooth","can't find bluetooth","блютуз не работает","bluetooth не работает","не вижу bluetooth","bluetooth ei toimi","bluetooth puuttuu"],
+      answer:{
+        en:"Try this:\n1. Turn Bluetooth off and back on.\n2. Restart the PC.\n3. Open Settings → Bluetooth & devices and confirm Bluetooth is enabled.\n4. Open Device Manager and look for Bluetooth or warning icons.\n5. If the adapter is missing, install the laptop/PC manufacturer's Bluetooth driver.\n6. Remove the device and pair it again.\nIf Bluetooth disappeared after an update, tell me your Windows version and device model.",
+        ru:"Попробуйте так:\n1. Выключите и снова включите Bluetooth.\n2. Перезагрузите компьютер.\n3. Откройте Параметры → Bluetooth и устройства и убедитесь, что Bluetooth включён.\n4. Откройте Диспетчер устройств и проверьте раздел Bluetooth и значки ошибок.\n5. Если адаптер пропал, установите Bluetooth-драйвер с сайта производителя ноутбука/ПК.\n6. Удалите устройство из списка и подключите заново.\nЕсли Bluetooth исчез после обновления, напишите версию Windows и модель устройства.",
+        fi:"Kokeile näin:\n1. Kytke Bluetooth pois ja takaisin päälle.\n2. Käynnistä tietokone uudelleen.\n3. Avaa Asetukset → Bluetooth ja laitteet ja varmista, että Bluetooth on käytössä.\n4. Tarkista Laitehallinnasta Bluetooth ja mahdolliset varoitusmerkit.\n5. Jos sovitin puuttuu, asenna valmistajan Bluetooth-ajuri.\n6. Poista laite ja parita se uudelleen.\nJos Bluetooth katosi päivityksen jälkeen, kerro Windows-versio ja laitteen malli."
+      }
+    },
+    {
+      id:"windows_update_problem",
+      keys:["windows update not working","windows update stuck","update stuck","update failed","обновление windows не работает","windows update завис","ошибка обновления","windows update ei toimi","päivitys jumissa"],
+      answer:{
+        en:"For Windows Update problems:\n1. Restart the PC first.\n2. Check internet connection and free disk space.\n3. Open Settings → Windows Update and press Check for updates.\n4. If it is stuck, run Settings → System → Troubleshoot → Other troubleshooters → Windows Update.\n5. Restart again and retry.\n6. If you see an error code, send me the exact code — that helps identify the cause.",
+        ru:"При проблемах с Windows Update:\n1. Сначала перезагрузите ПК.\n2. Проверьте интернет и свободное место на диске.\n3. Откройте Параметры → Центр обновления Windows → Проверить наличие обновлений.\n4. Если всё зависло, запустите средство устранения неполадок Windows Update.\n5. Снова перезагрузите компьютер и повторите попытку.\n6. Если есть код ошибки, пришлите его полностью — по нему легче понять причину.",
+        fi:"Windows Updaten ongelmissa:\n1. Käynnistä tietokone uudelleen.\n2. Tarkista internet-yhteys ja vapaa levytila.\n3. Avaa Asetukset → Windows Update → Tarkista päivitykset.\n4. Jos päivitys jumittuu, suorita Windows Updaten vianmääritys.\n5. Käynnistä tietokone uudelleen ja yritä uudestaan.\n6. Jos näkyy virhekoodi, lähetä tarkka koodi."
+      }
+    },
+    {
+      id:"browser_slow",
+      keys:["browser slow","chrome slow","edge slow","firefox slow","браузер тормозит","хром тормозит","edge тормозит","selain hidas","chrome hidas"],
+      answer:{
+        en:"If only the browser is slow:\n1. Close unnecessary tabs.\n2. Disable extensions you do not need.\n3. Clear cached files.\n4. Update the browser.\n5. Check Task Manager for high CPU/RAM usage.\n6. Try another browser. If all browsers are slow, the issue may be internet, RAM, CPU or storage instead.",
+        ru:"Если тормозит только браузер:\n1. Закройте лишние вкладки.\n2. Отключите ненужные расширения.\n3. Очистите кэш.\n4. Обновите браузер.\n5. Проверьте Диспетчер задач — нет ли высокой загрузки CPU/RAM.\n6. Попробуйте другой браузер. Если тормозят все браузеры, причина может быть в интернете, RAM, процессоре или диске.",
+        fi:"Jos vain selain on hidas:\n1. Sulje turhat välilehdet.\n2. Poista tarpeettomat laajennukset käytöstä.\n3. Tyhjennä välimuisti.\n4. Päivitä selain.\n5. Tarkista Tehtävienhallinnasta CPU- ja RAM-käyttö.\n6. Kokeile toista selainta. Jos kaikki selaimet ovat hitaita, syy voi olla verkossa, muistissa, prosessorissa tai levyllä."
+      }
+    },
+    {
+      id:"storage_full",
+      keys:["disk full","storage full","c drive full","no space","low disk space","диск заполнен","нет места на диске","диск c заполнен","levy täynnä","tila loppu"],
+      answer:{
+        en:"If the system drive is full:\n1. Open Settings → System → Storage.\n2. Check which categories use the most space.\n3. Empty Recycle Bin and Downloads if safe.\n4. Remove unused apps.\n5. Run Temporary files cleanup.\n6. Move large videos/photos to another drive or cloud storage.\nAvoid deleting unknown Windows folders manually.",
+        ru:"Если системный диск заполнен:\n1. Откройте Параметры → Система → Память.\n2. Посмотрите, что занимает больше всего места.\n3. Очистите Корзину и Загрузки, если файлы не нужны.\n4. Удалите ненужные программы.\n5. Очистите временные файлы.\n6. Перенесите большие видео/фото на другой диск или в облако.\nНе удаляйте неизвестные папки Windows вручную.",
+        fi:"Jos järjestelmälevy on täynnä:\n1. Avaa Asetukset → Järjestelmä → Tallennustila.\n2. Tarkista, mikä vie eniten tilaa.\n3. Tyhjennä Roskakori ja Lataukset tarvittaessa.\n4. Poista tarpeettomat sovellukset.\n5. Poista väliaikaiset tiedostot.\n6. Siirrä suuret videot ja kuvat toiselle levylle tai pilveen.\nÄlä poista tuntemattomia Windows-kansioita käsin."
+      }
+    },
+    {
+      id:"usb_not_detected",
+      keys:["usb not detected","usb not recognized","flash drive not showing","usb doesnt work","usb doesn't work","флешка не определяется","usb не видит","флешку не видно","usb ei tunnistu","muistitikku ei näy"],
+      answer:{
+        en:"For an unrecognized USB device:\n1. Try another USB port.\n2. Restart the PC.\n3. Test the device on another computer.\n4. Open Device Manager and look for warning icons under USB controllers.\n5. For a storage drive, open Disk Management and see whether the drive appears there.\n6. Do not format the drive if it contains important files you need.",
+        ru:"Если USB-устройство не определяется:\n1. Попробуйте другой USB-порт.\n2. Перезагрузите компьютер.\n3. Проверьте устройство на другом компьютере.\n4. Откройте Диспетчер устройств и проверьте ошибки в USB-контроллерах.\n5. Для флешки/диска откройте Управление дисками и посмотрите, виден ли накопитель там.\n6. Не форматируйте накопитель, если на нём есть важные файлы.",
+        fi:"Jos USB-laite ei tunnistu:\n1. Kokeile toista USB-porttia.\n2. Käynnistä tietokone uudelleen.\n3. Testaa laite toisessa tietokoneessa.\n4. Tarkista Laitehallinnasta USB-ohjainten varoitukset.\n5. Tallennuslaitteelle avaa Levynhallinta ja tarkista näkyykö asema siellä.\n6. Älä alusta asemaa, jos siinä on tärkeitä tiedostoja."
+      }
+    },
+    {
+      id:"overheating",
+      keys:["computer overheating","pc overheating","laptop overheating","very hot laptop","fan very loud","computer hot","перегревается","ноутбук горячий","вентилятор громко","ylikuumenee","läppäri kuuma","tuuletin äänekäs"],
+      answer:{
+        en:"If the PC or laptop gets very hot:\n1. Shut it down if it becomes unusually hot or unstable.\n2. Make sure vents are not blocked.\n3. Use the laptop on a hard surface, not a bed or blanket.\n4. Check Task Manager for a process using very high CPU.\n5. Clean dust from vents if you know how to do it safely.\n6. Persistent overheating may require internal cleaning or thermal paste service.",
+        ru:"Если ПК или ноутбук сильно греется:\n1. Выключите его, если температура необычно высокая или система нестабильна.\n2. Убедитесь, что вентиляционные отверстия не закрыты.\n3. Не используйте ноутбук на кровати или одеяле — лучше на твёрдой поверхности.\n4. Проверьте Диспетчер задач на процессы с высокой загрузкой CPU.\n5. Аккуратно очистите вентиляционные отверстия от пыли, если умеете это делать безопасно.\n6. Постоянный перегрев может потребовать внутренней чистки или обслуживания системы охлаждения.",
+        fi:"Jos tietokone kuumenee paljon:\n1. Sammuta se, jos lämpötila on poikkeuksellisen korkea tai kone epävakaa.\n2. Varmista, etteivät ilmanottoaukot ole tukossa.\n3. Käytä kannettavaa kovalla alustalla, ei sängyllä tai peitolla.\n4. Tarkista Tehtävienhallinnasta korkea CPU-kuormitus.\n5. Puhdista pöly ilmanvaihtoaukoista turvallisesti.\n6. Jatkuva ylikuumeneminen voi vaatia sisäisen puhdistuksen tai jäähdytyshuollon."
+      }
+    },
+    {
+      id:"blue_screen",
+      keys:["blue screen","bsod","computer blue screen","windows blue screen","синий экран","bsod ошибка","sininen ruutu","blue screen windows"],
+      answer:{
+        en:"A blue screen usually means Windows hit a serious system or driver error. Write down the stop code first. Then:\n1. Restart the PC.\n2. Install Windows updates.\n3. Update or roll back recently changed drivers.\n4. Disconnect newly added hardware.\n5. Check RAM and storage health if crashes continue.\nSend me the exact stop code if you have it.",
+        ru:"Синий экран обычно означает серьёзную системную или драйверную ошибку Windows. Сначала запишите STOP-код. Затем:\n1. Перезагрузите ПК.\n2. Установите обновления Windows.\n3. Обновите или откатите недавно изменённые драйверы.\n4. Отключите недавно добавленное оборудование.\n5. Если сбои продолжаются, стоит проверить RAM и состояние накопителя.\nПришлите точный STOP-код, если он есть.",
+        fi:"Sininen ruutu tarkoittaa yleensä vakavaa Windowsin järjestelmä- tai ajurivirhettä. Kirjaa STOP-koodi ylös. Sitten:\n1. Käynnistä tietokone uudelleen.\n2. Asenna Windows-päivitykset.\n3. Päivitä tai palauta äskettäin muutetut ajurit.\n4. Irrota uusi laitteisto.\n5. Jos kaatumiset jatkuvat, tarkista RAM ja tallennusasema.\nLähetä tarkka STOP-koodi, jos se näkyy."
+      }
+    },
+    {
+      id:"malware_suspected",
+      keys:["virus","malware","computer infected","popups everywhere","browser hijacked","вирус","вредонос","компьютер заражен","везде реклама","haittaohjelma","virus koneella"],
+      answer:{
+        en:"If you suspect malware:\n1. Disconnect from suspicious websites and close unknown programs.\n2. Run Windows Security → Virus & threat protection → Full scan.\n3. Remove suspicious browser extensions.\n4. Uninstall programs you do not recognize.\n5. Change important passwords from a clean device if you entered them on a suspicious page.\n6. If the PC is heavily compromised, back up personal files and consider a clean Windows reinstall.",
+        ru:"Если подозреваете вирус или вредоносное ПО:\n1. Закройте подозрительные сайты и неизвестные программы.\n2. Запустите Безопасность Windows → Защита от вирусов и угроз → Полная проверка.\n3. Удалите подозрительные расширения браузера.\n4. Удалите программы, которые вы не устанавливали.\n5. Если вводили пароли на подозрительном сайте, смените важные пароли с чистого устройства.\n6. При серьёзном заражении сохраните личные файлы и рассмотрите чистую переустановку Windows.",
+        fi:"Jos epäilet haittaohjelmaa:\n1. Sulje epäilyttävät sivut ja tuntemattomat ohjelmat.\n2. Suorita Windowsin suojaus → Virusten ja uhkien torjunta → Täysi tarkistus.\n3. Poista epäilyttävät selainlaajennukset.\n4. Poista ohjelmat, joita et tunnista.\n5. Vaihda tärkeät salasanat puhtaalta laitteelta, jos syötit ne epäilyttävälle sivulle.\n6. Vakavassa tartunnassa varmuuskopioi omat tiedostot ja harkitse Windowsin puhdasta asennusta."
+      }
+    },
+    {
+      id:"email_not_syncing",
+      keys:["email not syncing","outlook not syncing","mail not updating","email not receiving","почта не синхронизируется","outlook не получает письма","sähköposti ei synkronoidu","outlook ei synkronoidu"],
+      answer:{
+        en:"If email is not syncing:\n1. Check internet access.\n2. Open webmail to see whether new mail exists there.\n3. Restart the mail app.\n4. Confirm the account password is still valid.\n5. Check whether the mailbox is full.\n6. In Outlook, try Send/Receive and check Work Offline is not enabled.\nIf only one device has the issue, the account itself is probably fine.",
+        ru:"Если почта не синхронизируется:\n1. Проверьте интернет.\n2. Откройте веб-почту и посмотрите, приходят ли письма там.\n3. Перезапустите почтовое приложение.\n4. Убедитесь, что пароль аккаунта актуален.\n5. Проверьте, не переполнен ли почтовый ящик.\n6. В Outlook нажмите Отправить/Получить и проверьте, что автономный режим выключен.\nЕсли проблема только на одном устройстве, сам аккаунт, скорее всего, работает.",
+        fi:"Jos sähköposti ei synkronoidu:\n1. Tarkista internet-yhteys.\n2. Avaa webmail ja tarkista näkyvätkö uudet viestit siellä.\n3. Käynnistä sähköpostiohjelma uudelleen.\n4. Varmista, että salasana on voimassa.\n5. Tarkista, ettei postilaatikko ole täynnä.\n6. Outlookissa käytä Lähetä/Vastaanota-toimintoa ja varmista, ettei Offline-tila ole päällä.\nJos ongelma on vain yhdellä laitteella, itse tili todennäköisesti toimii."
+      }
+    },
+    {
+      id:"camera_not_working",
+      keys:["camera not working","webcam not working","camera black","zoom camera not working","teams camera not working","камера не работает","вебкамера не работает","kamera ei toimi","webkamera ei toimi"],
+      answer:{
+        en:"For a webcam problem:\n1. Close other apps that may be using the camera.\n2. Check Settings → Privacy & security → Camera and allow access.\n3. In Teams/Zoom, confirm the correct camera is selected.\n4. Restart the app and PC.\n5. Check Device Manager for camera errors.\n6. For an external webcam, try another USB port.",
+        ru:"Если не работает веб-камера:\n1. Закройте другие программы, которые могут использовать камеру.\n2. Откройте Параметры → Конфиденциальность и безопасность → Камера и разрешите доступ.\n3. В Teams/Zoom выберите правильную камеру.\n4. Перезапустите программу и компьютер.\n5. Проверьте камеру в Диспетчере устройств.\n6. Для внешней камеры попробуйте другой USB-порт.",
+        fi:"Jos webkamera ei toimi:\n1. Sulje muut sovellukset, jotka voivat käyttää kameraa.\n2. Avaa Asetukset → Tietosuoja ja suojaus → Kamera ja salli käyttö.\n3. Varmista Teamsissa/Zoomissa oikea kamera.\n4. Käynnistä sovellus ja tietokone uudelleen.\n5. Tarkista kamera Laitehallinnasta.\n6. Ulkoiselle kameralle kokeile toista USB-porttia."
+      }
+    },
+    {
+      id:"mic_not_working",
+      keys:["microphone not working","mic not working","teams mic not working","zoom mic not working","микрофон не работает","микрофон не слышно","mikrofoni ei toimi"],
+      answer:{
+        en:"For microphone problems:\n1. Check the physical mute switch/button.\n2. Open Settings → System → Sound → Input and choose the correct microphone.\n3. Check Privacy & security → Microphone permissions.\n4. In Teams/Zoom, select the same microphone.\n5. Test it in Windows Sound settings.\n6. For USB/headset microphones, reconnect or try another port.",
+        ru:"Если не работает микрофон:\n1. Проверьте физическую кнопку Mute.\n2. Откройте Параметры → Система → Звук → Ввод и выберите правильный микрофон.\n3. Проверьте разрешения микрофона в разделе Конфиденциальность.\n4. В Teams/Zoom выберите тот же микрофон.\n5. Проверьте микрофон в настройках звука Windows.\n6. Для USB/гарнитуры переподключите устройство или попробуйте другой порт.",
+        fi:"Jos mikrofoni ei toimi:\n1. Tarkista fyysinen mykistyskytkin.\n2. Avaa Asetukset → Järjestelmä → Ääni → Syöttö ja valitse oikea mikrofoni.\n3. Tarkista mikrofonin käyttöoikeudet.\n4. Valitse sama mikrofoni Teamsissa/Zoomissa.\n5. Testaa se Windowsin ääniasetuksissa.\n6. USB-mikrofonille tai kuulokemikrofonille kokeile uudelleenkytkentää tai toista porttia."
+      }
+    }
+  ];
+
+  ANITA_SMART.flows = {
+    pc_no_power:{
+      start:{
+        q:{
+          en:"When you press the power button, what happens?",
+          ru:"Что происходит, когда вы нажимаете кнопку питания?",
+          fi:"Mitä tapahtuu, kun painat virtapainiketta?"
+        },
+        choices:{
+          nothing:"power_nothing",
+          fans:"power_fans",
+          lights:"power_lights"
+        }
+      },
+      power_nothing:{
+        q:{
+          en:"Is the power cable firmly connected and does the wall socket work?",
+          ru:"Кабель питания плотно подключён и розетка точно работает?",
+          fi:"Onko virtajohto kunnolla kiinni ja toimiiko pistorasia varmasti?"
+        },
+        choices:{yes:"power_switch",no:"power_connect"}
+      },
+      power_switch:{
+        a:{
+          en:"Check the power switch on the back of a desktop PC power supply, if present. If there is still absolutely no response, the problem may be the PSU, power button, charger, battery or motherboard. Avoid opening the power supply itself.",
+          ru:"Проверьте выключатель на задней части блока питания настольного ПК, если он есть. Если реакции всё ещё нет, проблема может быть в БП, кнопке питания, зарядном устройстве, аккумуляторе или материнской плате. Сам блок питания не вскрывайте.",
+          fi:"Tarkista pöytäkoneen virtalähteen takakytkin, jos sellainen on. Jos mitään ei tapahdu, vika voi olla virtalähteessä, virtapainikkeessa, laturissa, akussa tai emolevyssä. Älä avaa virtalähdettä itse."
+        }
+      },
+      power_connect:{
+        a:{
+          en:"Reconnect the power cable firmly, test another wall socket and try again. For a laptop, also check whether the charging indicator turns on.",
+          ru:"Подключите кабель питания заново, попробуйте другую розетку и включите ещё раз. На ноутбуке также проверьте, появляется ли индикатор зарядки.",
+          fi:"Kytke virtajohto uudelleen kunnolla, kokeile toista pistorasiaa ja yritä uudestaan. Kannettavassa tarkista myös syttyykö latausvalo."
+        }
+      },
+      power_fans:{
+        q:{
+          en:"Do you get any image on the monitor?",
+          ru:"Появляется ли изображение на мониторе?",
+          fi:"Näkyykö näytöllä kuvaa?"
+        },
+        choices:{yes:"boot_followup",no:"display_followup"}
+      },
+      power_lights:{
+        q:{
+          en:"Do you hear fans or Windows startup sounds?",
+          ru:"Слышно вентиляторы или звуки загрузки Windows?",
+          fi:"Kuuluvatko tuulettimet tai Windowsin käynnistysäänet?"
+        },
+        choices:{yes:"display_followup",no:"power_switch"}
+      },
+      display_followup:{
+        a:{
+          en:"The PC may be running but not producing video. Check monitor power, HDMI/DisplayPort cable, the monitor input source and try another cable or screen.",
+          ru:"ПК может работать, но не выводить изображение. Проверьте питание монитора, HDMI/DisplayPort, выбранный вход монитора и попробуйте другой кабель или экран.",
+          fi:"Tietokone voi olla käynnissä ilman kuvaa. Tarkista näytön virta, HDMI/DisplayPort-kaapeli, oikea tulolähde ja kokeile toista kaapelia tai näyttöä."
+        }
+      },
+      boot_followup:{
+        a:{
+          en:"If you see an image, tell me exactly where startup stops: manufacturer logo, spinning dots, login screen, error message, or Windows desktop.",
+          ru:"Если изображение есть, напишите, где именно останавливается загрузка: логотип производителя, крутящиеся точки, экран входа, ошибка или рабочий стол Windows.",
+          fi:"Jos kuva näkyy, kerro missä käynnistys pysähtyy: valmistajan logo, pyörivät pisteet, kirjautumisruutu, virheilmoitus vai Windowsin työpöytä."
+        }
+      }
+    }
+  };
+
+  ANITA_SMART.detectLanguage = function(text){
+    const t=(text||"").toLowerCase();
+    if(/[а-яё]/i.test(t)) return "ru";
+    if(/[äöå]/i.test(t) || /\b(miksi|miten|kone|läppäri|tietokone|näyttö|ääni|verkko|ei toimi|hidas)\b/.test(t)) return "fi";
+    return "en";
+  };
+
+  ANITA_SMART.normalize = function(text){
+    let t=(text||"").toLowerCase()
+      .replace(/[’`]/g,"'")
+      .replace(/[^\p{L}\p{N}\s'+.-]/gu," ")
+      .replace(/\s+/g," ")
+      .trim();
+    Object.entries(ANITA_SMART.aliases).forEach(([canon, arr])=>{
+      arr.sort((a,b)=>b.length-a.length).forEach(a=>{
+        const safe=a.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+        t=t.replace(new RegExp("(^|\\s)"+safe+"(?=\\s|$)","gi"),"$1"+canon);
+      });
+    });
+    return t;
+  };
+
+  ANITA_SMART.distance = function(a,b){
+    a=(a||""); b=(b||"");
+    const m=Array.from({length:a.length+1},()=>Array(b.length+1).fill(0));
+    for(let i=0;i<=a.length;i++)m[i][0]=i;
+    for(let j=0;j<=b.length;j++)m[0][j]=j;
+    for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)
+      m[i][j]=Math.min(m[i-1][j]+1,m[i][j-1]+1,m[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+    return m[a.length][b.length];
+  };
+
+  ANITA_SMART.fuzzyIncludes = function(text, phrase){
+    const t=ANITA_SMART.normalize(text), p=ANITA_SMART.normalize(phrase);
+    if(t.includes(p)) return true;
+    if(p.length<5) return false;
+    const words=t.split(/\s+/), pw=p.split(/\s+/);
+    if(pw.length===1){
+      return words.some(w=>Math.abs(w.length-p.length)<=2 && ANITA_SMART.distance(w,p)<=2);
+    }
+    return false;
+  };
+
+  ANITA_SMART.lookup = function(text,lang){
+    for(const item of ANITA_SMART.knowledge){
+      if(item.keys.some(k=>ANITA_SMART.fuzzyIncludes(text,k))){
+        return item.answer[lang] || item.answer.en;
+      }
+    }
+    const n=ANITA_SMART.normalize(text);
+    for(const [term,obj] of Object.entries(ANITA_SMART.glossary)){
+      if(new RegExp("\\b"+term+"\\b","i").test(n) && /\b(what is|whats|what's|что такое|что значит|mikä on|mitä tarkoittaa)\b/i.test(text)){
+        return obj[lang] || obj.en;
+      }
+    }
+    return null;
+  };
+
+  ANITA_SMART.fallback = function(text,lang){
+    const base={
+      en:"I can help with everyday computer, Windows, software, Wi-Fi, browser, printer, audio, monitor, USB and hardware questions. Tell me what device you use, what you expected to happen, and what happens instead.",
+      ru:"Я могу помочь с обычными проблемами компьютера, Windows, программ, Wi-Fi, браузера, принтера, звука, монитора, USB и железа. Напишите, какое у вас устройство, что должно было произойти и что происходит вместо этого.",
+      fi:"Voin auttaa tavallisissa tietokone-, Windows-, ohjelmisto-, Wi-Fi-, selain-, tulostin-, ääni-, näyttö-, USB- ja laitteisto-ongelmissa. Kerro mikä laite on kyseessä, mitä piti tapahtua ja mitä tapahtuu sen sijaan."
+    };
+    return base[lang]||base.en;
+  };
+
+  window.ANITA_SMART = ANITA_SMART;
+})();
