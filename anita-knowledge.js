@@ -242,9 +242,479 @@ function guidedChatIntent(q,l){
 }
 function guidedChatAnswer(a){return a[Math.floor(Math.random()*a.length)]}
 
+
+/* ================= ANITA ADAPTIVE SUPPORT LAYER v7 =================
+   Deterministic (no external AI/API).
+   Goals:
+   - understand casual language/slang and mild profanity
+   - detect confusion/frustration and respond politely
+   - ask useful navigation questions
+   - use concept-based matching instead of exact phrases only
+   - add more Windows/software/Microsoft 365/home-IT knowledge
+   - escalate advanced/high-risk cases to existing human-support cards
+   - add light humor occasionally, without turning ANITA into a chat toy
+   =================================================================== */
+(function(){
+  const V = {};
+  V.lastIntent = null;
+  V.lastAnswer = null;
+  V.lastUserText = null;
+  V.turns = 0;
+
+  V.lang = function(l){ return ["ru","fi","en"].includes(l) ? l : "en"; };
+
+  V.pick = function(arr){
+    if(!Array.isArray(arr)) return arr;
+    return arr[Math.floor(Math.random()*arr.length)];
+  };
+
+  // About 25% chance of a tiny friendly joke when the context allows it.
+  V.humor = function(l){
+    if(Math.random() >= 0.25) return "";
+    const h = {
+      en:[
+        " Computers do have a talent for choosing the worst possible moment 😄",
+        " Tiny digital drama — we’ll sort it out 😄",
+        " No ritual sacrifice to the PC gods yet; let’s check the simple things first 😄"
+      ],
+      ru:[
+        " Компьютеры умеют выбирать самый неподходящий момент 😄",
+        " Небольшая цифровая драма — разберёмся 😄",
+        " Танцы с бубном пока отменяем — сначала проверим простые вещи 😄"
+      ],
+      fi:[
+        " Tietokoneet osaavat kyllä valita huonoimman mahdollisen hetken 😄",
+        " Pieni digitaalinen draama — selvitetään se 😄",
+        " Ei vielä rituaaleja tietokonejumalille — tarkistetaan ensin helpot asiat 😄"
+      ]
+    };
+    return V.pick(h[V.lang(l)]);
+  };
+
+  V.rawNormalize = function(s){
+    return (s||"").toLowerCase()
+      .replace(/[’`]/g,"'")
+      .replace(/\s+/g," ")
+      .trim();
+  };
+
+  // Slang here is intentionally compact: we normalize concepts, not every possible sentence.
+  V.expandSlang = function(s){
+    let t = V.rawNormalize(s);
+    const replacements = [
+      [/\b(dafuck|dafuq|dafug|da fuck|wtf|wth)\b/gi, " what is going on "],
+      [/\b(kinda|sorta)\b/gi, " kind of "],
+      [/\b(idk|dunno)\b/gi, " i do not know "],
+      [/\b(cant)\b/gi, " cannot "],
+      [/\b(wont)\b/gi, " will not "],
+      [/\b(doesnt)\b/gi, " does not "],
+      [/\b(isnt)\b/gi, " is not "],
+      [/\b(im)\b/gi, " i am "],
+      [/\b(lappy|notebook)\b/gi, " laptop "],
+      [/\b(comp|rig|machine)\b/gi, " computer "],
+      [/\b(net|wifi|wi-fi|wlan)\b/gi, " internet "],
+      [/\b(hustle|hassle|mess|issue|problem|trouble)\b/gi, " problem "],
+      [/\b(laggy|sluggish|lagging|stuttery)\b/gi, " slow "],
+      [/\b(dead|died|borked|busted|broken)\b/gi, " not working "],
+      [/\b(hella hot|super hot|too hot|heating up|gets hot|getting hot)\b/gi, " overheating "],
+      [/\b(what the hell|what is going on)\b/gi, " confused "]
+    ];
+    for(const [r,to] of replacements) t=t.replace(r,to);
+    return t.replace(/\s+/g," ").trim();
+  };
+
+  V.hasAny = function(t, arr){ return arr.some(x => t.includes(x)); };
+
+  V.detectEmotion = function(text){
+    const t=V.rawNormalize(text);
+    const profanity = /\b(fuck|fucking|shit|damn|crap|bullshit|wtf|wth|dafuck|dafuq|dafug|бля|блин|сука|пизд|хуй|нахуй|черт|чёрт|vittu|perkele|saatana)\b/i.test(t);
+    const angry = profanity || /\b(angry|mad|pissed|annoyed|furious|hate this|stupid computer|раздраж|бесит|задолб|достал|ненавиж|ärsyttää|vihainen|raivostuttaa)\b/i.test(t);
+    const confused = /\b(confused|do not understand|don't understand|dont understand|no idea|what is this|what is going on|what does this mean|what do i do|how the hell|i'm lost|im lost|i am lost|не понимаю|что это|что делать|что происходит|без понятия|потерялся|непонятно|en ymmärrä|mikä tämä|mitä teen|mitä tapahtuu|olen hukassa)\b/i.test(V.expandSlang(t));
+    return {angry,confused,profanity};
+  };
+
+  V.concepts = {
+    overheating:{
+      device:["laptop","computer","pc","ноут","ноутбук","комп","компьютер","пк","läppäri","kone","tietokone"],
+      symptom:["overheating","overheat","hot","temperature","перегрев","греется","горяч","температур","ylikuum","kuuma","lämpö"],
+      answer:{
+        en:"Your laptop sounds like it may be overheating. Try this step by step:\n1. If it is extremely hot, shuts down, or smells unusual, turn it off and let it cool.\n2. Put it on a hard flat surface — not a bed, blanket or sofa.\n3. Check that the air vents are not blocked.\n4. Press Ctrl+Shift+Esc → Task Manager and look for a process using unusually high CPU.\n5. Restart the laptop and install Windows/driver updates.\n6. If you are comfortable doing so, clean dust from external vents with the laptop powered off.\n7. If it still overheats during light use, the cooling system may need internal cleaning/service.\n\nTell me: does it get hot only while gaming/heavy work, or even when almost nothing is open?",
+        ru:"Похоже, ноутбук перегревается. Давайте по шагам:\n1. Если он очень горячий, сам выключается или появился необычный запах — выключите его и дайте остыть.\n2. Поставьте на твёрдую ровную поверхность, не на кровать/одеяло/диван.\n3. Проверьте, не перекрыты ли вентиляционные отверстия.\n4. Нажмите Ctrl+Shift+Esc → Диспетчер задач и посмотрите, нет ли процесса с очень высокой загрузкой CPU.\n5. Перезагрузите ноутбук и установите обновления Windows/драйверов.\n6. При выключенном ноутбуке аккуратно очистите внешние вентиляционные отверстия от пыли.\n7. Если он сильно греется даже при лёгкой работе, системе охлаждения может понадобиться внутренняя чистка/обслуживание.\n\nУточните: он греется только в играх/при нагрузке или даже когда почти ничего не открыто?",
+        fi:"Kannettava vaikuttaa ylikuumenevan. Kokeile vaiheittain:\n1. Jos se on erittäin kuuma, sammuu itsestään tai haisee oudolta, sammuta se ja anna jäähtyä.\n2. Käytä sitä kovalla tasaisella alustalla, ei sängyllä tai peitolla.\n3. Varmista, etteivät ilmanvaihtoaukot ole tukossa.\n4. Avaa Tehtävienhallinta (Ctrl+Shift+Esc) ja tarkista poikkeuksellisen korkea CPU-kuormitus.\n5. Käynnistä kone uudelleen ja asenna Windows-/ajuripäivitykset.\n6. Puhdista ulkoiset ilmanvaihtoaukot varovasti kone sammutettuna.\n7. Jos kone kuumenee kevyessäkin käytössä, jäähdytys voi tarvita sisäistä huoltoa.\n\nKuumeneeko se vain pelatessa/raskaassa käytössä vai myös lähes tyhjäkäynnillä?"
+      }
+    },
+    wifi_drop:{
+      device:["internet","wifi","wi-fi","wlan","netti","verkko","интернет","вайфай","wifi"],
+      symptom:["disconnect","drops","keeps dropping","cuts out","unstable","randomly","пропадает","отваливается","обрывается","нестабил","katkeaa","pätkii","epävakaa"],
+      answer:{
+        en:"If Wi-Fi keeps disconnecting:\n1. Check whether the same thing happens on another device.\n2. Restart the router and the PC.\n3. Forget the Wi-Fi network and reconnect.\n4. Move closer to the router for a test.\n5. In Device Manager → Network adapters, update the Wi-Fi driver.\n6. If only this PC disconnects, the adapter/driver/power-saving settings are likely involved.\n7. If every device disconnects, the router or ISP connection is more likely.\n\nDoes the internet drop on your phone too, or only on this computer?",
+        ru:"Если Wi-Fi постоянно отваливается:\n1. Проверьте, происходит ли это на другом устройстве.\n2. Перезагрузите роутер и компьютер.\n3. Забудьте Wi-Fi сеть и подключитесь заново.\n4. Для проверки подойдите ближе к роутеру.\n5. В Диспетчере устройств → Сетевые адаптеры обновите драйвер Wi-Fi.\n6. Если проблема только на этом ПК, вероятны адаптер/драйвер/энергосбережение.\n7. Если связь пропадает на всех устройствах, вероятнее роутер или провайдер.\n\nНа телефоне интернет тоже пропадает или только на компьютере?",
+        fi:"Jos Wi-Fi katkeilee:\n1. Tarkista tapahtuuko sama toisella laitteella.\n2. Käynnistä reititin ja tietokone uudelleen.\n3. Unohda Wi-Fi-verkko ja yhdistä uudelleen.\n4. Testaa lähempänä reititintä.\n5. Päivitä Wi-Fi-ajuri Laitehallinnasta.\n6. Jos vain tämä tietokone katkeilee, syy on todennäköisesti sovittimessa, ajurissa tai virransäästössä.\n7. Jos kaikki laitteet katkeilevat, syy on todennäköisemmin reitittimessä tai operaattorissa.\n\nKatkeaako netti myös puhelimesta vai vain tältä tietokoneelta?"
+      }
+    },
+    slow_start:{
+      device:["computer","pc","laptop","windows","компьютер","пк","ноутбук","windows","tietokone","kone","läppäri"],
+      symptom:["slow boot","slow start","starts slowly","takes forever to start","boot takes","долго загружается","медленно включается","долгая загрузка","käynnistyy hitaasti","käynnistys hidas"],
+      answer:{
+        en:"For a slow Windows startup:\n1. Open Task Manager → Startup apps and disable non-essential high-impact apps.\n2. Check that the system drive has at least roughly 15–20% free space.\n3. Install Windows updates and restart.\n4. Run a Windows Security scan.\n5. If the PC still uses an old HDD, moving Windows to an SSD can make a very large difference.\n6. If startup suddenly became slow, tell me what changed just before it started.",
+        ru:"Если Windows долго загружается:\n1. Откройте Диспетчер задач → Автозагрузка и отключите ненужные программы с высоким влиянием.\n2. Проверьте, чтобы на системном диске оставалось примерно 15–20% свободного места.\n3. Установите обновления Windows и перезагрузитесь.\n4. Запустите проверку Безопасностью Windows.\n5. Если система стоит на старом HDD, переход на SSD может очень сильно ускорить загрузку.\n6. Если проблема появилась внезапно, напишите, что менялось перед этим.",
+        fi:"Jos Windows käynnistyy hitaasti:\n1. Avaa Tehtävienhallinta → Käynnistyssovellukset ja poista tarpeettomat suuren vaikutuksen ohjelmat käytöstä.\n2. Varmista, että järjestelmälevyllä on noin 15–20 % vapaata tilaa.\n3. Asenna Windows-päivitykset ja käynnistä uudelleen.\n4. Suorita Windowsin suojauksen tarkistus.\n5. Jos käytössä on vanha HDD, SSD voi nopeuttaa käynnistystä huomattavasti.\n6. Jos hidastuminen alkoi äkillisesti, kerro mitä muuttui juuri ennen sitä."
+      }
+    }
+  };
+
+  V.office = [
+    {
+      id:"word_save_pdf",
+      patterns:[/word.*(pdf|save as pdf|export)/i,/(ворд|word).*(pdf|пдф)/i,/word.*pdf/i],
+      a:{
+        en:"In Microsoft Word: File → Save As (or Export) → choose PDF → select location → Save. If you need only certain pages, use File → Print → Microsoft Print to PDF and choose the page range.",
+        ru:"В Microsoft Word: Файл → Сохранить как (или Экспорт) → выберите PDF → место сохранения → Сохранить. Если нужны только отдельные страницы, можно использовать Файл → Печать → Microsoft Print to PDF и указать диапазон страниц.",
+        fi:"Microsoft Wordissa: Tiedosto → Tallenna nimellä (tai Vie) → valitse PDF → sijainti → Tallenna. Jos tarvitset vain tietyt sivut, käytä Tiedosto → Tulosta → Microsoft Print to PDF ja valitse sivualue."
+      }
+    },
+    {
+      id:"word_recover",
+      patterns:[/word.*(recover|unsaved|lost document)/i,/(word|ворд).*(не сохрани|потерял.*документ|восстанов)/i,/word.*(palauta|tallentamaton)/i],
+      a:{
+        en:"To recover an unsaved Word document: open Word → File → Info → Manage Document → Recover Unsaved Documents. Also check File → Open → Recent. If AutoRecover was enabled, Word may offer a recovered copy after reopening.",
+        ru:"Чтобы восстановить несохранённый документ Word: Word → Файл → Сведения → Управление документом → Восстановить несохранённые документы. Также проверьте Файл → Открыть → Последние. При включённом AutoRecover Word может предложить восстановленную копию после запуска.",
+        fi:"Tallentamattoman Word-tiedoston palautus: Word → Tiedosto → Tiedot → Hallitse asiakirjaa → Palauta tallentamattomat asiakirjat. Tarkista myös Tiedosto → Avaa → Viimeisimmät."
+      }
+    },
+    {
+      id:"excel_formula",
+      patterns:[/excel.*(formula|sum|average)/i,/(excel|эксель).*(формул|сумм|средн)/i,/excel.*(kaava|summa|keskiarvo)/i],
+      a:{
+        en:"In Excel, formulas start with =. Examples: =SUM(A1:A10) adds values; =AVERAGE(A1:A10) calculates the average; =IF(A1>10,\"Yes\",\"No\") makes a simple condition. Tell me what you want the sheet to calculate and I can show the exact formula.",
+        ru:"В Excel формулы начинаются со знака =. Примеры: =SUM(A1:A10) складывает значения; =AVERAGE(A1:A10) считает среднее; =IF(A1>10,\"Yes\",\"No\") создаёт простое условие. Напишите, что именно таблица должна вычислять, и я подскажу формулу.",
+        fi:"Excel-kaavat alkavat =-merkillä. Esim. =SUM(A1:A10) laskee summan, =AVERAGE(A1:A10) keskiarvon ja =IF(A1>10,\"Yes\",\"No\") tekee yksinkertaisen ehdon. Kerro mitä haluat laskea, niin voin ehdottaa kaavan."
+      }
+    },
+    {
+      id:"excel_freeze",
+      patterns:[/excel.*(freeze|not responding|crash)/i,/(excel|эксель).*(завис|не отвечает|вылет)/i,/excel.*(jumittaa|ei vastaa|kaatuu)/i],
+      a:{
+        en:"If Excel freezes: wait a moment if the file is large, then check Task Manager. Reopen Excel in Safe Mode with Win+R → excel /safe. Disable suspicious add-ins, update Office, and try File → Open → Browse → Open and Repair for a damaged workbook.",
+        ru:"Если Excel зависает: подождите немного, если файл большой, затем проверьте Диспетчер задач. Запустите Excel в безопасном режиме: Win+R → excel /safe. Отключите подозрительные надстройки, обновите Office и попробуйте Файл → Открыть → Обзор → Открыть и восстановить.",
+        fi:"Jos Excel jumittuu: odota hetki suuren tiedoston kanssa ja tarkista Tehtävienhallinta. Käynnistä Excel vikasietotilassa: Win+R → excel /safe. Poista epäilyttävät lisäosat, päivitä Office ja kokeile Avaa ja korjaa -toimintoa."
+      }
+    },
+    {
+      id:"powerpoint_present",
+      patterns:[/powerpoint.*(present|slideshow|slide show|second screen)/i,/(powerpoint|пауэрпоинт).*(показ|презентац|второй экран)/i,/powerpoint.*(diaesitys|toinen näyttö)/i],
+      a:{
+        en:"For a PowerPoint presentation: Slide Show → From Beginning (F5) or From Current Slide (Shift+F5). With a projector/second screen, press Win+P and normally choose Extend, then use Presenter View if you want notes on your screen.",
+        ru:"Для показа PowerPoint: Показ слайдов → С начала (F5) или С текущего слайда (Shift+F5). С проектором/вторым экраном нажмите Win+P и обычно выберите «Расширить», затем при необходимости используйте режим докладчика.",
+        fi:"PowerPoint-esityksessä: Diaesitys → Alusta (F5) tai Nykyisestä diasta (Shift+F5). Projektorin/toisen näytön kanssa paina Win+P ja valitse yleensä Laajenna; tarvittaessa käytä Esittäjänäkymää."
+      }
+    },
+    {
+      id:"outlook_mail",
+      patterns:[/outlook.*(not receiving|not sending|send receive|mail stuck)/i,/(outlook|аутлук).*(не получает|не отправляет|письм|застрял)/i,/outlook.*(ei lähetä|ei vastaanota|posti)/i],
+      a:{
+        en:"For Outlook send/receive problems:\n1. Check internet access and open your mailbox in webmail.\n2. Make sure Outlook is not in Work Offline mode.\n3. Check Outbox for a large/stuck message.\n4. Restart Outlook.\n5. Verify the account password and mailbox storage.\n6. If webmail works but Outlook does not, the local Outlook profile/app needs attention.",
+        ru:"Если Outlook не отправляет/получает почту:\n1. Проверьте интернет и откройте ящик через веб-почту.\n2. Убедитесь, что Outlook не в автономном режиме.\n3. Проверьте Исходящие — не застряло ли большое письмо.\n4. Перезапустите Outlook.\n5. Проверьте пароль и свободное место в ящике.\n6. Если веб-почта работает, а Outlook нет — проблема скорее в локальном профиле/приложении.",
+        fi:"Jos Outlook ei lähetä/vastaanota:\n1. Tarkista internet ja webmail.\n2. Varmista ettei Offline-tila ole päällä.\n3. Tarkista Lähtevät-kansio jumittuneen suuren viestin varalta.\n4. Käynnistä Outlook uudelleen.\n5. Tarkista salasana ja postilaatikon tila.\n6. Jos webmail toimii mutta Outlook ei, ongelma on todennäköisesti paikallisessa profiilissa/sovelluksessa."
+      }
+    },
+    {
+      id:"office_repair",
+      patterns:[/(office|word|excel|powerpoint|outlook).*(repair|broken|not opening)/i,/(office|word|excel|powerpoint|outlook).*(почин|не открывается|сломал)/i,/(office|word|excel|powerpoint|outlook).*(korjaa|ei avaudu)/i],
+      a:{
+        en:"To repair Microsoft Office in Windows: Settings → Apps → Installed apps → Microsoft 365/Office → … → Modify. Try Quick Repair first; if that does not help, use Online Repair. Save your work and close Office apps before repairing.",
+        ru:"Чтобы восстановить Microsoft Office в Windows: Параметры → Приложения → Установленные приложения → Microsoft 365/Office → … → Изменить. Сначала попробуйте «Быстрое восстановление», а если не поможет — «Восстановление по сети». Перед этим сохраните документы и закройте Office.",
+        fi:"Microsoft Officen korjaus Windowsissa: Asetukset → Sovellukset → Asennetut sovellukset → Microsoft 365/Office → … → Muokkaa. Kokeile ensin Pikakorjausta ja tarvittaessa Online-korjausta. Tallenna työsi ja sulje Office-sovellukset ensin."
+      }
+    }
+  ];
+
+  V.software = [
+    {
+      id:"install_program",
+      patterns:[/\b(how|help|want|need).*(install|setup).*(program|app|software)\b/i,/\binstall (a )?(program|app|software)\b/i,/(как|хочу|нужно).*(установить|инсталл).*(программ|прилож)/i,/(miten|haluan).*(asenna|asentaa).*(ohjelma|sovellus)/i],
+      a:{
+        en:"To install a program safely on Windows:\n1. Prefer the Microsoft Store or the software maker’s official website.\n2. Download the installer that matches your Windows version/architecture.\n3. Open the downloaded .exe/.msi file.\n4. Read each installer screen; avoid optional toolbars or bundled apps you do not want.\n5. Accept the license only if you agree, choose the install location if needed, then Install.\n6. If Windows SmartScreen warns about an unknown publisher, stop and verify the source before continuing.\n\nTell me the program name and I can guide you more specifically.",
+        ru:"Чтобы безопасно установить программу в Windows:\n1. Лучше использовать Microsoft Store или официальный сайт разработчика.\n2. Скачайте установщик для вашей версии Windows.\n3. Откройте скачанный .exe/.msi.\n4. Читайте шаги установки и снимайте галочки с ненужных дополнительных программ/панелей.\n5. При необходимости выберите папку и нажмите Установить.\n6. Если SmartScreen предупреждает о неизвестном издателе, остановитесь и проверьте источник.\n\nНапишите название программы — подскажу точнее.",
+        fi:"Ohjelman turvallinen asennus Windowsiin:\n1. Suosi Microsoft Storea tai valmistajan virallista sivua.\n2. Lataa Windows-versiollesi sopiva asennusohjelma.\n3. Avaa .exe/.msi.\n4. Lue vaiheet ja poista valinnat turhista lisäohjelmista.\n5. Valitse tarvittaessa kansio ja Asenna.\n6. Jos SmartScreen varoittaa tuntemattomasta julkaisijasta, pysähdy ja varmista lähde.\n\nKerro ohjelman nimi, niin voin neuvoa tarkemmin."
+      }
+    },
+    {
+      id:"uninstall_program",
+      patterns:[/\b(uninstall|remove|delete).*(program|app|software)\b/i,/(удалить|деинсталл).*(программ|прилож)/i,/(poista|poistaa).*(ohjelma|sovellus)/i],
+      a:{
+        en:"To uninstall a program in Windows 11/10: Start → Settings → Apps → Installed apps → find the program → … → Uninstall. You can also right-click an app in Start → Uninstall. Some classic programs can be removed via Control Panel → Programs and Features. Restart if the uninstaller asks you to.",
+        ru:"Чтобы удалить программу в Windows 11/10: Пуск → Параметры → Приложения → Установленные приложения → найдите программу → … → Удалить. Также можно нажать правой кнопкой по программе в Пуск → Удалить. Для некоторых классических программ: Панель управления → Программы и компоненты.",
+        fi:"Ohjelman poistaminen Windows 11/10: Käynnistä → Asetukset → Sovellukset → Asennetut sovellukset → etsi ohjelma → … → Poista asennus. Vaihtoehtoisesti Käynnistä-valikossa hiiren oikea → Poista asennus. Vanhoille ohjelmille myös Ohjauspaneeli → Ohjelmat ja toiminnot."
+      }
+    },
+    {
+      id:"program_wont_open",
+      patterns:[/(program|app|software).*(will not open|won't open|not opening|does not start|crashes)/i,/(программ|прилож).*(не открывается|не запускается|вылетает)/i,/(ohjelma|sovellus).*(ei avaudu|ei käynnisty|kaatuu)/i],
+      a:{
+        en:"If an app will not open:\n1. Restart the PC.\n2. Try launching it once as Administrator if appropriate.\n3. Install Windows updates and update the app.\n4. Settings → Apps → Installed apps → the app → Advanced options → Repair/Reset if available.\n5. Reinstall the app if its files may be damaged.\n6. If there is an error message, send me the exact wording/code.",
+        ru:"Если программа не запускается:\n1. Перезагрузите ПК.\n2. При необходимости попробуйте один раз «Запуск от имени администратора».\n3. Установите обновления Windows и самой программы.\n4. Параметры → Приложения → Установленные приложения → программа → Дополнительные параметры → Исправить/Сбросить, если доступно.\n5. Переустановите программу, если её файлы повреждены.\n6. Если есть ошибка — пришлите точный текст/код.",
+        fi:"Jos sovellus ei avaudu:\n1. Käynnistä tietokone uudelleen.\n2. Kokeile tarvittaessa kerran järjestelmänvalvojana.\n3. Päivitä Windows ja sovellus.\n4. Asetukset → Sovellukset → Asennetut sovellukset → sovellus → Lisäasetukset → Korjaa/Palauta, jos saatavilla.\n5. Asenna sovellus uudelleen, jos tiedostot ovat vioittuneet.\n6. Lähetä tarkka virheilmoitus/koodi."
+      }
+    }
+  ];
+
+  V.security = [
+    {
+      id:"remove_virus",
+      patterns:[/\b(remove|get rid|clean).*(virus|malware|trojan)\b/i,/\b(virus|malware|trojan).*(remove|clean)\b/i,/(удалить|избавиться|очистить).*(вирус|троян|вредонос)/i,/(poista|puhdista).*(virus|haittaohjelma)/i],
+      a:{
+        en:"If you think the PC is infected:\n1. Disconnect from suspicious sites and stop entering passwords.\n2. Open Windows Security → Virus & threat protection → Scan options → Full scan.\n3. If needed, run Microsoft Defender Offline scan for stubborn malware.\n4. Remove suspicious browser extensions and recently installed unknown apps.\n5. Update Windows and browsers.\n6. Change important passwords from a known-clean device if you entered them while infected.\n7. If malware returns after removal or security tools are disabled, back up personal documents and consider professional help or a clean Windows reinstall.\n\nDo not install random 'virus cleaner' pop-ups — they are often part of the problem.",
+        ru:"Если подозреваете заражение:\n1. Закройте подозрительные сайты и не вводите пароли.\n2. Безопасность Windows → Защита от вирусов и угроз → Параметры сканирования → Полная проверка.\n3. Для стойкого вредоносного ПО можно запустить автономную проверку Microsoft Defender.\n4. Удалите подозрительные расширения браузера и недавно установленные неизвестные программы.\n5. Обновите Windows и браузеры.\n6. Если вводили важные пароли во время заражения, смените их с заведомо чистого устройства.\n7. Если вирус возвращается или защита отключается сама, сохраните личные документы и рассмотрите помощь специалиста или чистую переустановку Windows.\n\nНе устанавливайте случайные «virus cleaner» из всплывающей рекламы — они сами могут быть вредоносными.",
+        fi:"Jos epäilet haittaohjelmaa:\n1. Sulje epäilyttävät sivut äläkä syötä salasanoja.\n2. Windowsin suojaus → Virusten ja uhkien torjunta → Tarkistusasetukset → Täysi tarkistus.\n3. Tarvittaessa suorita Microsoft Defender Offline -tarkistus.\n4. Poista epäilyttävät selainlaajennukset ja tuntemattomat uudet ohjelmat.\n5. Päivitä Windows ja selaimet.\n6. Vaihda tärkeät salasanat puhtaalta laitteelta, jos käytit niitä tartunnan aikana.\n7. Jos haittaohjelma palaa tai suojaus sammuu itsestään, varmuuskopioi omat tiedostot ja harkitse ammattilaisen apua tai puhdasta Windows-asennusta.\n\nÄlä asenna satunnaisia ponnahdusikkunoiden 'virus cleanereita'."
+      }
+    },
+    {
+      id:"antivirus_recommendation",
+      patterns:[/(best|good|recommend|which).*(antivirus|anti-virus)/i,/(какой|лучший|посоветуй|антивирус).*(антивирус|скачать|купить)?/i,/(paras|suosittele|mikä).*(virustorjunta|antivirus)/i],
+      a:{
+        en:"For a normal Windows 11 home PC, Microsoft Defender (built into Windows Security) is a good default and usually means you do not need to buy another antivirus. In AV-TEST's May–June 2026 Windows 11 test, Defender scored 6/6 for protection, 5.5/6 for performance and 6/6 for usability. If you specifically want a paid suite, Bitdefender, ESET and F-Secure also scored strongly in the same 2026 testing. My practical advice: start with Defender + automatic updates + browser protection + good backups, and buy a suite only if you need its extra features. Antivirus rankings change, so check a recent independent test before purchasing.",
+        ru:"Для обычного домашнего ПК с Windows 11 встроенный Microsoft Defender (Безопасность Windows) — хороший базовый выбор, и большинству пользователей отдельный платный антивирус не обязателен. В тесте AV-TEST для Windows 11 за май–июнь 2026 Defender получил 6/6 за защиту, 5.5/6 за производительность и 6/6 за удобство. Если нужен именно платный пакет, Bitdefender, ESET и F-Secure также показали сильные результаты в тех же актуальных тестах 2026 года. Практичный вариант: Defender + автообновления + защита браузера + резервные копии; платный пакет имеет смысл ради дополнительных функций. Рейтинги меняются — перед покупкой лучше проверить свежий независимый тест.",
+        fi:"Tavalliselle Windows 11 -kotikoneelle sisäänrakennettu Microsoft Defender (Windowsin suojaus) on hyvä oletus, eikä erillistä maksullista virustorjuntaa yleensä tarvita. AV-TESTin touko–kesäkuun 2026 Windows 11 -testissä Defender sai suojauksesta 6/6, suorituskyvystä 5,5/6 ja käytettävyydestä 6/6. Jos haluat maksullisen tietoturvapaketin, Bitdefender, ESET ja F-Secure menestyivät myös hyvin samoissa 2026 testeissä. Käytännössä: Defender + automaattiset päivitykset + selaimen suojaus + varmuuskopiot. Tarkista aina tuore riippumaton testi ennen ostoa, koska tulokset muuttuvat."
+      }
+    }
+  ];
+
+  V.moreKnowledge = [
+    {
+      id:"onedrive_sync",
+      pats:[/onedrive.*(sync|not syncing|stuck|red x)/i,/(onedrive|ван драйв).*(не синх|завис|красн)/i,/onedrive.*(ei synk|jumissa|punainen)/i],
+      a:{
+        en:"For OneDrive sync trouble: check internet, click the OneDrive cloud icon and read the sync error, confirm you are signed into the correct account, check available OneDrive and local disk space, pause/resume syncing, then restart OneDrive. A red X usually means a specific file/folder needs attention.",
+        ru:"При проблемах синхронизации OneDrive: проверьте интернет, нажмите значок облака OneDrive и прочитайте ошибку, убедитесь, что вошли в нужный аккаунт, проверьте место в OneDrive и на диске, поставьте синхронизацию на паузу и возобновите, затем перезапустите OneDrive. Красный X обычно указывает на конкретный проблемный файл/папку.",
+        fi:"OneDrive-synkronointiongelmassa: tarkista internet, avaa OneDrive-pilvikuvake ja lue virhe, varmista oikea tili, tarkista pilvi- ja levytila, keskeytä/jatka synkronointia ja käynnistä OneDrive uudelleen. Punainen X viittaa yleensä tiettyyn tiedostoon/kansioon."
+      }
+    },
+    {
+      id:"printer_offline",
+      pats:[/printer.*(offline|not printing|queue stuck)/i,/(принтер).*(офлайн|не печатает|очеред)/i,/(tulostin).*(offline|ei tulosta|jono)/i],
+      a:{
+        en:"If the printer is offline/not printing: confirm it is powered on and connected to the same Wi-Fi/USB, restart printer and PC, open Settings → Bluetooth & devices → Printers & scanners, open the printer queue and clear stuck jobs, then print a test page. If Windows cannot find it, remove and add the printer again.",
+        ru:"Если принтер офлайн/не печатает: проверьте питание и подключение к тому же Wi-Fi или USB, перезагрузите принтер и ПК, откройте Параметры → Bluetooth и устройства → Принтеры и сканеры, очистите зависшие задания и напечатайте тестовую страницу. Если Windows его не находит, удалите принтер и добавьте заново.",
+        fi:"Jos tulostin on offline/ei tulosta: tarkista virta ja sama Wi-Fi/USB, käynnistä tulostin ja tietokone uudelleen, avaa Asetukset → Bluetooth ja laitteet → Tulostimet ja skannerit, tyhjennä jumittuneet työt ja tulosta testisivu. Tarvittaessa poista tulostin ja lisää se uudelleen."
+      }
+    },
+    {
+      id:"no_sound",
+      pats:[/(no sound|sound not working|audio not working)/i,/(нет звука|звук не работает)/i,/(ei ääntä|ääni ei toimi)/i],
+      a:{
+        en:"No sound? Check in this order: volume/mute → correct output device in Settings → System → Sound → reconnect headphones/speakers → restart the app → restart Windows → Device Manager audio driver. If sound works in headphones but not speakers, tell me — that narrows it down.",
+        ru:"Нет звука? Проверяйте по порядку: громкость/Mute → правильное устройство вывода в Параметры → Система → Звук → переподключить наушники/колонки → перезапустить программу → Windows → проверить аудиодрайвер в Диспетчере устройств. Если в наушниках звук есть, а в динамиках нет — напишите, это сильно сужает причину.",
+        fi:"Ei ääntä? Tarkista järjestyksessä: äänenvoimakkuus/mykistys → oikea toistolaite Asetukset → Järjestelmä → Ääni → kytke kuulokkeet/kaiuttimet uudelleen → käynnistä sovellus ja Windows uudelleen → tarkista ääniajuri Laitehallinnasta."
+      }
+    },
+    {
+      id:"file_association",
+      pats:[/(open with|wrong program|default app|file opens in)/i,/(открывается не той программой|программа по умолчанию|чем открыть файл)/i,/(avaa väärällä ohjelmalla|oletussovellus|avaa sovelluksella)/i],
+      a:{
+        en:"To change which app opens a file: right-click the file → Open with → Choose another app → select the program → enable 'Always use this app' if offered. Or go to Settings → Apps → Default apps and choose defaults by file type.",
+        ru:"Чтобы изменить программу для открытия файла: правой кнопкой по файлу → Открыть с помощью → Выбрать другое приложение → выберите программу → при необходимости отметьте «Всегда использовать это приложение». Или Параметры → Приложения → Приложения по умолчанию.",
+        fi:"Tiedoston oletussovelluksen vaihto: hiiren oikea tiedoston päällä → Avaa sovelluksella → Valitse toinen sovellus → valitse ohjelma → valitse tarvittaessa aina käytettäväksi. Tai Asetukset → Sovellukset → Oletussovellukset."
+      }
+    }
+  ];
+
+  V.advanced = [
+    {
+      rx:/\b(smoke|sparks|burning smell|burnt smell|дым|искры|запах гари|пахнет горелым|savua|kipinö|palaneen haju)\b/i,
+      m:{
+        en:"This is no longer a normal software troubleshooting case. Shut the device down, unplug power if it is safe to do so, and do not keep testing it. It needs hands-on inspection.",
+        ru:"Это уже не обычная программная проблема. Выключите устройство, безопасно отключите питание и не продолжайте эксперименты. Нужна очная диагностика.",
+        fi:"Tämä ei ole enää tavallinen ohjelmisto-ongelma. Sammuta laite, irrota virta turvallisesti äläkä jatka testaamista. Laite tarvitsee paikan päällä tehtävän tarkastuksen."
+      }
+    },
+    {
+      rx:/\b(liquid spill|spilled water|coffee on laptop|water on laptop|залил ноут|пролил.*(воду|кофе|чай)|vesi.*kannettava|kahvi.*kannettava)\b/i,
+      m:{
+        en:"For a liquid spill: power the device off immediately, disconnect the charger, do not keep turning it on to 'check', and do not use a hair dryer. A hands-on inspection/cleaning is recommended, especially if liquid entered the keyboard or vents.",
+        ru:"Если на устройство пролили жидкость: немедленно выключите его, отключите зарядку, не включайте снова «проверить» и не сушите феном. Желательна очная диагностика/чистка, особенно если жидкость попала под клавиатуру или в вентиляцию.",
+        fi:"Nesteroiskeessa: sammuta laite heti, irrota laturi, älä käynnistä sitä uudelleen 'testiksi' äläkä käytä hiustenkuivaajaa. Ammattilaisen tarkastus/puhdistus on suositeltava."
+      }
+    },
+    {
+      rx:/\b(clicking hard drive|hard drive clicking|data recovery|drive not detected.*important|битые данные|восстановить данные.*диск|диск щелкает|kiintolevy naksahtaa|tietojen palautus)\b/i,
+      m:{
+        en:"Because important data may be at risk, avoid repeated power cycles, formatting, CHKDSK, or random recovery tools. This is a case where professional data-recovery/IT support is safer.",
+        ru:"Поскольку важные данные могут быть под угрозой, не делайте много повторных включений, не форматируйте диск, не запускайте CHKDSK и случайные программы восстановления. Здесь безопаснее обратиться к специалисту.",
+        fi:"Koska tärkeät tiedot voivat olla vaarassa, vältä toistuvia käynnistyksiä, alustamista, CHKDSK:ta ja satunnaisia palautustyökaluja. Ammattilaisen apu on turvallisempi."
+      }
+    }
+  ];
+
+  V.matchConcept = function(text,l){
+    const t=V.expandSlang(text);
+    for(const [id,c] of Object.entries(V.concepts)){
+      let ds=c.device.some(x=>t.includes(x));
+      let ss=c.symptom.some(x=>t.includes(x));
+      if(ds && ss){
+        V.lastIntent=id; V.lastAnswer=c.answer[V.lang(l)]||c.answer.en;
+        return V.lastAnswer + V.humor(l);
+      }
+    }
+    return null;
+  };
+
+  V.matchList = function(text,l,list,patternKey="patterns"){
+    for(const x of list){
+      const patterns=x[patternKey]||x.pats||[];
+      if(patterns.some(r=>r.test(text))){
+        V.lastIntent=x.id; V.lastAnswer=x.a[V.lang(l)]||x.a.en;
+        return V.lastAnswer;
+      }
+    }
+    return null;
+  };
+
+  V.isJoke = function(text){
+    return /\b(just kidding|jk|lol|lmao|haha|hehe|joking|шучу|ахах|хаха|лол|vitsi|haha|heh)\b/i.test(text);
+  };
+
+  V.confusionReply = function(text,l){
+    const lang=V.lang(l);
+    const e=V.detectEmotion(text);
+    if(!e.confused && !e.angry) return null;
+
+    if(V.lastIntent && V.lastAnswer){
+      const p={
+        en:e.angry
+          ?"I get that this is frustrating. Sorry if my previous explanation was unclear. Let me make it simpler: tell me which exact step confused you, or copy the message/error you see on screen."
+          :"No problem — I can explain it more simply. Which part is unclear: what the term means, where to click, or what you should do next?",
+        ru:e.angry
+          ?"Понимаю, что это раздражает. Извините, если прошлое объяснение было непонятным. Давайте проще: напишите, какой именно шаг непонятен, или скопируйте сюда сообщение/ошибку с экрана."
+          :"Без проблем — объясню проще. Что именно непонятно: значение термина, куда нажать или что делать дальше?",
+        fi:e.angry
+          ?"Ymmärrän, että tämä ärsyttää. Anteeksi jos aiempi ohjeeni oli epäselvä. Tehdään helpommin: kerro mikä vaihe on epäselvä tai kopioi näytöllä oleva virhe."
+          :"Ei ongelmaa — selitän yksinkertaisemmin. Mikä on epäselvää: termin merkitys, mistä klikataan vai mitä tehdään seuraavaksi?"
+      };
+      return p[lang];
+    }
+
+    const p={
+      en:e.angry
+        ?"I can see this is frustrating. I’m not offended by the wording 🙂 I just need one concrete clue so I don’t send you down the wrong path: what device/program are you using, and what exactly is on the screen right now?"
+        :"No worries — you don’t need IT terminology. Tell me 3 simple things: 1) what device/program you are using, 2) what you tried to do, 3) what happened instead.",
+      ru:e.angry
+        ?"Понимаю, что ситуация раздражает. На формулировку я не обижаюсь 🙂 Мне просто нужна одна конкретная зацепка, чтобы не вести вас не туда: какое устройство/программа и что сейчас видно на экране?"
+        :"Ничего страшного — IT-термины не нужны. Напишите 3 простые вещи: 1) устройство/программа, 2) что пытались сделать, 3) что произошло вместо этого.",
+      fi:e.angry
+        ?"Ymmärrän, että tilanne ärsyttää. En loukkaannu sanavalinnoista 🙂 Tarvitsen vain yhden konkreettisen vihjeen: mikä laite/ohjelma on kyseessä ja mitä näytöllä näkyy nyt?"
+        :"Ei huolta — IT-termejä ei tarvita. Kerro kolme asiaa: 1) laite/ohjelma, 2) mitä yritit tehdä, 3) mitä tapahtui sen sijaan."
+    };
+    return p[lang];
+  };
+
+  V.followup = function(text,l){
+    const t=V.expandSlang(text);
+    if(!V.lastIntent) return null;
+    if(/\b(what do you mean|what does that mean|explain|simpler|how exactly|where is that|where do i|which one|how do i|что значит|объясни|проще|как именно|где это|куда нажать|что дальше|mitä tarkoitat|selitä|yksinkertaisemmin|miten tarkalleen|missä se on|mitä seuraavaksi)\b/i.test(t)){
+      const x={
+        en:"Sure. I’ll guide you one click at a time. Tell me what you currently see on the screen (for example: Windows desktop, Settings, an error window, browser, Word/Excel), and I’ll give only the next step.",
+        ru:"Конечно. Давайте по одному шагу за раз. Напишите, что сейчас видите на экране (например: рабочий стол Windows, Параметры, окно ошибки, браузер, Word/Excel), и я дам только следующий шаг.",
+        fi:"Totta. Mennään yksi klikkaus kerrallaan. Kerro mitä näytöllä näkyy juuri nyt (esim. Windows-työpöytä, Asetukset, virheikkuna, selain, Word/Excel), niin annan vain seuraavan vaiheen."
+      };
+      return x[V.lang(l)];
+    }
+    return null;
+  };
+
+  V.handle = function(text,l){
+    V.turns++;
+    V.lastUserText=text;
+
+    // High-risk/advanced cases first.
+    for(const a of V.advanced){
+      if(a.rx.test(text)){
+        return {type:"escalate", text:a.m[V.lang(l)]||a.m.en};
+      }
+    }
+
+    const emotional=V.confusionReply(text,l);
+    if(emotional) return {type:"answer",text:emotional};
+
+    if(V.isJoke(text)){
+      const j={
+        en:["😄 Fair enough. Back to the computer before it gets any ideas — what are we fixing?","😂 I’ll allow it. Now tell me what the machine is doing."],
+        ru:["😄 Засчитано. А теперь вернёмся к компьютеру, пока он не придумал новую проблему — что исправляем?","😂 Ладно, принимается. Теперь расскажите, что делает техника."],
+        fi:["😄 Hyväksytään. Palataan koneeseen ennen kuin se keksii uuden ongelman — mitä korjataan?","😂 Selvä. Kerro nyt mitä kone tekee."]
+      };
+      return {type:"answer",text:V.pick(j[V.lang(l)])};
+    }
+
+    const follow=V.followup(text,l);
+    if(follow) return {type:"answer",text:follow};
+
+    let r=V.matchConcept(text,l);
+    if(r) return {type:"answer",text:r};
+
+    r=V.matchList(text,l,V.office);
+    if(r) return {type:"answer",text:r};
+
+    r=V.matchList(text,l,V.software);
+    if(r) return {type:"answer",text:r};
+
+    r=V.matchList(text,l,V.security);
+    if(r) return {type:"answer",text:r};
+
+    r=V.matchList(text,l,V.moreKnowledge,"pats");
+    if(r) return {type:"answer",text:r};
+
+    // Casual "I have this hassle with..." should not itself trigger fallback.
+    // If we see an IT object but no symptom, ask a targeted navigation question.
+    const t=V.expandSlang(text);
+    const objects = [
+      ["laptop","computer","pc","windows","word","excel","powerpoint","outlook","office","internet","printer","bluetooth","usb","monitor","screen","sound","microphone","camera"],
+      ["ноут","комп","пк","windows","word","excel","powerpoint","outlook","office","интернет","принтер","bluetooth","usb","монитор","экран","звук","микрофон","камера"],
+      ["läppäri","kone","tietokone","windows","word","excel","powerpoint","outlook","office","netti","tulostin","bluetooth","usb","näyttö","ääni","mikrofoni","kamera"]
+    ];
+    const objList = objects[V.lang(l)==="ru"?1:V.lang(l)==="fi"?2:0];
+    const found = objList.find(o=>t.includes(o));
+    if(found && /\b(problem|kind of|help|confused|something|not sure|trouble|having)\b/i.test(t)){
+      const q={
+        en:`Got it — the issue is around ${found}. What exactly happens when you try to use it: does it not open/turn on, show an error, run slowly, disconnect, or do something else?`,
+        ru:`Поняла — проблема связана с ${found}. Что именно происходит: не открывается/не включается, появляется ошибка, всё работает медленно, отключается или что-то другое?`,
+        fi:`Selvä — ongelma liittyy kohteeseen ${found}. Mitä tarkalleen tapahtuu: eikö se avaudu/käynnisty, näkyykö virhe, onko se hidas, katkeaako yhteys vai jotain muuta?`
+      };
+      return {type:"answer",text:q[V.lang(l)]};
+    }
+
+    return null;
+  };
+
+  V.fallback = function(text,l){
+    const e=V.detectEmotion(text), lang=V.lang(l);
+    if(e.angry || e.confused) return V.confusionReply(text,l);
+    const f={
+      en:"I’m not fully sure what you mean yet, and I’d rather ask than guess. Please tell me: 1) which device or program, 2) what you were trying to do, 3) what happened instead, and 4) any exact error text you see.",
+      ru:"Я пока не до конца поняла, что вы имеете в виду, и лучше уточню, чем буду гадать. Напишите: 1) какое устройство или программа, 2) что пытались сделать, 3) что произошло вместо этого, 4) точный текст ошибки, если он есть.",
+      fi:"En ole vielä täysin varma mitä tarkoitat, joten kysyn mieluummin kuin arvaan. Kerro: 1) laite tai ohjelma, 2) mitä yritit tehdä, 3) mitä tapahtui sen sijaan ja 4) tarkka virheteksti, jos sellainen näkyy."
+    };
+    return f[lang];
+  };
+
+  window.ANITA_V7 = V;
+})();
+
+
 function processMessage(q){
 let l=languageMode==="auto"?detectLanguage(q):languageMode;currentLanguage=l;updateInterface(false);
 if(specialistIntent(q,l)){failedAttempts=0;previousQuestion=q;previousCategory=null;excludedCategories.clear();showHuman(l);return}
+if(window.ANITA_V7){
+  let v7=window.ANITA_V7.handle(q,l);
+  if(v7){
+    failedAttempts=0;
+    if(v7.type==="escalate"){
+      addMessage(v7.text,"bot");
+      addMessage(l==="ru"?"Похоже, здесь уже нужна более продвинутая/очная диагностика. Рекомендую связаться со специалистом:":l==="fi"?"Tämä vaikuttaa vaativan jo edistyneempää tai paikan päällä tehtävää korjausta. Suosittelen ottamaan yhteyttä IT-tukeen:":"It seems this issue requires a more advanced or hands-on fix. I recommend contacting IT support:","bot");
+      showHuman(l);return
+    }
+    addMessage(v7.text,"bot");return
+  }
+}
 let core=directCoreIntent(q,l);if(core){failedAttempts=0;previousQuestion=q;previousCategory=core;excludedCategories.clear();addMessage(core.a[l]||core.a.en,"bot");return}
 let gc=guidedChatIntent(q,l);if(gc){failedAttempts=0;addMessage(guidedChatAnswer(gc),"bot");return}
 if(window.ANITA_SMART){
@@ -261,6 +731,7 @@ if(previousCategory&&containsPhrase(q,rejectWords[l])){excludedCategories.add(pr
 if(previousCategory&&containsPhrase(q,failWords[l])){failedAttempts++;if(failedAttempts>=7){showEscalation(l);failedAttempts=0;previousCategory=null;excludedCategories.clear();return}addMessage(UI[l].retry(failedAttempts+1),"bot");return}
 excludedCategories.clear();let r=findBest(q,l);previousQuestion=q;failedAttempts=0;if(!r.item||r.score<3.5){
   previousCategory=null;
+  if(window.ANITA_V7){addMessage(window.ANITA_V7.fallback(q,l),"bot");return}
   if(window.ANITA_SMART){addMessage(window.ANITA_SMART.fallback(q,l),"bot");return}
   addMessage(UI[l].unknown,"bot");return
 }previousCategory=r.item;addMessage(r.item.a[l],"bot");if(r.score<6||r.difference<1){let name=r.item.p[l][0];addMessage(l==="ru"?`Я правильно понимаю, что вопрос относится к теме «${name}»? Если нет, напишите: «Нет, я не это имел в виду».`:l==="fi"?`Ymmärsinkö oikein, että kysymys liittyy aiheeseen “${name}”? Jos ei, kirjoita: “Ei, en tarkoittanut sitä.”`:`Am I right that your question is related to “${name}”? If not, write: “No, that's not what I meant.”`,"bot")}
