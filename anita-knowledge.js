@@ -4070,3 +4070,309 @@ window.ANITA_V12_2={
 
 console.log("[ANITA v12.2] Semantic Priority Fix loaded");
 })();
+
+/* ================= ANITA v12.3 CAUSE + SOLUTION ENGINE =================
+   Fixes an important conversational problem:
+   a NEW concrete question such as
+     "my browser takes alot of memory why?"
+   must override the previous troubleshooting follow-up ("why?").
+
+   ANITA should:
+   1) understand the new subject,
+   2) explain likely causes,
+   3) give useful actions,
+   4) continue diagnosis from the result.
+
+   RU / EN / FI.
+   ====================================================================== */
+(function(){
+"use strict";
+
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+
+const V = window.ANITA_V12;
+const previous = V.handle.bind(V);
+
+const norm = s => (s||"")
+  .toLowerCase()
+  .replace(/[’`]/g,"'")
+  .replace(/[?!.,:;()[\]{}"“”]/g," ")
+  .replace(/\s+/g," ")
+  .trim();
+
+function langOf(text){
+  if(/[а-яё]/i.test(text)) return "ru";
+  if(/[äöå]/i.test(text) || /\b(selain|muisti|paljon|miksi|chrome käyttää|välilehti)\b/i.test(text)) return "fi";
+  return "en";
+}
+
+function reset(issue, step, l){
+  const S=V.state;
+  S.issue=issue;
+  S.branch=null;
+  S.step=step;
+  S.language=l;
+  S.lastQuestion=null;
+  S.lastInstruction=null;
+  S.lastAnswer=null;
+  S.completed=[];
+  S.failed=[];
+  S.facts={};
+  return S;
+}
+
+function isBrowserMemoryQuestion(text){
+  const t=norm(text);
+
+  const browser =
+    /\b(browser|chrome|google chrome|edge|firefox|opera|brave)\b/i.test(t) ||
+    /\b(браузер|хром|гугл хром|эдж|фаерфокс|опера)\b/i.test(t) ||
+    /\b(selain|chrome|google chrome|edge|firefox|opera|brave)\b/i.test(t);
+
+  const memory =
+    /\b(memory|ram)\b/i.test(t) ||
+    /\b(память|оперативн|озу)\b/i.test(t) ||
+    /\b(muisti|ram)\b/i.test(t);
+
+  const usage =
+    /\b(takes|take|using|uses|use|consume|consumes|high|a lot|alot|too much|1000 ?mb|1 ?gb)\b/i.test(t) ||
+    /\b(жр[её]т|использует|занимает|много|слишком много|нагружает)\b/i.test(t) ||
+    /\b(käyttää|vie|paljon|liikaa|korkea)\b/i.test(t);
+
+  return browser && memory && usage;
+}
+
+function browserMemoryStart(text,l){
+  const S=reset("browser_memory","browser_memory_explain",l);
+  S.lastInstruction="browser_memory_check";
+
+  const reply={
+en:`Yes — this is a useful clue.
+
+Chrome using around 1000 MB (about 1 GB) is not automatically a fault. Modern browsers split tabs, extensions, the GPU process and background services into separate processes, and they also keep data in RAM to make pages respond faster.
+
+But if your total memory is already around 85%, Chrome can absolutely contribute to the PC feeling slow.
+
+The most useful next check is to find WHAT inside Chrome is using the memory:
+
+1. Open Chrome.
+2. Press Shift + Esc — this opens Chrome's own Task Manager.
+3. Click the “Memory footprint” column to sort from highest to lowest.
+4. Look for:
+   • a tab using unusually much memory,
+   • an extension using a lot,
+   • several heavy tabs at the same time.
+5. Close only the heavy tab/extension first and watch Windows Task Manager again.
+
+Also check:
+• Chrome → Settings → Performance → turn on Memory Saver.
+• Close tabs you no longer need.
+• Disable extensions you do not use.
+• Restart Chrome occasionally if it has been open for many days.
+• Update Chrome.
+
+Important: 1 GB by itself is often normal. The bigger question is how much RAM your computer has in total.
+
+How much total RAM do you have — 4 GB, 8 GB, 16 GB, 32 GB or something else?`,
+ru:`Да — это уже полезная зацепка.
+
+То, что Chrome использует около 1000 МБ (примерно 1 ГБ), само по себе ещё не означает неисправность. Современный браузер разделяет вкладки, расширения, GPU-процесс и фоновые службы на отдельные процессы и специально держит часть данных в оперативной памяти, чтобы сайты работали быстрее.
+
+Но если общая загрузка памяти уже около 85%, Chrome действительно может заметно тормозить компьютер.
+
+Сейчас лучше всего выяснить, ЧТО именно внутри Chrome использует память:
+
+1. Открой Chrome.
+2. Нажми Shift + Esc — откроется собственный Диспетчер задач Chrome.
+3. Нажми столбец «Memory footprint / Объём памяти», чтобы отсортировать по убыванию.
+4. Посмотри, что сверху:
+   • одна тяжёлая вкладка,
+   • расширение,
+   • несколько тяжёлых вкладок одновременно.
+5. Закрой сначала только самый тяжёлый элемент и снова посмотри загрузку памяти в Диспетчере задач Windows.
+
+Также можно:
+• Chrome → Настройки → Производительность → включить «Экономия памяти / Memory Saver».
+• Закрыть ненужные вкладки.
+• Отключить расширения, которыми не пользуешься.
+• Иногда полностью перезапускать Chrome, особенно если он открыт много дней.
+• Обновить Chrome.
+
+Важно: 1 ГБ для Chrome часто бывает нормальным. Нам важнее знать, сколько оперативной памяти установлено в компьютере вообще.
+
+Сколько у тебя RAM всего — 4 ГБ, 8 ГБ, 16 ГБ, 32 ГБ или другое значение?`,
+fi:`Kyllä — tämä on hyödyllinen havainto.
+
+Se, että Chrome käyttää noin 1000 Mt (noin 1 Gt), ei automaattisesti tarkoita vikaa. Nykyiset selaimet jakavat välilehdet, laajennukset, GPU-prosessin ja taustapalvelut erillisiin prosesseihin ja pitävät tietoja RAM-muistissa, jotta sivut toimivat nopeammin.
+
+Mutta jos kokonaismuistin käyttö on jo noin 85 %, Chrome voi varmasti hidastaa tietokonetta.
+
+Paras seuraava tarkistus on selvittää, MIKÄ Chromen sisällä käyttää muistia:
+
+1. Avaa Chrome.
+2. Paina Shift + Esc — Chromen oma Tehtävienhallinta avautuu.
+3. Lajittele “Memory footprint” suurimmasta pienimpään.
+4. Tarkista onko ylimpänä:
+   • yksi raskas välilehti,
+   • paljon muistia käyttävä laajennus,
+   • useita raskaita välilehtiä.
+5. Sulje ensin vain raskain kohde ja tarkista Windowsin Tehtävienhallinnasta muuttuuko muistinkäyttö.
+
+Lisäksi:
+• Chrome → Settings → Performance → ota Memory Saver käyttöön.
+• Sulje tarpeettomat välilehdet.
+• Poista käyttämättömät laajennukset käytöstä.
+• Käynnistä Chrome välillä kokonaan uudelleen.
+• Päivitä Chrome.
+
+Tärkeää: 1 Gt Chromelle voi olla täysin normaalia. Olennaisempaa on tietää, kuinka paljon RAM-muistia koneessa on yhteensä.
+
+Kuinka paljon RAM-muistia koneessasi on — 4 Gt, 8 Gt, 16 Gt, 32 Gt vai jotain muuta?`
+  }[l];
+
+  S.lastAnswer=reply;
+  S.lastQuestion="browser_memory_total_ram";
+  return {type:"answer",text:reply};
+}
+
+function parseRam(text){
+  const t=norm(text);
+  let m=t.match(/\b(4|8|12|16|24|32|48|64)\s*(?:gb|g|гб|gt)\b/i);
+  if(m) return Number(m[1]);
+  // short reply like "8"
+  if(/^(4|8|12|16|24|32|48|64)$/.test(t)) return Number(t);
+  return null;
+}
+
+function browserMemoryFlow(text,l){
+  const S=V.state;
+  const ram=parseRam(text);
+
+  if(S.step==="browser_memory_explain" && ram){
+    S.facts.totalRamGB=ram;
+    S.step="browser_memory_action";
+
+    let assessment;
+    if(ram<=4){
+      assessment={
+        en:"With 4 GB RAM, 85% usage is very easy to reach. Chrome plus Windows can use most of the available memory. Reducing tabs/extensions will help, but 8 GB or more would make a major difference.",
+        ru:"При 4 ГБ RAM загрузка 85% достигается очень легко. Windows и Chrome вместе могут занять почти всю память. Уменьшение вкладок и расширений поможет, но переход хотя бы на 8 ГБ даст заметную разницу.",
+        fi:"4 Gt RAM-muistilla 85 % käyttöaste tulee helposti vastaan. Windows ja Chrome voivat yhdessä käyttää lähes kaiken muistin. Välilehtien/laajennusten vähentäminen auttaa, mutta 8 Gt tai enemmän parantaisi tilannetta selvästi."
+      }[l];
+    } else if(ram<=8){
+      assessment={
+        en:"With 8 GB RAM, 85% is high enough to cause slowdowns, especially if Chrome, Windows and other apps are open together. Finding the heaviest Chrome tab/extension is worthwhile.",
+        ru:"При 8 ГБ RAM загрузка 85% уже достаточно высокая, чтобы компьютер начал тормозить, особенно если одновременно открыты Chrome и другие программы. Стоит найти самую тяжёлую вкладку или расширение.",
+        fi:"8 Gt RAM-muistilla 85 % on jo riittävän korkea aiheuttamaan hidastumista, varsinkin jos Chrome ja muita ohjelmia on auki. Raskaimman välilehden/laajennuksen etsiminen kannattaa."
+      }[l];
+    } else {
+      assessment={
+        en:`With ${ram} GB RAM, Chrome using about 1 GB is usually not alarming by itself. If total memory still reaches 85%, another program, many browser tabs, extensions, or background processes are probably contributing too.`,
+        ru:`При ${ram} ГБ RAM использование Chrome около 1 ГБ само по себе обычно не выглядит критичным. Если общая память всё равно доходит до 85%, значит заметную долю также используют другие программы, множество вкладок, расширения или фоновые процессы.`,
+        fi:`${ram} Gt RAM-muistilla Chromen noin 1 Gt käyttö ei yleensä yksin ole huolestuttavaa. Jos kokonaiskäyttö silti nousee 85 %:iin, myös muut ohjelmat, monet välilehdet, laajennukset tai taustaprosessit käyttävät muistia.`
+      }[l];
+    }
+
+    const next={
+en:`${assessment}
+
+Now do this:
+1. Press Shift + Esc inside Chrome.
+2. Sort by Memory footprint.
+3. Tell me the top 3 entries and roughly how much memory each one uses.
+
+Then I can tell you what is safe to close or disable.`,
+ru:`${assessment}
+
+Теперь сделай так:
+1. В Chrome нажми Shift + Esc.
+2. Отсортируй по Memory footprint / памяти.
+3. Напиши мне 3 верхних элемента и примерно сколько памяти использует каждый.
+
+Тогда я смогу подсказать, что из этого безопасно закрыть или отключить.`,
+fi:`${assessment}
+
+Tee nyt näin:
+1. Paina Chromessa Shift + Esc.
+2. Lajittele Memory footprint -sarakkeen mukaan.
+3. Kerro kolme ylintä kohtaa ja kuinka paljon muistia kukin käyttää.
+
+Sen jälkeen voin sanoa, mitä niistä on turvallista sulkea tai poistaa käytöstä.`
+    }[l];
+
+    S.lastAnswer=next;
+    S.lastQuestion="browser_memory_top3";
+    return {type:"answer",text:next};
+  }
+
+  if(S.step==="browser_memory_explain" || S.step==="browser_memory_action"){
+    const t=norm(text);
+
+    if(/\b(memory saver|how.*memory saver|where.*memory saver)\b/i.test(t) ||
+       /\b(экономи\w* памяти|где.*экономи\w* памяти|как.*экономи\w* памяти)\b/i.test(t) ||
+       /\b(memory saver|muistinsäästö|missä.*memory saver|miten.*memory saver)\b/i.test(t)){
+      const r={
+en:`To enable Chrome Memory Saver:
+1. Open Chrome.
+2. Click ⋮ in the top-right.
+3. Open Settings.
+4. Open Performance.
+5. Turn on Memory Saver.
+
+Chrome can then free memory from inactive tabs and reload them when you return.`,
+ru:`Чтобы включить экономию памяти Chrome:
+1. Открой Chrome.
+2. Нажми ⋮ справа сверху.
+3. Открой «Настройки».
+4. Открой «Производительность».
+5. Включи «Экономия памяти / Memory Saver».
+
+Chrome сможет освобождать память неактивных вкладок и загружать их снова, когда ты к ним вернёшься.`,
+fi:`Chrome Memory Saver:
+1. Avaa Chrome.
+2. Napsauta oikeasta yläkulmasta ⋮.
+3. Avaa Settings.
+4. Avaa Performance.
+5. Ota Memory Saver käyttöön.
+
+Chrome voi vapauttaa muistia käyttämättömiltä välilehdiltä ja ladata ne uudelleen tarvittaessa.`
+      }[l];
+      return {type:"answer",text:r};
+    }
+  }
+
+  return null;
+}
+
+function isConcreteNewQuestion(text){
+  const t=norm(text);
+  // Longer meaningful message containing a concrete noun/symptom should
+  // not be treated as a bare follow-up "why/how".
+  return wordsCount(t)>=4 &&
+    /\b(browser|chrome|memory|ram|cpu|disk|printer|wifi|internet|screen|sound|браузер|память|диск|принтер|интернет|экран|звук|selain|muisti|levy|tulostin|netti|näyttö|ääni)\b/i.test(t);
+}
+function wordsCount(t){ return t.split(/\s+/).filter(Boolean).length; }
+
+V.handle=function(text,l){
+  const lang=langOf(text);
+
+  // New concrete topic has priority over old contextual "why?".
+  if(isBrowserMemoryQuestion(text)){
+    return browserMemoryStart(text,lang);
+  }
+
+  if(V.state && V.state.issue==="browser_memory"){
+    const r=browserMemoryFlow(text,lang);
+    if(r) return r;
+  }
+
+  return previous(text,l);
+};
+
+window.ANITA_V12_3={
+  version:"12.3",
+  isBrowserMemoryQuestion
+};
+
+console.log("[ANITA v12.3] Cause + Solution Engine loaded");
+})();
