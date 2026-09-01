@@ -4376,3 +4376,717 @@ window.ANITA_V12_3={
 
 console.log("[ANITA v12.3] Cause + Solution Engine loaded");
 })();
+
+/* ================= ANITA v12.4 CONVERSATION MEMORY + DIRECT ANSWER =================
+   Main fixes:
+   1) A concrete question such as "browser take alot of memory" is answered directly.
+   2) ANITA remembers the active issue and the last question/menu.
+   3) Replies such as "7", "something else", "yes", "no", "done" are interpreted
+      in the current conversation instead of being sent to a generic fallback.
+   4) RU / EN / FI use the same conversation state.
+   ================================================================================ */
+(function(){
+"use strict";
+
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+
+const V = window.ANITA_V12;
+const previous = V.handle.bind(V);
+const S = V.state;
+
+S.pendingMenu = S.pendingMenu || null;
+S.lastConcreteTopic = S.lastConcreteTopic || null;
+S.lastConcreteQuestion = S.lastConcreteQuestion || null;
+S.lastUserMessage = S.lastUserMessage || null;
+
+const clean = s => (s||"")
+  .toLowerCase()
+  .replace(/[’`]/g,"'")
+  .replace(/[?!.,:;()[\]{}"“”]/g," ")
+  .replace(/\s+/g," ")
+  .trim();
+
+function langOf(text){
+  if(/[а-яё]/i.test(text)) return "ru";
+  if(/[äöå]/i.test(text) || /\b(selain|muisti|miksi|paljon|tietokone|kone|hidas|miten)\b/i.test(text)) return "fi";
+  return S.language || "en";
+}
+
+function R(l,en,ru,fi){ return l==="ru"?ru:l==="fi"?fi:en; }
+
+function setTopic(topic, question, l){
+  S.lastConcreteTopic = topic;
+  S.lastConcreteQuestion = question || topic;
+  S.language = l || S.language || "en";
+  S.issue = topic;
+}
+
+function isBrowserMemory(text){
+  const t=clean(text);
+  const browser = /\b(browser|chrome|google chrome|edge|firefox|opera|brave|браузер|хром|гугл хром|эдж|selain)\b/i.test(t);
+  const memory = /\b(memory|ram|память|оперативк\w*|оперативн\w*|озу|muisti)\b/i.test(t);
+  const amount = /\b(take|takes|taking|use|uses|using|eat|eats|eating|consume|consumes|consuming|high|huge|much|alot|a lot|too much|жрет|жрёт|ест|использует|занимает|много|слишком|käyttää|vie|paljon|liikaa)\b/i.test(t);
+  return browser && memory && amount;
+}
+
+function browserMemoryAnswer(l){
+  setTopic("browser_memory","why_browser_memory",l);
+  S.step="browser_memory_need_total_ram";
+  S.pendingMenu=null;
+  S.lastInstruction="chrome_task_manager";
+
+  const msg=R(l,
+`Yes — that can be relevant to a slow PC.
+
+Chrome/Edge/Firefox can use a lot of RAM because every tab, extension, GPU process and some background services may run separately. About 1000 MB (1 GB) for a browser is often normal by itself. The important part is your TOTAL memory usage. If Windows is already around 85%, the PC may start using the page file on the disk, which can make it feel much slower.
+
+Do this first:
+1. In Chrome press Shift + Esc.
+2. Chrome Task Manager opens.
+3. Sort by “Memory footprint”.
+4. Look for the heaviest tab or extension.
+5. Close only the heavy item first and watch Windows Task Manager again.
+
+Also useful:
+• Chrome → Settings → Performance → turn on Memory Saver.
+• Close tabs you do not need.
+• Disable unused extensions.
+• Restart Chrome if it has been open for a long time.
+• Keep Chrome updated.
+
+Do NOT just end random Chrome processes in Windows Task Manager — Chrome may reopen them and you can lose unsaved work.
+
+Now tell me how much RAM the PC has in total: 4 GB, 8 GB, 16 GB, 32 GB, etc. Then I can tell you whether 85% is expected or a real bottleneck.`,
+`Да — это действительно может быть связано с медленной работой ПК.
+
+Chrome/Edge/Firefox могут использовать много RAM, потому что вкладки, расширения, GPU-процесс и фоновые службы часто работают как отдельные процессы. Около 1000 МБ (1 ГБ) для браузера само по себе часто нормально. Важнее ОБЩАЯ загрузка памяти. Если Windows уже показывает около 85%, система может начать активнее использовать файл подкачки на диске, из-за чего компьютер ощущается значительно медленнее.
+
+Сначала сделай так:
+1. В Chrome нажми Shift + Esc.
+2. Откроется Диспетчер задач Chrome.
+3. Отсортируй по “Memory footprint / Объём памяти”.
+4. Найди самую тяжёлую вкладку или расширение.
+5. Сначала закрой только этот элемент и снова посмотри память в Диспетчере задач Windows.
+
+Также полезно:
+• Chrome → Настройки → Производительность → включить Memory Saver / Экономию памяти.
+• Закрыть ненужные вкладки.
+• Отключить неиспользуемые расширения.
+• Перезапускать Chrome, если он открыт очень долго.
+• Обновить Chrome.
+
+Не завершай случайные процессы Chrome через Диспетчер задач Windows — Chrome может открыть их снова, а несохранённые данные можно потерять.
+
+Теперь напиши, сколько RAM установлено всего: 4 ГБ, 8 ГБ, 16 ГБ, 32 ГБ и т. д. Тогда я смогу сказать, нормально ли 85% именно для твоего ПК.`,
+`Kyllä — tämä voi liittyä suoraan tietokoneen hitauteen.
+
+Chrome/Edge/Firefox voi käyttää paljon RAM-muistia, koska välilehdet, laajennukset, GPU-prosessi ja taustapalvelut voivat toimia erillisinä prosesseina. Noin 1000 Mt (1 Gt) selaimelle voi yksin olla täysin normaalia. Tärkeämpää on KOKONAISmuistin käyttö. Jos Windows näyttää jo noin 85 %, järjestelmä voi käyttää enemmän sivutustiedostoa levyllä, jolloin kone tuntuu paljon hitaammalta.
+
+Tee ensin näin:
+1. Paina Chromessa Shift + Esc.
+2. Chromen oma Tehtävienhallinta avautuu.
+3. Lajittele “Memory footprint” -sarakkeen mukaan.
+4. Etsi eniten muistia käyttävä välilehti tai laajennus.
+5. Sulje ensin vain se ja tarkista Windowsin Tehtävienhallinnasta muistin käyttö uudelleen.
+
+Lisäksi:
+• Chrome → Settings → Performance → ota Memory Saver käyttöön.
+• Sulje tarpeettomat välilehdet.
+• Poista käyttämättömät laajennukset käytöstä.
+• Käynnistä Chrome uudelleen, jos se on ollut pitkään auki.
+• Päivitä Chrome.
+
+Älä lopeta satunnaisia Chrome-prosesseja Windowsin Tehtävienhallinnasta — ne voivat käynnistyä uudelleen ja tallentamaton työ voi kadota.
+
+Kerro nyt paljonko koneessa on RAM-muistia yhteensä: 4 Gt, 8 Gt, 16 Gt, 32 Gt jne. Sen perusteella voin sanoa, onko 85 % normaalia vai todellinen pullonkaula.`);
+  S.lastAnswer=msg;
+  S.lastQuestion="browser_memory_total_ram";
+  return {type:"answer",text:msg};
+}
+
+function parseRam(text){
+  const t=clean(text);
+  const m=t.match(/\b(4|6|8|12|16|24|32|48|64|96|128)\s*(gb|g|гб|gt)?\b/i);
+  return m ? Number(m[1]) : null;
+}
+
+function answerRam(ram,l){
+  S.facts=S.facts||{};
+  S.facts.totalRamGB=ram;
+  S.step="browser_memory_top_processes";
+  S.lastQuestion="browser_memory_top_processes";
+
+  let assess;
+  if(ram<=4) assess=R(l,
+    "With only 4 GB RAM, 85% usage is very easy to reach. Windows plus a modern browser can consume nearly all available memory. Closing tabs/extensions can help, but 8 GB or more would be a meaningful upgrade.",
+    "При 4 ГБ RAM загрузка 85% достигается очень легко. Windows и современный браузер могут занять почти всю память. Закрытие вкладок и расширений поможет, но переход хотя бы на 8 ГБ даст заметный эффект.",
+    "4 Gt RAM-muistilla 85 % tulee helposti vastaan. Windows ja selain voivat käyttää lähes kaiken muistin. Välilehtien/laajennusten vähentäminen auttaa, mutta 8 Gt tai enemmän olisi selvä parannus.");
+  else if(ram<=8) assess=R(l,
+    "With 8 GB RAM, 85% is high enough to cause noticeable slowdowns. Chrome may be part of the problem, especially with many tabs/extensions or other apps open.",
+    "При 8 ГБ RAM загрузка 85% уже достаточно высокая, чтобы вызывать заметные тормоза. Chrome может быть частью проблемы, особенно если открыто много вкладок/расширений или других программ.",
+    "8 Gt RAM-muistilla 85 % on jo riittävän korkea aiheuttamaan hidastumista. Chrome voi olla osa ongelmaa, erityisesti jos välilehtiä/laajennuksia tai muita ohjelmia on paljon auki.");
+  else assess=R(l,
+    `With ${ram} GB RAM, a browser using about 1 GB is usually not a problem by itself. If total usage is still around 85%, something else is also consuming a lot of memory.`,
+    `При ${ram} ГБ RAM браузер, использующий около 1 ГБ, сам по себе обычно не является проблемой. Если общая загрузка всё равно около 85%, значит много памяти использует что-то ещё.`,
+    `${ram} Gt RAM-muistilla selaimen noin 1 Gt käyttö ei yleensä yksin ole ongelma. Jos kokonaiskäyttö on silti noin 85 %, jokin muu käyttää myös paljon muistia.`);
+
+  const msg=assess + "\n\n" + R(l,
+`Next step:
+1. In Windows Task Manager sort by Memory.
+2. Tell me the top 3 processes and their memory use.
+3. In Chrome press Shift + Esc and tell me the top 3 Chrome items too.
+
+I can then tell you which usage looks normal and what is safe to close, disable or change.`,
+`Следующий шаг:
+1. В Диспетчере задач Windows отсортируй процессы по Памяти.
+2. Напиши 3 верхних процесса и сколько памяти использует каждый.
+3. В Chrome нажми Shift + Esc и также напиши 3 верхних элемента Chrome.
+
+Тогда я смогу сказать, какая нагрузка выглядит нормальной и что безопасно закрыть, отключить или изменить.`,
+`Seuraava vaihe:
+1. Lajittele Windowsin Tehtävienhallinnassa prosessit Memory-sarakkeen mukaan.
+2. Kerro kolme ylintä prosessia ja niiden muistinkäyttö.
+3. Paina Chromessa Shift + Esc ja kerro myös kolme ylintä Chrome-kohdetta.
+
+Sen jälkeen voin sanoa, mikä käyttö näyttää normaalilta ja mitä voi turvallisesti sulkea, poistaa käytöstä tai muuttaa.`);
+  S.lastAnswer=msg;
+  return {type:"answer",text:msg};
+}
+
+function rememberMenu(topic,l){
+  S.pendingMenu={topic,language:l};
+  S.lastConcreteTopic=topic;
+}
+
+function handleMenuReply(text,l){
+  if(!S.pendingMenu) return null;
+  const t=clean(text);
+  if(t==="7" || t==="something else" || t==="something different" || t==="другое" || t==="что то другое" || t==="что-то другое" || t==="jotain muuta"){
+    const topic=S.pendingMenu.topic;
+    S.pendingMenu=null;
+    S.lastConcreteTopic=topic;
+    const msg=R(l,
+      `Okay — it is something else, but we are still talking about ${topic==="browser"?"the browser":"the same problem"}. Describe the symptom in your own words. You do not need to choose from the list.`,
+      `Хорошо — значит это что-то другое, но мы всё ещё говорим ${topic==="browser"?"о браузере":"о той же проблеме"}. Просто опиши симптом своими словами — выбирать из списка не нужно.`,
+      `Selvä — kyse on jostain muusta, mutta puhumme edelleen ${topic==="browser"?"selaimesta":"samasta ongelmasta"}. Kuvaile oire omin sanoin; listasta ei tarvitse valita.`);
+    S.lastAnswer=msg;
+    return {type:"answer",text:msg};
+  }
+  return null;
+}
+
+V.handle=function(text,l){
+  const lang=langOf(text);
+  S.lastUserMessage=text;
+
+  // Concrete new intent ALWAYS has priority over an older generic browser menu.
+  if(isBrowserMemory(text)){
+    return browserMemoryAnswer(lang);
+  }
+
+  // Keep the browser-memory conversation alive.
+  if(S.issue==="browser_memory"){
+    const ram=parseRam(text);
+    if(ram && (S.step==="browser_memory_need_total_ram" || S.lastQuestion==="browser_memory_total_ram")){
+      return answerRam(ram,lang);
+    }
+
+    const t=clean(text);
+    if(/\b(memory saver|экономи\w* памяти|muistinsäästö)\b/i.test(t)){
+      const msg=R(lang,
+`Chrome Memory Saver:
+1. Open Chrome.
+2. Click ⋮ → Settings.
+3. Open Performance.
+4. Turn on Memory Saver.
+
+Inactive tabs can then release memory and reload when you return to them.`,
+`Chrome Memory Saver / Экономия памяти:
+1. Открой Chrome.
+2. Нажми ⋮ → Настройки.
+3. Открой «Производительность».
+4. Включи «Экономия памяти».
+
+Неактивные вкладки смогут освобождать память и загружаться снова, когда ты к ним вернёшься.`,
+`Chrome Memory Saver:
+1. Avaa Chrome.
+2. Napsauta ⋮ → Settings.
+3. Avaa Performance.
+4. Ota Memory Saver käyttöön.
+
+Passiiviset välilehdet voivat vapauttaa muistia ja latautua uudelleen palatessasi niihin.`);
+      S.lastAnswer=msg;
+      return {type:"answer",text:msg};
+    }
+  }
+
+  const menu=handleMenuReply(text,lang);
+  if(menu) return menu;
+
+  // Let existing engines answer. If an old engine opens its generic browser menu,
+  // remember that "7 / something else" still belongs to BROWSER.
+  const r=previous(text,l);
+  if(r && typeof r.text==="string"){
+    const rt=clean(r.text);
+    if(
+      rt.includes("browser does not open") &&
+      rt.includes("browser opens but pages do not load") &&
+      rt.includes("something else")
+    ){
+      rememberMenu("browser",lang);
+      S.issue="browser";
+      S.lastQuestion="browser_problem_menu";
+      S.lastAnswer=r.text;
+    }
+  }
+  return r;
+};
+
+window.ANITA_V12_4={
+  version:"12.4",
+  isBrowserMemory
+};
+
+console.log("[ANITA v12.4] Conversation Memory + Direct Answer loaded");
+})();
+
+/* ================= ANITA v12.5 OBSERVATION vs CAUSE ENGINE =================
+   Key idea:
+   A user observation is NOT automatically the root cause.
+
+   Example:
+     "my pc work slow"
+     "browser take alot of memory"
+
+   Correct interpretation:
+   - active problem: PC is slow
+   - new observation: browser uses a lot of memory
+   - possible cause: browser memory use MAY contribute
+   - diagnosis must confirm whether it is actually abnormal
+
+   RU / EN / FI.
+   =========================================================================== */
+(function(){
+"use strict";
+
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+
+const V = window.ANITA_V12;
+const previous = V.handle.bind(V);
+const S = V.state;
+
+S.rootProblem = S.rootProblem || null;
+S.observations = S.observations || [];
+S.hypotheses = S.hypotheses || [];
+
+const clean = s => (s||"")
+  .toLowerCase()
+  .replace(/[’`]/g,"'")
+  .replace(/[?!.,:;()[\]{}"“”]/g," ")
+  .replace(/\s+/g," ")
+  .trim();
+
+function langOf(text){
+  if(/[а-яё]/i.test(text)) return "ru";
+  if(/[äöå]/i.test(text) || /\b(selain|muisti|hidas|tietokone|miksi|paljon)\b/i.test(text)) return "fi";
+  return S.language || "en";
+}
+
+function R(l,en,ru,fi){ return l==="ru"?ru:l==="fi"?fi:en; }
+
+function addObservation(type,data){
+  S.observations = S.observations || [];
+  S.observations.push({type,data,time:Date.now()});
+  if(S.observations.length>20) S.observations.shift();
+}
+
+function addHypothesis(name,confidence){
+  S.hypotheses = S.hypotheses || [];
+  const old=S.hypotheses.find(x=>x.name===name);
+  if(old) old.confidence=confidence;
+  else S.hypotheses.push({name,confidence});
+}
+
+function isSlowPc(text){
+  const t=clean(text);
+  const pc=/\b(pc|computer|laptop|machine|windows|компьютер|комп|пк|ноутбук|windows|tietokone|kone|läppäri)\b/i.test(t);
+  const slow=/\b(slow|slowly|sluggish|laggy|lagging)\b/i.test(t) ||
+             /\b(медленн\w*|тормоз\w*|лага\w*|туп\w*)\b/i.test(t) ||
+             /\b(hidas|hitaasti|lagaa|hidastelee)\b/i.test(t);
+  return pc && slow;
+}
+
+function isBrowserMemoryObservation(text){
+  const t=clean(text);
+  const browser=/\b(browser|chrome|google chrome|edge|firefox|opera|brave|браузер|хром|гугл хром|эдж|selain)\b/i.test(t);
+  const memory=/\b(memory|ram|память|оперативк\w*|оперативн\w*|озу|muisti)\b/i.test(t);
+  const use=/\b(take|takes|taking|use|uses|using|eat|eats|consume|consumes|high|huge|much|alot|a lot|too much|жрет|жрёт|ест|использует|занимает|много|слишком|käyttää|vie|paljon|liikaa)\b/i.test(t);
+  return browser && memory && use;
+}
+
+function extractPercent(text){
+  const m=String(text||"").match(/\b(\d{1,3})\s*%/);
+  if(!m) return null;
+  const n=Number(m[1]);
+  return n>=0 && n<=100 ? n : null;
+}
+
+function extractMB(text){
+  const t=clean(text);
+  let m=t.match(/\b(\d{2,5})\s*(mb|мб|mt)\b/i);
+  if(m) return Number(m[1]);
+  m=t.match(/\b(\d+(?:\.\d+)?)\s*(gb|гб|gt)\b/i);
+  if(m) return Math.round(Number(m[1])*1024);
+  return null;
+}
+
+function observationAnswer(text,l){
+  if(!S.rootProblem && S.issue==="slow_pc") S.rootProblem="slow_pc";
+  if(!S.rootProblem) S.rootProblem="slow_pc"; // likely context, but still treated as hypothesis only
+
+  const mb=extractMB(text);
+  const pct=extractPercent(text);
+  addObservation("browser_memory",{mb,totalPercent:pct,text});
+  addHypothesis("browser_memory_pressure","possible");
+
+  S.issue="slow_pc";
+  S.step="slow_pc_memory_assessment";
+  S.lastConcreteTopic="slow_pc";
+  S.lastQuestion="total_ram_and_browser_details";
+  S.lastInstruction="inspect_browser_memory";
+
+  const amount = mb ? R(l,
+    `You noticed about ${mb} MB of browser memory use.`,
+    `Ты заметил, что браузер использует около ${mb} МБ памяти.`,
+    `Huomasit selaimen käyttävän noin ${mb} Mt muistia.`)
+    : R(l,
+    `You noticed that the browser is using a lot of memory.`,
+    `Ты заметил, что браузер использует много памяти.`,
+    `Huomasit selaimen käyttävän paljon muistia.`);
+
+  const msg=R(l,
+`${amount}
+
+That is an OBSERVATION, not proof that the browser is the root cause.
+
+A browser using around 1 GB can be completely normal, depending on:
+• how much RAM the PC has,
+• how many tabs are open,
+• what websites are open,
+• extensions,
+• video/web apps,
+• other programs running at the same time.
+
+What matters is whether the browser's memory use is unusually high FOR THIS PC and whether reducing it actually makes the PC faster.
+
+Let's confirm it instead of guessing:
+
+1. Tell me how much RAM the PC has in total: 4 GB, 8 GB, 16 GB, 32 GB, etc.
+2. Tell me the total Memory percentage shown in Windows Task Manager.
+3. In Chrome press Shift + Esc and tell me the top 3 items by “Memory footprint”.
+
+Then I can tell you whether Chrome is likely the real bottleneck, only part of the problem, or probably normal.`,
+`${amount}
+
+Это НАБЛЮДЕНИЕ, а не доказательство того, что браузер является основной причиной.
+
+Браузер, использующий около 1 ГБ, может работать совершенно нормально. Это зависит от:
+• общего объёма RAM,
+• количества вкладок,
+• открытых сайтов,
+• расширений,
+• видео/веб-приложений,
+• других программ, работающих одновременно.
+
+Важно понять, много ли это ИМЕННО для этого компьютера и становится ли ПК быстрее, если уменьшить использование памяти браузером.
+
+Давай не будем гадать, а подтвердим:
+
+1. Напиши, сколько RAM установлено всего: 4 ГБ, 8 ГБ, 16 ГБ, 32 ГБ и т. д.
+2. Напиши общий процент «Память» в Диспетчере задач Windows.
+3. В Chrome нажми Shift + Esc и напиши 3 верхних элемента по “Memory footprint”.
+
+После этого я смогу сказать: Chrome действительно является главным узким местом, только частью проблемы или его использование памяти выглядит нормальным.`,
+`${amount}
+
+Tämä on HAVAINTO, ei todiste siitä, että selain olisi varsinainen juurisyy.
+
+Noin 1 Gt selaimen muistinkäyttö voi olla täysin normaalia. Se riippuu:
+• koneen kokonais-RAM-määrästä,
+• avoimien välilehtien määrästä,
+• avoimista sivuista,
+• laajennuksista,
+• video-/web-sovelluksista,
+• muista samanaikaisesti käynnissä olevista ohjelmista.
+
+Oleellista on, onko selaimen muistinkäyttö epätavallisen suuri TÄLLÄ koneella ja nopeutuuko kone, jos selaimen muistinkäyttöä pienennetään.
+
+Varmistetaan asia arvaamisen sijaan:
+
+1. Kerro paljonko RAM-muistia koneessa on yhteensä: 4 Gt, 8 Gt, 16 Gt, 32 Gt jne.
+2. Kerro Windowsin Tehtävienhallinnan Memory-prosentti.
+3. Paina Chromessa Shift + Esc ja kerro kolme ylintä kohtaa “Memory footprint” -sarakkeesta.
+
+Sen jälkeen voin sanoa, onko Chrome todennäköisesti varsinainen pullonkaula, vain osa ongelmaa vai täysin normaali.`);
+
+  S.lastAnswer=msg;
+  return {type:"answer",text:msg};
+}
+
+function parseRam(text){
+  const t=clean(text);
+  const m=t.match(/\b(4|6|8|12|16|24|32|48|64|96|128)\s*(gb|g|гб|gt)?\b/i);
+  return m ? Number(m[1]) : null;
+}
+
+function assessmentFromRam(text,l){
+  if(S.step!=="slow_pc_memory_assessment") return null;
+
+  const ram=parseRam(text);
+  const pct=extractPercent(text);
+
+  if(ram) S.facts.totalRamGB=ram;
+  if(pct!==null) S.facts.totalMemoryPercent=pct;
+
+  if(!S.facts.totalRamGB || S.facts.totalMemoryPercent==null) return null;
+
+  const r=S.facts.totalRamGB;
+  const p=S.facts.totalMemoryPercent;
+
+  let verdict;
+  if(r<=4 && p>=75){
+    verdict=R(l,
+      `With ${r} GB RAM and ${p}% memory use, RAM pressure is very likely contributing to the slowdown.`,
+      `При ${r} ГБ RAM и загрузке памяти ${p}% нехватка RAM очень вероятно влияет на тормоза.`,
+      `${r} Gt RAM-muistilla ja ${p}% muistinkäytöllä muistipaine todennäköisesti hidastaa konetta.`);
+    addHypothesis("memory_pressure","likely");
+  } else if(r<=8 && p>=80){
+    verdict=R(l,
+      `With ${r} GB RAM and ${p}% memory use, memory pressure is a plausible cause of the slowdown, but we still need to see which processes are using it.`,
+      `При ${r} ГБ RAM и загрузке ${p}% нехватка памяти вполне может быть причиной тормозов, но нужно ещё увидеть, какие процессы её используют.`,
+      `${r} Gt RAM-muistilla ja ${p}% käytöllä muistipaine voi hyvin hidastaa konetta, mutta meidän pitää vielä nähdä mitkä prosessit käyttävät muistia.`);
+    addHypothesis("memory_pressure","probable");
+  } else if(r>=16 && p>=80){
+    verdict=R(l,
+      `With ${r} GB RAM, ${p}% total usage is high. Chrome using about 1 GB alone would usually not explain that, so another app, many tabs, extensions, or background processes are probably also involved.`,
+      `При ${r} ГБ RAM общая загрузка ${p}% высокая. Один Chrome с примерно 1 ГБ обычно не объясняет такую загрузку, значит память также используют другие программы, множество вкладок, расширения или фоновые процессы.`,
+      `${r} Gt RAM-muistilla ${p}% kokonaiskäyttö on korkea. Pelkkä Chromen noin 1 Gt ei yleensä selitä sitä, joten myös muut ohjelmat, monet välilehdet, laajennukset tai taustaprosessit käyttävät muistia.`);
+    addHypothesis("browser_memory_pressure","partial");
+  } else {
+    verdict=R(l,
+      `Those numbers do not prove that Chrome is the main cause yet.`,
+      `Эти цифры пока не доказывают, что Chrome является главной причиной.`,
+      `Nämä luvut eivät vielä todista, että Chrome olisi pääsyy.`);
+  }
+
+  S.step="slow_pc_memory_top_processes";
+  S.lastQuestion="top_memory_processes";
+
+  const msg=verdict+"\n\n"+R(l,
+`Next, sort Windows Task Manager by Memory and tell me the top 3 processes. Also press Shift + Esc in Chrome and tell me the top 3 Chrome items. Then we can decide what is safe to close or change.`,
+`Теперь отсортируй Диспетчер задач Windows по Памяти и напиши 3 верхних процесса. Также нажми Shift + Esc в Chrome и напиши 3 верхних элемента Chrome. После этого можно будет понять, что безопасно закрыть или изменить.`,
+`Lajittele nyt Windowsin Tehtävienhallinta Memory-sarakkeen mukaan ja kerro kolme ylintä prosessia. Paina lisäksi Chromessa Shift + Esc ja kerro kolme ylintä Chrome-kohdetta. Sen jälkeen voidaan päättää, mitä on turvallista sulkea tai muuttaa.`);
+  S.lastAnswer=msg;
+  return {type:"answer",text:msg};
+}
+
+V.handle=function(text,l){
+  const lang=langOf(text);
+
+  if(isSlowPc(text)){
+    S.rootProblem="slow_pc";
+  }
+
+  // While troubleshooting a slow PC, this phrase is an observation/evidence,
+  // not automatically a new "browser problem".
+  if(isBrowserMemoryObservation(text) && (S.rootProblem==="slow_pc" || S.issue==="slow_pc" || S.issue==="browser_memory")){
+    return observationAnswer(text,lang);
+  }
+
+  if(S.rootProblem==="slow_pc" && S.step==="slow_pc_memory_assessment"){
+    const r=assessmentFromRam(text,lang);
+    if(r) return r;
+  }
+
+  return previous(text,l);
+};
+
+window.ANITA_V12_5={
+  version:"12.5",
+  isBrowserMemoryObservation
+};
+
+console.log("[ANITA v12.5] Observation vs Cause Engine loaded");
+})();
+
+/* ================= ANITA v12.6 MENU MEMORY FIX =================
+   Remembers numbered clarification menus.
+   "7" and "Something else" remain attached to the menu that ANITA asked.
+   Also supports 1..6 for the generic weird/glitch and browser menus.
+   RU / EN / FI.
+   ================================================================= */
+(function(){
+"use strict";
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+
+const V=window.ANITA_V12;
+const old=V.handle.bind(V);
+const S=V.state;
+S.activeChoiceMenu=S.activeChoiceMenu||null;
+
+const clean=s=>(s||"").toLowerCase()
+ .replace(/[’`]/g,"'")
+ .replace(/[?!.,:;()[\]{}"“”]/g," ")
+ .replace(/\s+/g," ").trim();
+
+function lang(text){
+ if(/[а-яё]/i.test(text)) return "ru";
+ if(/[äöå]/i.test(text)||/\b(jotain muuta|selain|näyttö|ohjelma|hidas)\b/i.test(text)) return "fi";
+ return S.language||"en";
+}
+function R(l,en,ru,fi){return l==="ru"?ru:l==="fi"?fi:en;}
+
+function detectMenu(answerText){
+ const t=clean(answerText);
+ if(
+   t.includes("screen graphics problem") &&
+   t.includes("programs freeze") &&
+   t.includes("computer is slow") &&
+   t.includes("something else")
+ ) return "weird";
+ if(
+   t.includes("browser does not open") &&
+   t.includes("browser opens but pages do not load") &&
+   t.includes("something else")
+ ) return "browser";
+ return null;
+}
+
+function choice(text){
+ const t=clean(text);
+ if(/^[1-7]$/.test(t)) return Number(t);
+ if(["something else","something different","other","другое","что то другое","что-то другое","jotain muuta","muu"].includes(t)) return 7;
+ return null;
+}
+
+function askOwnWords(menu,l){
+ S.activeChoiceMenu=null;
+ S.lastQuestion=menu+"_other_description";
+ S.step=menu+"_other_description";
+ const msg=R(l,
+   menu==="browser"
+   ? "Okay — we are still talking about the browser, but your symptom is not in my list. Describe exactly what you noticed in your own words. For example: “Chrome uses 1 GB of memory”, “video stutters”, or “pages use a lot of CPU”."
+   : "Okay — we are still talking about the same PC/Windows problem, but none of those options match. Describe exactly what you notice in your own words. I will keep the current problem context.",
+   menu==="browser"
+   ? "Хорошо — мы всё ещё говорим о браузере, но твоего симптома нет в списке. Просто опиши своими словами, что именно заметил. Например: «Chrome использует 1 ГБ памяти», «видео дёргается» или «страницы сильно грузят CPU»."
+   : "Хорошо — мы всё ещё говорим о той же проблеме ПК/Windows, но ни один вариант не подходит. Опиши своими словами, что именно происходит. Я сохраню контекст текущей проблемы.",
+   menu==="browser"
+   ? "Selvä — puhumme edelleen selaimesta, mutta oireesi ei ole listassa. Kuvaile omin sanoin mitä huomasit. Esimerkiksi: “Chrome käyttää 1 Gt muistia”, “video pätkii” tai “sivut käyttävät paljon CPU:ta”."
+   : "Selvä — puhumme edelleen samasta PC/Windows-ongelmasta, mutta mikään vaihtoehto ei sovi. Kuvaile omin sanoin mitä tapahtuu. Säilytän nykyisen ongelman kontekstin."
+ );
+ S.lastAnswer=msg;
+ return {type:"answer",text:msg};
+}
+
+function handleWeird(n,l){
+ S.activeChoiceMenu=null;
+ if(n===1){
+   S.issue="display"; S.step="display_detect";
+   return {type:"answer",text:R(l,
+    "Understood — this is a screen/graphics symptom. Is the screen flickering, showing artifacts, going black, or showing “No signal”?",
+    "Понял — проблема связана с экраном/графикой. Экран мерцает, показывает артефакты, становится чёрным или пишет «Нет сигнала»?",
+    "Selvä — oire liittyy näyttöön/grafiikkaan. Välkkyykö näyttö, näkyykö artefakteja, meneekö se mustaksi vai näkyykö “No signal”?")};
+ }
+ if(n===2){
+   S.issue="freeze"; S.step="freeze_scope";
+   return {type:"answer",text:R(l,
+    "Understood — programs are freezing. Does only one program freeze, or does the whole computer stop responding?",
+    "Понял — программы зависают. Зависает только одна программа или перестаёт отвечать весь компьютер?",
+    "Selvä — ohjelmat jäätyvät. Jäätyykö vain yksi ohjelma vai lakkaako koko tietokone vastaamasta?")};
+ }
+ if(n===3){
+   S.issue="slow_pc"; S.rootProblem="slow_pc"; S.step="slow_task_manager"; S.lastInstruction="slow_task_manager";
+   return {type:"answer",text:R(l,
+    "Understood — the concrete symptom is slowness. Press Ctrl + Shift + Esc and tell me which is highest: CPU, Memory or Disk, plus the percentage.",
+    "Понял — конкретный симптом: компьютер работает медленно. Нажми Ctrl + Shift + Esc и напиши, что загружено сильнее: CPU, Память или Диск, и процент.",
+    "Selvä — konkreettinen oire on hitaus. Paina Ctrl + Shift + Esc ja kerro mikä on korkein: CPU, Memory vai Disk sekä prosentti.")};
+ }
+ if(n===4){
+   S.issue="windows_error"; S.step="error_text";
+   return {type:"answer",text:R(l,
+    "Understood — there are error messages/popups. Please type the exact error text or code you see. A screenshot is also useful.",
+    "Понял — появляются ошибки или всплывающие окна. Напиши точный текст или код ошибки. Скриншот тоже подойдёт.",
+    "Selvä — näkyviin tulee virheilmoituksia/ponnahdusikkunoita. Kirjoita tarkka virheteksti tai koodi. Kuvakaappauskin auttaa.")};
+ }
+ if(n===5){
+   S.issue="input"; S.step="input_scope";
+   return {type:"answer",text:R(l,
+    "Understood — this is a mouse/keyboard issue. Which device behaves incorrectly, and what exactly does it do?",
+    "Понял — проблема с мышью или клавиатурой. Какое устройство работает неправильно и что именно происходит?",
+    "Selvä — ongelma liittyy hiireen tai näppäimistöön. Kumpi toimii väärin ja mitä tarkalleen tapahtuu?")};
+ }
+ if(n===6){
+   S.issue="windows_shell"; S.step="shell_scope";
+   return {type:"answer",text:R(l,
+    "Understood — this concerns Explorer/taskbar/Start. Which one stops responding: File Explorer, taskbar, Start menu, or several of them?",
+    "Понял — проблема с Проводником/панелью задач/Пуском. Что именно перестаёт отвечать: Проводник, панель задач, меню Пуск или несколько элементов?",
+    "Selvä — ongelma koskee Resurssienhallintaa/tehtäväpalkkia/Käynnistä-valikkoa. Mikä niistä lakkaa vastaamasta?")};
+ }
+ return askOwnWords("weird",l);
+}
+
+function handleBrowser(n,l){
+ S.activeChoiceMenu=null;
+ const prompts={
+  1:["The browser does not open at all. Which browser is it, and what happens when you try to start it?",
+     "Браузер вообще не открывается. Какой это браузер и что происходит при попытке запуска?",
+     "Selain ei avaudu lainkaan. Mikä selain se on ja mitä tapahtuu kun yrität käynnistää sen?"],
+  2:["The browser opens but pages do not load. Do other devices on the same Wi-Fi have Internet?",
+     "Браузер открывается, но страницы не загружаются. Интернет работает на других устройствах в той же Wi‑Fi сети?",
+     "Selain avautuu mutta sivut eivät lataudu. Toimiiko internet muilla saman Wi‑Fi-verkon laitteilla?"],
+  3:["A page starts loading and then stops. Does this happen on every website or only some websites?",
+     "Страница начинает загружаться и останавливается. Это происходит на всех сайтах или только на некоторых?",
+     "Sivu alkaa latautua ja pysähtyy. Tapahtuuko tämä kaikilla sivuilla vai vain joillakin?"],
+  4:["The browser itself is slow. Is the whole PC also slow, or only the browser?",
+     "Сам браузер работает медленно. Весь компьютер тоже тормозит или только браузер?",
+     "Selain on hidas. Onko koko tietokone myös hidas vai vain selain?"],
+  5:["The browser freezes/crashes. Which browser is it, and does it freeze or close completely?",
+     "Браузер зависает/вылетает. Какой это браузер, и он зависает или полностью закрывается?",
+     "Selain jäätyy/kaatuu. Mikä selain se on, ja jäätyykö se vai sulkeutuuko kokonaan?"],
+  6:["Downloads do not work. What happens when you click Download: nothing, an error, or the download starts and fails?",
+     "Не работают загрузки. Что происходит после нажатия Download: ничего, ошибка или загрузка начинается и прерывается?",
+     "Lataukset eivät toimi. Mitä tapahtuu kun painat Download: ei mitään, virhe vai alkaako lataus ja epäonnistuu?"]
+ };
+ if(n===7) return askOwnWords("browser",l);
+ const p=prompts[n];
+ if(!p) return null;
+ S.issue="browser"; S.step="browser_choice_"+n; S.lastQuestion="browser_choice_"+n;
+ const msg=R(l,p[0],p[1],p[2]); S.lastAnswer=msg;
+ return {type:"answer",text:msg};
+}
+
+V.handle=function(text,l){
+ const L=lang(text);
+ const n=choice(text);
+
+ // If ANITA has an active menu, short answers belong to THAT menu.
+ if(S.activeChoiceMenu && n){
+   return S.activeChoiceMenu==="weird" ? handleWeird(n,L) : handleBrowser(n,L);
+ }
+
+ const r=old(text,l);
+
+ // Remember menus produced by any older layer.
+ if(r && typeof r.text==="string"){
+   const menu=detectMenu(r.text);
+   if(menu){
+     S.activeChoiceMenu=menu;
+     S.lastQuestion=menu+"_choice_menu";
+   }
+ }
+ return r;
+};
+
+window.ANITA_V12_6={version:"12.6"};
+console.log("[ANITA v12.6] Menu Memory Fix loaded");
+})();
