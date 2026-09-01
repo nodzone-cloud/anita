@@ -5640,3 +5640,1279 @@ window.ANITA_V12_8 = {
 
 console.log("[ANITA v12.8] Success Feedback Engine loaded");
 })();
+
+/* ================= ANITA v12.9 END CHAT + RATING + VISITOR MEMORY =================
+   Adds:
+   - end-of-chat flow after a successful support session
+   - "Can I help with anything else?"
+   - clickable 1–5 star rating INSIDE the chat
+   - anonymous persistent visitor ID in localStorage
+   - session count / message count / rating history in localStorage
+   - optional analytics POST hook for a future Alex Node backend
+
+   IMPORTANT:
+   LocalStorage lets ANITA remember the same browser/device.
+   Alex Node cannot see those records remotely until ANITA_ANALYTICS_ENDPOINT
+   is connected to a backend/database.
+   ================================================================================ */
+(function(){
+"use strict";
+
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+
+const V = window.ANITA_V12;
+const old = V.handle.bind(V);
+const S = V.state;
+
+S.awaitingAnythingElse = S.awaitingAnythingElse || false;
+S.ratingOffered = S.ratingOffered || false;
+S.ratingSubmitted = S.ratingSubmitted || false;
+
+const clean = s => (s||"")
+  .toLowerCase()
+  .replace(/[’`]/g,"'")
+  .replace(/[?!.,:;()[\]{}"“”]/g," ")
+  .replace(/\s+/g," ")
+  .trim();
+
+function langOf(text){
+  if(/[а-яё]/i.test(text)) return "ru";
+  if(/[äöå]/i.test(text) || /\b(kiitos|toimii|kaikki hyvin|ei muuta|siinä kaikki)\b/i.test(text)) return "fi";
+  return S.language || "en";
+}
+function R(l,en,ru,fi){ return l==="ru"?ru:l==="fi"?fi:en; }
+
+function uid(){
+  try{
+    let id=localStorage.getItem("anita_user_id");
+    if(!id){
+      id="ANITA-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,10);
+      localStorage.setItem("anita_user_id",id);
+    }
+    return id;
+  }catch(e){
+    return "ANITA-session-"+Math.random().toString(36).slice(2,10);
+  }
+}
+
+function readStats(){
+  try{
+    return JSON.parse(localStorage.getItem("anita_usage_stats")||"{}");
+  }catch(e){ return {}; }
+}
+function writeStats(st){
+  try{ localStorage.setItem("anita_usage_stats",JSON.stringify(st)); }catch(e){}
+}
+
+const visitorId=uid();
+(function initUsage(){
+  const st=readStats();
+  st.visitorId=visitorId;
+  st.firstSeen=st.firstSeen||new Date().toISOString();
+  st.lastSeen=new Date().toISOString();
+  st.sessions=(st.sessions||0)+1;
+  st.messages=st.messages||0;
+  st.ratings=Array.isArray(st.ratings)?st.ratings:[];
+  writeStats(st);
+})();
+
+function logEvent(type,data){
+  const st=readStats();
+  st.visitorId=visitorId;
+  st.lastSeen=new Date().toISOString();
+  if(type==="user_message") st.messages=(st.messages||0)+1;
+  if(type==="rating"){
+    st.ratings=Array.isArray(st.ratings)?st.ratings:[];
+    st.ratings.push({
+      value:data && data.value,
+      at:new Date().toISOString()
+    });
+    if(st.ratings.length>50) st.ratings=st.ratings.slice(-50);
+    st.lastRating=data && data.value;
+  }
+  writeStats(st);
+
+  // Optional future remote analytics endpoint.
+  // Example:
+  // window.ANITA_ANALYTICS_ENDPOINT = "https://your-backend.example/anita-event";
+  const endpoint=window.ANITA_ANALYTICS_ENDPOINT;
+  if(endpoint){
+    try{
+      fetch(endpoint,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          visitorId,
+          type,
+          data:data||{},
+          page:location.href,
+          at:new Date().toISOString()
+        }),
+        keepalive:true
+      }).catch(()=>{});
+    }catch(e){}
+  }
+}
+
+function hasSolvedContext(){
+  return S.step==="solved" || !!S.lastSolvedIssue;
+}
+
+function isThanksResolved(text){
+  const t=clean(text);
+
+  const thanks =
+    /\b(thanks|thank you|thx|ty|cheers)\b/i.test(t) ||
+    /\b(спасибо|благодарю|спс)\b/i.test(t) ||
+    /\b(kiitos|kiitti)\b/i.test(t);
+
+  const solved =
+    /\b(it worked|it works|everything is fine|everything works|all good|problem solved|fixed|fine now|working now|that helped|helped)\b/i.test(t) ||
+    /\b(заработало|работает|всё хорошо|все хорошо|всё работает|все работает|проблема решена|помогло|теперь нормально)\b/i.test(t) ||
+    /\b(toimii|kaikki hyvin|kaikki toimii|ongelma ratkesi|auttoi|nyt kunnossa)\b/i.test(t);
+
+  return thanks && (solved || hasSolvedContext());
+}
+
+function isThanksOnlyAfterSolved(text){
+  if(!hasSolvedContext()) return false;
+  const t=clean(text);
+  return [
+    "thanks","thank you","thx","ty","thanks anita","thank you anita",
+    "спасибо","спс","благодарю","спасибо анита",
+    "kiitos","kiitti","kiitos anita"
+  ].includes(t);
+}
+
+function isNoMore(text){
+  const t=clean(text);
+  const exact=[
+    "no","no thanks","no thank you","nothing else","nothing","that's all","thats all",
+    "all good","i'm good","im good","nope","not now","that's it","thats it",
+    "нет","нет спасибо","ничего","больше ничего","это всё","это все","всё","все","не надо",
+    "ei","ei kiitos","ei muuta","siinä kaikki","ei nyt","kaikki hyvin"
+  ];
+  return exact.includes(t);
+}
+
+function isYesMore(text){
+  const t=clean(text);
+  return [
+    "yes","yeah","yep","yes please","actually yes","i have another problem",
+    "да","да есть","да пожалуйста","есть ещё проблема","есть еще проблема",
+    "kyllä","joo","on toinen ongelma","kyllä kiitos"
+  ].includes(t);
+}
+
+function askAnythingElse(l){
+  S.awaitingAnythingElse=true;
+  S.ratingOffered=false;
+
+  const msg=R(l,
+    "You're very welcome 😊 I'm glad that helped. Can I help you with anything else?",
+    "Пожалуйста 😊 Рад, что это помогло. Могу я помочь ещё с чем-нибудь?",
+    "Ole hyvä 😊 Mukava kuulla, että siitä oli apua. Voinko auttaa vielä jossain muussa?"
+  );
+  S.lastAnswer=msg;
+  return {type:"answer",text:msg};
+}
+
+function addBotText(text){
+  try{
+    if(typeof addMessage==="function"){
+      addMessage(text,"bot");
+      return;
+    }
+    const c=document.querySelector("#chat");
+    if(!c) return;
+    const d=document.createElement("div");
+    d.className="msg bot";
+    d.textContent=text;
+    c.appendChild(d);
+    c.scrollTop=c.scrollHeight;
+  }catch(e){}
+}
+
+function showRatingWidget(l){
+  S.awaitingAnythingElse=false;
+  S.ratingOffered=true;
+
+  const c=document.querySelector("#chat");
+  if(!c) return;
+
+  if(document.getElementById("anitaRatingCard")) return;
+
+  const card=document.createElement("div");
+  card.id="anitaRatingCard";
+  card.className="contactCard";
+  card.style.maxWidth="94%";
+
+  const title=document.createElement("div");
+  title.style.fontWeight="800";
+  title.style.fontSize="15px";
+  title.style.marginBottom="6px";
+  title.textContent=R(l,
+    "How was ANITA's support?",
+    "Как тебе помощь ANITA?",
+    "Millaista ANITAn tuki oli?"
+  );
+
+  const sub=document.createElement("div");
+  sub.style.fontSize="12px";
+  sub.style.color="#666";
+  sub.style.marginBottom="10px";
+  sub.textContent=R(l,
+    "Choose from 1 to 5 stars.",
+    "Выбери оценку от 1 до 5 звёзд.",
+    "Valitse 1–5 tähteä."
+  );
+
+  const stars=document.createElement("div");
+  stars.setAttribute("role","radiogroup");
+  stars.setAttribute("aria-label","ANITA support rating");
+  stars.style.display="flex";
+  stars.style.gap="7px";
+  stars.style.alignItems="center";
+
+  const buttons=[];
+
+  function paint(value){
+    buttons.forEach((b,i)=>{
+      b.textContent=i<value ? "★" : "☆";
+      b.style.transform=i<value ? "scale(1.08)" : "scale(1)";
+    });
+  }
+
+  for(let i=1;i<=5;i++){
+    const b=document.createElement("button");
+    b.type="button";
+    b.setAttribute("aria-label",i+" stars");
+    b.setAttribute("role","radio");
+    b.setAttribute("aria-checked","false");
+    b.textContent="☆";
+    b.style.border="0";
+    b.style.background="transparent";
+    b.style.padding="2px";
+    b.style.fontSize="32px";
+    b.style.lineHeight="1";
+    b.style.cursor="pointer";
+    b.style.color="#ff6a00";
+    b.style.transition="transform .12s ease";
+    b.addEventListener("mouseenter",()=>paint(i));
+    b.addEventListener("mouseleave",()=>{
+      const chosen=Number(card.dataset.rating||0);
+      paint(chosen);
+    });
+    b.addEventListener("click",()=>{
+      if(S.ratingSubmitted) return;
+      card.dataset.rating=String(i);
+      S.ratingSubmitted=true;
+      buttons.forEach((x,j)=>{
+        x.disabled=true;
+        x.setAttribute("aria-checked",j===i?"true":"false");
+      });
+      paint(i);
+      logEvent("rating",{value:i,issue:S.lastSolvedIssue||S.rootProblem||S.issue||null});
+
+      const thanks=document.createElement("div");
+      thanks.style.marginTop="10px";
+      thanks.style.fontSize="13px";
+      thanks.style.fontWeight="700";
+      thanks.textContent=R(l,
+        `Thanks for rating ANITA ${i}/5!`,
+        `Спасибо за оценку ANITA: ${i}/5!`,
+        `Kiitos ANITAn arviosta: ${i}/5!`
+      );
+      card.appendChild(thanks);
+
+      setTimeout(()=>{
+        addBotText(R(l,
+          i>=4
+            ? "Thank you 😊 Your feedback helps improve ANITA."
+            : "Thank you for the feedback. It helps show where ANITA needs to improve.",
+          i>=4
+            ? "Спасибо 😊 Твоя оценка помогает улучшать ANITA."
+            : "Спасибо за обратную связь. Она помогает понять, где ANITA нужно стать лучше.",
+          i>=4
+            ? "Kiitos 😊 Palautteesi auttaa parantamaan ANITAa."
+            : "Kiitos palautteesta. Se auttaa näkemään, missä ANITAn pitää kehittyä."
+        ));
+      },150);
+    });
+    buttons.push(b);
+    stars.appendChild(b);
+  }
+
+  card.appendChild(title);
+  card.appendChild(sub);
+  card.appendChild(stars);
+  c.appendChild(card);
+  c.scrollTop=c.scrollHeight;
+
+  logEvent("rating_shown",{issue:S.lastSolvedIssue||S.rootProblem||S.issue||null});
+}
+
+function offerRating(l){
+  const msg=R(l,
+    "Okay 😊 Before you go, would you rate ANITA's support? Just click a star below.",
+    "Хорошо 😊 Перед уходом оцени, пожалуйста, помощь ANITA — просто нажми на звезду ниже.",
+    "Selvä 😊 Ennen kuin lähdet, arvioisitko ANITAn tuen? Napsauta vain tähteä alta."
+  );
+
+  // We return text normally; widget appears right after the bot message is rendered.
+  setTimeout(()=>showRatingWidget(l),320);
+  return {type:"answer",text:msg};
+}
+
+V.handle=function(text,l){
+  const language=langOf(text);
+  logEvent("user_message",{language});
+
+  // A solved conversation + gratitude should move into the closing flow.
+  if(isThanksResolved(text) || isThanksOnlyAfterSolved(text)){
+    return askAnythingElse(language);
+  }
+
+  // ANITA already asked if anything else is needed.
+  if(S.awaitingAnythingElse){
+    if(isNoMore(text)){
+      S.awaitingAnythingElse=false;
+      return offerRating(language);
+    }
+
+    if(isYesMore(text)){
+      S.awaitingAnythingElse=false;
+      S.ratingOffered=false;
+      S.ratingSubmitted=false;
+      const msg=R(language,
+        "Of course. Tell me the next problem in your own words.",
+        "Конечно. Опиши следующую проблему своими словами.",
+        "Totta kai. Kuvaile seuraava ongelma omin sanoin."
+      );
+      S.lastAnswer=msg;
+      return {type:"answer",text:msg};
+    }
+
+    // If they simply describe another real problem instead of answering yes,
+    // let ANITA process it as a new request rather than forcing the rating.
+    S.awaitingAnythingElse=false;
+  }
+
+  return old(text,l);
+};
+
+// Public helpers for future Alex Node analytics/dashboard integration.
+window.ANITA_VISITOR = {
+  id: visitorId,
+  getStats: readStats,
+  clearLocalStats: function(){
+    try{ localStorage.removeItem("anita_usage_stats"); }catch(e){}
+  },
+  showRating: function(l){ showRatingWidget(l||S.language||"en"); }
+};
+
+window.ANITA_V12_9 = {version:"12.9"};
+
+console.log("[ANITA v12.9] End Chat + Rating + Visitor Memory loaded", visitorId);
+})();
+
+/* ================= ANITA v13 GUIDED PROCEDURE MEMORY =================
+   Fixes a core support-flow problem:
+   - ANITA gives ONE actionable step at a time.
+   - "done / сделал / valmis" means the user completed ANITA's current step.
+   - "didn't help / не помогло / ei auttanut" means the current step failed,
+     so ANITA advances to the next useful diagnostic step.
+   - short replies stay attached to the active troubleshooting procedure.
+   - typo-tolerant slow-PC detection (e.g. "медленео").
+   - EN / RU / FI share the same state machine.
+
+   This layer runs BEFORE older generic knowledge/fallback handlers.
+   ===================================================================== */
+(function(){
+"use strict";
+
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+
+const V = window.ANITA_V12;
+const old = V.handle.bind(V);
+const S = V.state;
+
+S.procedure = S.procedure || null;
+S.procedureStep = S.procedureStep || null;
+S.awaitingResult = S.awaitingResult || false;
+S.lastProcedureAction = S.lastProcedureAction || null;
+
+const clean = s => (s||"")
+  .toLowerCase()
+  .replace(/[’`]/g,"'")
+  .replace(/[?!.,:;()[\]{}"“”]/g," ")
+  .replace(/\s+/g," ")
+  .trim();
+
+function langOf(text){
+  if(/[а-яё]/i.test(text)) return "ru";
+  if(/[äöå]/i.test(text) || /\b(tietokone|hidas|valmis|ei auttanut|muisti|levy)\b/i.test(text)) return "fi";
+  return S.language || "en";
+}
+function R(l,en,ru,fi){ return l==="ru"?ru:l==="fi"?fi:en; }
+
+function levenshtein(a,b){
+  if(a===b) return 0;
+  if(!a.length) return b.length;
+  if(!b.length) return a.length;
+  const v0=Array(b.length+1).fill(0).map((_,i)=>i);
+  const v1=Array(b.length+1).fill(0);
+  for(let i=0;i<a.length;i++){
+    v1[0]=i+1;
+    for(let j=0;j<b.length;j++){
+      const cost=a[i]===b[j]?0:1;
+      v1[j+1]=Math.min(v1[j]+1, v0[j+1]+1, v0[j]+cost);
+    }
+    for(let j=0;j<v0.length;j++) v0[j]=v1[j];
+  }
+  return v0[b.length];
+}
+
+function nearWord(word, target, maxDist){
+  word=String(word||"").toLowerCase();
+  target=String(target||"").toLowerCase();
+  if(Math.abs(word.length-target.length)>maxDist) return false;
+  return levenshtein(word,target)<=maxDist;
+}
+
+function slowIntent(text){
+  const t=clean(text);
+  const ws=t.split(/\s+/);
+
+  const hasDevice = /\b(pc|computer|laptop|machine|windows|компьютер|комп|пк|ноут|ноутбук|tietokone|kone|läppäri)\b/i.test(t);
+  if(!hasDevice) return false;
+
+  if(/\b(slow|slowly|sluggish|laggy|lagging)\b/i.test(t)) return true;
+  if(/\b(медленно|тормозит|тормозить|лагает|тупит)\b/i.test(t)) return true;
+  if(/\b(hidas|hitaasti|lagaa|hidastelee)\b/i.test(t)) return true;
+
+  // typo tolerance around common "slow" words
+  for(const w of ws){
+    if(w.length>=6 && (
+      nearWord(w,"медленно",2) ||
+      nearWord(w,"медленный",2) ||
+      nearWord(w,"hitaasti",2) ||
+      nearWord(w,"sluggish",2)
+    )) return true;
+  }
+  return false;
+}
+
+function isDone(text){
+  const t=clean(text);
+  return [
+    "done","did it","i did it","finished","ready","completed","ok done","okay done",
+    "сделал","сделала","сделано","готово","выполнил","выполнила","готов",
+    "valmis","tein sen","tehty","onnistui"
+  ].includes(t);
+}
+
+function isFailed(text){
+  const t=clean(text);
+  return [
+    "didn't help","didnt help","did not help","no change","nothing changed",
+    "still slow","still the same","same","same problem","not better","still not working",
+    "не помогло","не помог","ничего не изменилось","так же","всё так же","все так же",
+    "всё ещё медленно","все еще медленно","по прежнему медленно","по-прежнему медленно",
+    "ei auttanut","ei muuttunut","sama","edelleen hidas","vielä hidas"
+  ].includes(t);
+}
+
+function isSuccess(text){
+  const t=clean(text);
+  if(isFailed(text)) return false;
+  return [
+    "worked","it worked","it works","better","much better","faster","fixed","yes it helped",
+    "заработало","помогло","стало лучше","стало быстрее","теперь нормально","исправилось",
+    "toimii","auttoi","parempi","nopeampi","korjaantui"
+  ].includes(t);
+}
+
+function setSlowProcedure(l){
+  S.rootProblem="slow_pc";
+  S.issue="slow_pc";
+  S.currentSymptom="slow_pc";
+  S.procedure="slow_pc";
+  S.procedureStep="restart";
+  S.awaitingResult=false;
+  S.language=l;
+  return stepRestart(l);
+}
+
+function stepRestart(l){
+  S.procedureStep="restart";
+  S.lastProcedureAction="restart_pc";
+  S.awaitingResult=false;
+  S.lastInstruction="restart_pc";
+  const msg=R(l,
+`Let's troubleshoot the slow PC one step at a time.
+
+Step 1 — restart the computer:
+1. Save your open work.
+2. Click Start → Power → Restart.
+3. Wait until Windows fully starts again.
+
+When you are back, write “done”. I will give you the next check.`,
+`Давай разберём медленную работу ПК по одному шагу за раз.
+
+Шаг 1 — перезагрузи компьютер:
+1. Сохрани открытую работу.
+2. Пуск → Питание → Перезагрузка.
+3. Дождись полной загрузки Windows.
+
+Когда компьютер загрузится, напиши «сделал» или «готово». Я дам следующий шаг.`,
+`Tutkitaan hidasta tietokonetta yksi vaihe kerrallaan.
+
+Vaihe 1 — käynnistä tietokone uudelleen:
+1. Tallenna avoimet työt.
+2. Käynnistä → Virta → Käynnistä uudelleen.
+3. Odota, että Windows käynnistyy kokonaan.
+
+Kun olet takaisin, kirjoita “valmis”. Annan seuraavan tarkistuksen.`);
+  S.lastAnswer=msg;
+  return {type:"answer",text:msg};
+}
+
+function askRestartResult(l){
+  S.awaitingResult=true;
+  S.lastQuestion="restart_result";
+  const msg=R(l,
+    "Good. Is the computer noticeably faster now, or is it still slow?",
+    "Хорошо. Компьютер теперь заметно быстрее или всё ещё работает медленно?",
+    "Hyvä. Onko tietokone nyt selvästi nopeampi vai onko se edelleen hidas?");
+  S.lastAnswer=msg;
+  return {type:"answer",text:msg};
+}
+
+function stepTaskManager(l){
+  S.procedureStep="task_manager";
+  S.awaitingResult=false;
+  S.lastProcedureAction="check_task_manager";
+  S.lastInstruction="slow_task_manager";
+  const msg=R(l,
+`Restart did not solve it, so let's check what resource is under pressure.
+
+Step 2:
+1. Press Ctrl + Shift + Esc.
+2. In Task Manager look at CPU, Memory and Disk.
+3. Tell me which one is highest AND its percentage.
+
+Examples:
+“CPU 95%”
+“Memory 85%”
+“Disk 100%”`,
+`Перезагрузка не решила проблему, поэтому посмотрим, какой ресурс перегружен.
+
+Шаг 2:
+1. Нажми Ctrl + Shift + Esc.
+2. В Диспетчере задач посмотри CPU/ЦП, Память и Диск.
+3. Напиши, что загружено сильнее всего И какой процент.
+
+Например:
+«CPU 95%»
+«Память 85%»
+«Диск 100%»`,
+`Uudelleenkäynnistys ei ratkaissut ongelmaa, joten tarkistetaan mikä resurssi on kuormittunut.
+
+Vaihe 2:
+1. Paina Ctrl + Shift + Esc.
+2. Katso Tehtävienhallinnasta CPU, Memory ja Disk.
+3. Kerro mikä on korkein JA prosentti.
+
+Esimerkiksi:
+“CPU 95 %”
+“Memory 85 %”
+“Disk 100 %”`);
+  S.lastAnswer=msg;
+  S.lastQuestion="slow_resource_report";
+  return {type:"answer",text:msg};
+}
+
+function stepDiskFree(l){
+  S.procedureStep="disk_space";
+  S.awaitingResult=false;
+  S.lastProcedureAction="check_disk_space";
+  S.lastInstruction="check_disk_space";
+  const msg=R(l,
+`Let's check free space next.
+
+Step 3:
+1. Press Windows + E.
+2. Open “This PC”.
+3. Look at Local Disk (C:).
+4. Tell me how much free space is left.
+
+Example: “18 GB free of 237 GB”.`,
+`Теперь проверим свободное место.
+
+Шаг 3:
+1. Нажми Windows + E.
+2. Открой «Этот компьютер».
+3. Посмотри «Локальный диск (C:)».
+4. Напиши, сколько свободного места осталось.
+
+Например: «18 ГБ свободно из 237 ГБ».`,
+`Tarkistetaan seuraavaksi vapaa levytila.
+
+Vaihe 3:
+1. Paina Windows + E.
+2. Avaa “This PC”.
+3. Katso Local Disk (C:).
+4. Kerro paljonko vapaata tilaa on jäljellä.
+
+Esimerkiksi: “18 Gt vapaana 237 Gt:sta”.`);
+  S.lastAnswer=msg;
+  S.lastQuestion="disk_free_report";
+  return {type:"answer",text:msg};
+}
+
+function stepStartup(l){
+  S.procedureStep="startup";
+  S.awaitingResult=false;
+  S.lastProcedureAction="disable_startup";
+  S.lastInstruction="disable_startup";
+  const msg=R(l,
+`Let's reduce unnecessary startup load.
+
+Step 4:
+1. Press Ctrl + Shift + Esc.
+2. Open “Startup apps”.
+3. Look for apps you recognize and do not need immediately after Windows starts.
+4. Disable only those unnecessary apps — do not disable security software or drivers.
+5. Restart the PC.
+
+Then write “done”.`,
+`Уменьшим лишнюю нагрузку автозагрузки.
+
+Шаг 4:
+1. Нажми Ctrl + Shift + Esc.
+2. Открой «Автозагрузка приложений».
+3. Найди знакомые программы, которые не нужны сразу после запуска Windows.
+4. Отключи только ненужные программы — не отключай защитное ПО и драйверы.
+5. Перезагрузи ПК.
+
+После этого напиши «сделал» или «готово».`,
+`Vähennetään turhaa käynnistyskuormaa.
+
+Vaihe 4:
+1. Paina Ctrl + Shift + Esc.
+2. Avaa “Startup apps”.
+3. Etsi tunnistamiasi ohjelmia, joita et tarvitse heti Windowsin käynnistyessä.
+4. Poista käytöstä vain tarpeettomat ohjelmat — älä poista tietoturvaohjelmia tai ajureita.
+5. Käynnistä tietokone uudelleen.
+
+Kirjoita sitten “valmis”.`);
+  S.lastAnswer=msg;
+  return {type:"answer",text:msg};
+}
+
+function stepDefender(l){
+  S.procedureStep="defender";
+  S.awaitingResult=false;
+  S.lastProcedureAction="defender_scan";
+  S.lastInstruction="defender_scan";
+  const msg=R(l,
+`One more safe check:
+
+Step 5:
+1. Open Windows Security.
+2. Open Virus & threat protection.
+3. Run Quick scan.
+4. Let it finish.
+
+Then tell me whether Defender found anything.`,
+`Ещё одна безопасная проверка:
+
+Шаг 5:
+1. Открой «Безопасность Windows».
+2. «Защита от вирусов и угроз».
+3. Запусти «Быструю проверку».
+4. Дождись завершения.
+
+После этого напиши, нашёл ли Defender что-нибудь.`,
+`Vielä yksi turvallinen tarkistus:
+
+Vaihe 5:
+1. Avaa Windows Security.
+2. Avaa Virus & threat protection.
+3. Suorita Quick scan.
+4. Odota tarkistuksen valmistumista.
+
+Kerro sitten löytyikö Defenderissä mitään.`);
+  S.lastAnswer=msg;
+  S.lastQuestion="defender_result";
+  return {type:"answer",text:msg};
+}
+
+function escalate(l){
+  S.procedureStep="escalate";
+  S.awaitingResult=false;
+  const msg=R(l,
+`We've gone through the basic safe checks and the PC is still slow.
+
+At this point I can keep diagnosing with you, but a real IT specialist may be faster — especially if the problem is caused by hardware, storage health, overheating, or something that needs hands-on testing.
+
+You can press “Contact a specialist” below to see the available IT-support contacts.`,
+`Мы прошли базовые безопасные проверки, а компьютер всё ещё работает медленно.
+
+Я могу продолжить диагностику, но на этом этапе реальный IT‑специалист может решить проблему быстрее — особенно если причина в железе, состоянии накопителя, перегреве или требуется физическая проверка.
+
+Нажми «Contact a specialist» ниже, чтобы открыть контакты IT‑поддержки.`,
+`Olemme käyneet läpi turvalliset perustarkistukset ja tietokone on edelleen hidas.
+
+Voin jatkaa vianmääritystä, mutta tässä vaiheessa oikea IT-asiantuntija voi olla nopeampi ratkaisu — varsinkin jos syy liittyy laitteistoon, levyn kuntoon, ylikuumenemiseen tai vaatii fyysistä tarkistusta.
+
+Paina alla “Contact a specialist” nähdäksesi IT-tukikontaktit.`);
+  S.lastAnswer=msg;
+  try{
+    if(typeof showHuman==="function") setTimeout(()=>showHuman(l),100);
+  }catch(e){}
+  return {type:"answer",text:msg};
+}
+
+function handleProcedure(text,l){
+  if(S.procedure!=="slow_pc") return null;
+
+  // Current instruction completed.
+  if(isDone(text)){
+    if(S.procedureStep==="restart") return askRestartResult(l);
+
+    if(S.procedureStep==="startup"){
+      S.awaitingResult=true;
+      S.lastQuestion="startup_result";
+      return {type:"answer",text:R(l,
+        "Good. After the restart, is the PC noticeably faster?",
+        "Хорошо. После перезагрузки компьютер стал заметно быстрее?",
+        "Hyvä. Onko tietokone uudelleenkäynnistyksen jälkeen selvästi nopeampi?")};
+    }
+
+    // For observational steps, "done" alone is not enough; ask for the result.
+    if(S.procedureStep==="task_manager"){
+      return {type:"answer",text:R(l,
+        "Good. What did Task Manager show as the highest: CPU, Memory, or Disk? Please include the percentage.",
+        "Хорошо. Что в Диспетчере задач загружено сильнее всего: CPU, Память или Диск? Напиши также процент.",
+        "Hyvä. Mikä oli Tehtävienhallinnassa korkein: CPU, Memory vai Disk? Kerro myös prosentti.")};
+    }
+
+    if(S.procedureStep==="disk_space"){
+      return {type:"answer",text:R(l,
+        "Good. How much free space does drive C: show?",
+        "Хорошо. Сколько свободного места показывает диск C:?",
+        "Hyvä. Paljonko C:-asemalla näkyy vapaata tilaa?")};
+    }
+
+    if(S.procedureStep==="defender"){
+      return {type:"answer",text:R(l,
+        "Good. Did Windows Security find any threats?",
+        "Хорошо. Windows Security нашёл какие-нибудь угрозы?",
+        "Hyvä. Löysikö Windows Security uhkia?")};
+    }
+  }
+
+  // Explicit failure advances the procedure instead of losing context.
+  if(isFailed(text)){
+    if(S.procedureStep==="restart" || S.lastQuestion==="restart_result")
+      return stepTaskManager(l);
+
+    if(S.procedureStep==="startup" || S.lastQuestion==="startup_result")
+      return stepDefender(l);
+
+    if(S.procedureStep==="defender")
+      return escalate(l);
+
+    // If user says "didn't help" after a measurement, do not repeat it.
+    if(S.procedureStep==="task_manager")
+      return stepDiskFree(l);
+
+    if(S.procedureStep==="disk_space")
+      return stepStartup(l);
+  }
+
+  // Genuine success ends the procedure.
+  if(isSuccess(text)){
+    S.step="solved";
+    S.lastSolvedIssue="slow_pc";
+    S.procedure=null;
+    S.procedureStep=null;
+    const msg=R(l,
+      "Great! That means this step helped and the PC is behaving better 😊",
+      "Отлично! Значит этот шаг помог и компьютер теперь работает лучше 😊",
+      "Hienoa! Tämä vaihe auttoi ja tietokone toimii nyt paremmin 😊");
+    S.lastAnswer=msg;
+    return {type:"answer",text:msg};
+  }
+
+  return null;
+}
+
+V.handle=function(text,l){
+  const language=langOf(text);
+
+  // Strong typo-tolerant slow-PC entry point.
+  if(slowIntent(text) && S.procedure!=="slow_pc"){
+    return setSlowProcedure(language);
+  }
+
+  // Active procedure ALWAYS gets first chance at short result words.
+  const guided=handleProcedure(text,language);
+  if(guided) return guided;
+
+  return old(text,l);
+};
+
+window.ANITA_V13={
+  version:"13.0",
+  slowIntent,
+  isDone,
+  isFailed,
+  isSuccess
+};
+
+console.log("[ANITA v13] Guided Procedure Memory loaded");
+})();
+
+/* ================= ANITA v14 LEARNING + CASE MEMORY ENGINE =================
+   Controlled self-learning foundation for ANITA.
+
+   What it does:
+   - remembers successful troubleshooting cases in localStorage
+   - groups repeated successful solutions by issue + action
+   - tracks success/failure counts and confidence
+   - NEVER rewrites ANITA's source code by itself
+   - learned solutions stay "pending" until approved
+   - approved solutions may be shown as an extra hint in similar future cases
+   - supports anonymous visitor memory
+   - can export learning data as JSON
+   - can optionally send learning events to a future Alex Node backend
+
+   This is intentionally moderated learning, not unsafe automatic code mutation.
+   =========================================================================== */
+(function(){
+"use strict";
+
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+
+const V = window.ANITA_V12;
+const old = V.handle.bind(V);
+const S = V.state;
+
+const STORE_KEY = "anita_learning_cases_v14";
+const META_KEY  = "anita_learning_meta_v14";
+
+function clean(s){
+  return (s||"")
+    .toLowerCase()
+    .replace(/[’`]/g,"'")
+    .replace(/[?!.,:;()[\]{}"“”]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function languageOf(text){
+  if(/[а-яё]/i.test(text)) return "ru";
+  if(/[äöå]/i.test(text) || /\b(tietokone|toimii|kiitos|hidas|muisti|selain)\b/i.test(text)) return "fi";
+  return S.language || "en";
+}
+
+function R(l,en,ru,fi){
+  return l==="ru" ? ru : l==="fi" ? fi : en;
+}
+
+function getVisitorId(){
+  try{
+    return localStorage.getItem("anita_user_id") ||
+           (window.ANITA_VISITOR && window.ANITA_VISITOR.id) ||
+           "anonymous";
+  }catch(e){
+    return "anonymous";
+  }
+}
+
+function readCases(){
+  try{
+    const v = JSON.parse(localStorage.getItem(STORE_KEY) || "[]");
+    return Array.isArray(v) ? v : [];
+  }catch(e){
+    return [];
+  }
+}
+
+function writeCases(cases){
+  try{
+    localStorage.setItem(STORE_KEY, JSON.stringify(cases.slice(-500)));
+  }catch(e){}
+}
+
+function readMeta(){
+  try{
+    return JSON.parse(localStorage.getItem(META_KEY) || "{}");
+  }catch(e){
+    return {};
+  }
+}
+
+function writeMeta(meta){
+  try{
+    localStorage.setItem(META_KEY, JSON.stringify(meta));
+  }catch(e){}
+}
+
+function now(){ return new Date().toISOString(); }
+
+function slug(s){
+  return clean(s).replace(/[^a-zа-яёäöå0-9]+/gi,"_").replace(/^_+|_+$/g,"").slice(0,80);
+}
+
+function normalizeIssue(issue){
+  const x = clean(issue || "");
+  if(!x) return "unknown";
+  if(x.includes("slow")) return "slow_pc";
+  if(x.includes("browser_memory")) return "browser_memory";
+  if(x.includes("browser")) return "browser";
+  if(x.includes("internet")) return "internet";
+  if(x.includes("wifi")) return "wifi";
+  if(x.includes("dns")) return "dns";
+  if(x.includes("printer")) return "printer";
+  if(x.includes("sound")) return "sound";
+  if(x.includes("display") || x.includes("monitor")) return "display";
+  if(x.includes("bluetooth")) return "bluetooth";
+  if(x.includes("malware") || x.includes("virus")) return "malware";
+  if(x.includes("update")) return "windows_update";
+  return slug(x) || "unknown";
+}
+
+function normalizeAction(action){
+  return slug(action || "unknown_action") || "unknown_action";
+}
+
+function currentContextSnapshot(){
+  return {
+    issue: normalizeIssue(S.lastSolvedIssue || S.rootProblem || S.issue || S.currentSymptom),
+    action: normalizeAction(S.lastProcedureAction || S.lastInstruction || S.step),
+    symptom: clean(S.currentSymptom || ""),
+    finding: S.currentFinding || null,
+    facts: S.facts ? JSON.parse(JSON.stringify(S.facts)) : {},
+    language: S.language || "en"
+  };
+}
+
+function isNegative(text){
+  const t=clean(text);
+  const list=[
+    "didn't work","didnt work","doesn't work","doesnt work","still not working",
+    "didn't help","didnt help","not fixed","same problem","nothing changed",
+    "не помогло","не работает","всё ещё не работает","все еще не работает",
+    "ничего не изменилось","та же проблема","снова не работает",
+    "ei auttanut","ei toimi","ei vieläkään toimi","sama ongelma","mikään ei muuttunut"
+  ];
+  return list.some(x=>t.includes(clean(x)));
+}
+
+function isPositive(text){
+  if(isNegative(text)) return false;
+  const t=clean(text);
+  const list=[
+    "it worked","it works","works now","working now","that worked","fixed",
+    "fixed it","problem solved","all good","everything works","better now",
+    "much better","faster now","that helped","thanks that helped",
+    "заработало","работает","теперь работает","помогло","стало лучше",
+    "стало быстрее","проблема решена","всё хорошо","все хорошо",
+    "toimii","nyt toimii","auttoi","parempi","nopeampi","ongelma ratkesi","kaikki toimii"
+  ];
+  if(list.some(x=>t.includes(clean(x)))) return true;
+
+  return /\b(worked|works|fixed|solved|helped)\b/i.test(t) ||
+         /\b(заработал\w*|помогл\w*|решен\w*|исправил\w*)\b/i.test(t) ||
+         /\b(toimii|onnistui|auttoi|ratkesi|korjaantui)\b/i.test(t);
+}
+
+function fingerprint(ctx){
+  return [ctx.issue, ctx.action].join("|");
+}
+
+function confidenceOf(c){
+  const s = Number(c.successes||0);
+  const f = Number(c.failures||0);
+  if(s+f===0) return 0;
+  return s/(s+f);
+}
+
+function upsertCase(ctx, success){
+  if(!ctx || !ctx.issue || ctx.issue==="unknown") return null;
+  if(!ctx.action || ctx.action==="unknown_action" || ctx.action==="solved") return null;
+
+  const cases=readCases();
+  const key=fingerprint(ctx);
+  let c=cases.find(x=>x.key===key);
+
+  if(!c){
+    c={
+      id:"case_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,8),
+      key,
+      issue:ctx.issue,
+      action:ctx.action,
+      symptom:ctx.symptom||"",
+      successes:0,
+      failures:0,
+      confidence:0,
+      status:"pending",
+      recommendedForApproval:false,
+      firstSeen:now(),
+      lastSeen:now(),
+      sampleFacts:ctx.facts||{},
+      visitorIds:[]
+    };
+    cases.push(c);
+  }
+
+  if(success) c.successes=(c.successes||0)+1;
+  else c.failures=(c.failures||0)+1;
+
+  c.lastSeen=now();
+  c.confidence=Number(confidenceOf(c).toFixed(3));
+  c.sampleFacts=ctx.facts||c.sampleFacts||{};
+
+  const vid=getVisitorId();
+  c.visitorIds=Array.isArray(c.visitorIds)?c.visitorIds:[];
+  if(vid && !c.visitorIds.includes(vid)){
+    c.visitorIds.push(vid);
+    if(c.visitorIds.length>50) c.visitorIds=c.visitorIds.slice(-50);
+  }
+
+  // A case becomes a strong moderation candidate after repeated success.
+  c.recommendedForApproval =
+    c.status==="pending" &&
+    c.successes>=3 &&
+    c.confidence>=0.75;
+
+  writeCases(cases);
+  sendLearningEvent(success ? "learning_success" : "learning_failure", c);
+
+  return c;
+}
+
+function sendLearningEvent(type,caseData){
+  const endpoint =
+    window.ANITA_LEARNING_ENDPOINT ||
+    window.ANITA_ANALYTICS_ENDPOINT ||
+    null;
+
+  if(!endpoint) return;
+
+  try{
+    fetch(endpoint,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        type,
+        visitorId:getVisitorId(),
+        case:{
+          id:caseData.id,
+          key:caseData.key,
+          issue:caseData.issue,
+          action:caseData.action,
+          successes:caseData.successes,
+          failures:caseData.failures,
+          confidence:caseData.confidence,
+          status:caseData.status
+        },
+        at:now(),
+        page:location.href
+      }),
+      keepalive:true
+    }).catch(()=>{});
+  }catch(e){}
+}
+
+function bestApprovedCase(issue){
+  const cases=readCases()
+    .filter(c=>c.status==="approved" && c.issue===normalizeIssue(issue))
+    .filter(c=>(c.successes||0)>=2 && (c.confidence||0)>=0.70)
+    .sort((a,b)=>{
+      if((b.confidence||0)!==(a.confidence||0)) return (b.confidence||0)-(a.confidence||0);
+      return (b.successes||0)-(a.successes||0);
+    });
+  return cases[0]||null;
+}
+
+const ACTION_LABELS={
+  restart_pc:{
+    en:"restart the computer",
+    ru:"перезагрузить компьютер",
+    fi:"käynnistää tietokone uudelleen"
+  },
+  slow_task_manager:{
+    en:"check Task Manager for the highest CPU / Memory / Disk usage",
+    ru:"проверить в Диспетчере задач CPU / Память / Диск",
+    fi:"tarkistaa Tehtävienhallinnasta CPU / Memory / Disk"
+  },
+  check_task_manager:{
+    en:"check Task Manager",
+    ru:"проверить Диспетчер задач",
+    fi:"tarkistaa Tehtävienhallinta"
+  },
+  check_disk_space:{
+    en:"check free space on drive C:",
+    ru:"проверить свободное место на диске C:",
+    fi:"tarkistaa C:-aseman vapaa tila"
+  },
+  disable_startup:{
+    en:"reduce unnecessary startup apps",
+    ru:"отключить ненужные программы из автозагрузки",
+    fi:"vähentää tarpeettomia käynnistysohjelmia"
+  },
+  defender_scan:{
+    en:"run a Windows Security scan",
+    ru:"выполнить проверку Windows Security",
+    fi:"suorittaa Windows Security -tarkistus"
+  },
+  dns_flush:{
+    en:"flush the DNS cache",
+    ru:"очистить DNS-кэш",
+    fi:"tyhjentää DNS-välimuisti"
+  },
+  browser_cache:{
+    en:"clear browser cache",
+    ru:"очистить кэш браузера",
+    fi:"tyhjentää selaimen välimuisti"
+  },
+  chrome_task_manager:{
+    en:"inspect Chrome Task Manager",
+    ru:"проверить Диспетчер задач Chrome",
+    fi:"tarkistaa Chromen Tehtävienhallinta"
+  }
+};
+
+function actionLabel(action,l){
+  const x=ACTION_LABELS[action];
+  if(!x) return action.replace(/_/g," ");
+  return x[l]||x.en;
+}
+
+function maybeAppendLearnedHint(result,text){
+  if(!result || !result.text || typeof result.text!=="string") return result;
+
+  const issue=normalizeIssue(S.rootProblem || S.issue || S.currentSymptom);
+  if(!issue || issue==="unknown") return result;
+
+  const learned=bestApprovedCase(issue);
+  if(!learned) return result;
+
+  // Do not append repeatedly during the same issue.
+  if(S.learnedHintShownFor===learned.id) return result;
+  S.learnedHintShownFor=learned.id;
+
+  const l=languageOf(text);
+  const hint=R(l,
+    `\n\nANITA learned note: in previously approved successful cases with a similar issue, “${actionLabel(learned.action,l)}” helped. This is a useful clue, not a guaranteed diagnosis.`,
+    `\n\nЗаметка из опыта ANITA: в ранее подтверждённых успешных случаях с похожей проблемой помогало действие «${actionLabel(learned.action,l)}». Это полезная подсказка, но не гарантированный диагноз.`,
+    `\n\nANITAn oppima huomio: aiemmin hyväksytyissä onnistuneissa samankaltaisissa tapauksissa “${actionLabel(learned.action,l)}” auttoi. Tämä on hyödyllinen vihje, ei varma diagnoosi.`
+  );
+
+  return Object.assign({},result,{text:result.text+hint});
+}
+
+function approveCase(id){
+  const cases=readCases();
+  const c=cases.find(x=>x.id===id);
+  if(!c) return false;
+  c.status="approved";
+  c.approvedAt=now();
+  c.recommendedForApproval=false;
+  writeCases(cases);
+  sendLearningEvent("learning_approved",c);
+  return true;
+}
+
+function rejectCase(id){
+  const cases=readCases();
+  const c=cases.find(x=>x.id===id);
+  if(!c) return false;
+  c.status="rejected";
+  c.rejectedAt=now();
+  c.recommendedForApproval=false;
+  writeCases(cases);
+  sendLearningEvent("learning_rejected",c);
+  return true;
+}
+
+function pendingCases(){
+  return readCases()
+    .filter(c=>c.status==="pending")
+    .sort((a,b)=>(b.successes||0)-(a.successes||0));
+}
+
+function exportData(){
+  return {
+    version:"14.0",
+    exportedAt:now(),
+    visitorId:getVisitorId(),
+    cases:readCases(),
+    meta:readMeta()
+  };
+}
+
+function downloadExport(){
+  try{
+    const data=JSON.stringify(exportData(),null,2);
+    const blob=new Blob([data],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    a.download="anita-learning-export-"+Date.now()+".json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),500);
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+V.handle=function(text,l){
+  const snapshot=currentContextSnapshot();
+  const positive=isPositive(text);
+  const negative=isNegative(text);
+
+  const result=old(text,l);
+
+  // Learn only from explicit user outcomes.
+  if(positive){
+    upsertCase(snapshot,true);
+  } else if(negative){
+    upsertCase(snapshot,false);
+  }
+
+  // Approved learned experience can supplement, but never replace,
+  // the normal deterministic troubleshooting response.
+  return maybeAppendLearnedHint(result,text);
+};
+
+window.ANITA_LEARNING={
+  version:"14.0",
+  getCases:readCases,
+  getPending:pendingCases,
+  getApproved:function(){return readCases().filter(c=>c.status==="approved");},
+  approve:approveCase,
+  reject:rejectCase,
+  export:exportData,
+  downloadExport,
+  clear:function(){
+    try{
+      localStorage.removeItem(STORE_KEY);
+      localStorage.removeItem(META_KEY);
+      return true;
+    }catch(e){ return false; }
+  }
+};
+
+window.ANITA_V14={version:"14.0"};
+
+console.log("[ANITA v14] Learning + Case Memory Engine loaded");
+})();
