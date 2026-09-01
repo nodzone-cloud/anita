@@ -5090,3 +5090,334 @@ V.handle=function(text,l){
 window.ANITA_V12_6={version:"12.6"};
 console.log("[ANITA v12.6] Menu Memory Fix loaded");
 })();
+
+/* ================= ANITA v12.7 CONTINUITY + ESCALATION ENGINE =================
+   Fixes:
+   - "i see memory 85%" continues the active slow-PC diagnosis.
+   - "1 / 2 / 3" can answer CPU / Memory / Disk when ANITA asked which is highest.
+   - "what to do?" means "what do I do about THIS current problem?"
+   - "can you help with this?" keeps the same context instead of generic fallback.
+   - after repeated failed troubleshooting, ANITA offers real IT support and
+     can open the existing Contact a specialist cards via showHuman().
+   - EN / RU / FI share the same state.
+   ============================================================================== */
+(function(){
+"use strict";
+
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+
+const V=window.ANITA_V12;
+const old=V.handle.bind(V);
+const S=V.state;
+
+S.supportFailures = S.supportFailures || 0;
+S.currentSymptom = S.currentSymptom || null;
+S.currentFinding = S.currentFinding || null;
+S.awaitingResourcePercent = S.awaitingResourcePercent || null;
+
+const clean=s=>(s||"").toLowerCase()
+ .replace(/[’`]/g,"'")
+ .replace(/[?!.,:;()[\]{}"“”]/g," ")
+ .replace(/\s+/g," ").trim();
+
+function L(text){
+ if(/[а-яё]/i.test(text)) return "ru";
+ if(/[äöå]/i.test(text) || /\b(muisti|levy|prosessori|mitä teen|voitko auttaa|tietokone)\b/i.test(text)) return "fi";
+ return S.language || "en";
+}
+function R(l,en,ru,fi){return l==="ru"?ru:l==="fi"?fi:en;}
+
+function pct(text){
+ const m=String(text||"").match(/\b(\d{1,3})\s*%/);
+ if(!m) return null;
+ const n=Number(m[1]);
+ return n>=0 && n<=100 ? n : null;
+}
+
+function resource(text){
+ const t=clean(text);
+ if(t==="1" || /\b(cpu|processor|цп|процессор|prosessori)\b/i.test(t)) return "cpu";
+ if(t==="2" || /\b(memory|ram|память|озу|muisti)\b/i.test(t)) return "memory";
+ if(t==="3" || /\b(disk|drive|диск|levy)\b/i.test(t)) return "disk";
+ return null;
+}
+
+function isSlowContext(){
+ return S.rootProblem==="slow_pc" || S.issue==="slow_pc" ||
+        S.currentSymptom==="slow_pc" ||
+        S.step==="slow_task_manager" ||
+        S.step==="slow_resource_percent" ||
+        S.step==="slow_memory_investigation";
+}
+
+function looksLikeSlowStart(text){
+ const t=clean(text);
+ return /\b(pc|computer|laptop|machine|windows|компьютер|комп|пк|ноут|tietokone|kone|läppäri)\b/i.test(t)
+     && (/\b(slow|slowly|laggy|sluggish)\b/i.test(t) ||
+         /\b(медленн\w*|тормоз\w*|лага\w*|туп\w*)\b/i.test(t) ||
+         /\b(hidas|hitaasti|lagaa)\b/i.test(t));
+}
+
+function looksLikeMemoryFinding(text){
+ const t=clean(text);
+ return /\b(memory|ram|память|озу|muisti)\b/i.test(t) && pct(text)!==null;
+}
+
+function adviceQuestion(text){
+ const t=clean(text);
+ return [
+   "what to do","what do i do","what should i do","what can i do","how to fix it",
+   "how do i fix it","how can i fix it","what now","what next",
+   "что делать","что мне делать","как исправить","как это исправить","что дальше",
+   "mitä teen","mitä pitäisi tehdä","miten korjaan","mitä seuraavaksi"
+ ].includes(t);
+}
+
+function canYouHelp(text){
+ const t=clean(text);
+ return [
+   "can you help with this","can you help me with this","can you help","help me with this",
+   "ты можешь помочь","можешь помочь с этим","поможешь с этим","можешь помочь",
+   "voitko auttaa","voitko auttaa tässä","autatko tässä"
+ ].includes(t);
+}
+
+function wantsHuman(text){
+ const t=clean(text);
+ return /\b(contact|human|specialist|technician|it support|real person|service)\b/i.test(t) ||
+        /\b(специалист|мастер|человек|техподдержк|сервис|айти поддержк)\b/i.test(t) ||
+        /\b(asiantuntija|ihminen|it tuki|it-tuki|huolto|tuki)\b/i.test(t);
+}
+
+function showHumanSoon(l){
+ try{
+   if(typeof showHuman==="function") setTimeout(()=>showHuman(l),0);
+ }catch(e){}
+}
+
+function setSlow(){
+ S.rootProblem="slow_pc";
+ S.issue="slow_pc";
+ S.currentSymptom="slow_pc";
+}
+
+function askPercent(res,l){
+ setSlow();
+ S.awaitingResourcePercent=res;
+ S.step="slow_resource_percent";
+ S.facts=S.facts||{};
+ S.facts.highResource=res;
+ const name=res==="cpu" ? R(l,"CPU","CPU/процессор","CPU/prosessori")
+   : res==="memory" ? R(l,"Memory","Память","Memory/muisti")
+   : R(l,"Disk","Диск","Disk/levy");
+
+ const msg=R(l,
+ `Okay — ${name} is the highest. What percentage does it show? For example: “85%”.`,
+ `Хорошо — сильнее всего загружен ${name}. Какой процент он показывает? Например: «85%».`,
+ `Selvä — ${name} on korkein. Kuinka monta prosenttia se näyttää? Esimerkiksi “85 %”.`);
+ S.lastQuestion="slow_resource_percent";
+ S.lastAnswer=msg;
+ return {type:"answer",text:msg};
+}
+
+function memory85Answer(p,l){
+ setSlow();
+ S.currentFinding={type:"memory_percent",value:p};
+ S.facts=S.facts||{};
+ S.facts.totalMemoryPercent=p;
+ S.step="slow_memory_investigation";
+ S.lastInstruction="slow_memory_investigation";
+ S.lastQuestion="slow_memory_top_process";
+ S.supportFailures=0;
+
+ const severity = p>=90 ? R(l,
+   "That is very high memory usage.",
+   "Это очень высокая загрузка памяти.",
+   "Muistinkäyttö on erittäin korkea.")
+ : p>=80 ? R(l,
+   "That is high enough to contribute to the slowdown.",
+   "Это достаточно высокая загрузка памяти, чтобы она могла вызывать тормоза.",
+   "Se on riittävän korkea voidakseen hidastaa konetta.")
+ : R(l,
+   "That is elevated, but we still need to see what is using it.",
+   "Память заметно загружена, но нужно увидеть, что именно её использует.",
+   "Muistinkäyttö on koholla, mutta meidän pitää nähdä mikä sitä käyttää.");
+
+ const msg=R(l,
+`Memory is at ${p}%. ${severity}
+
+This does NOT automatically mean the RAM itself is faulty. It usually means Windows and running programs are using most of the available memory.
+
+Let's find the cause:
+
+1. Stay in Windows Task Manager.
+2. Click the “Memory” column so the biggest users are at the top.
+3. Tell me the top 3 processes and roughly how much memory each uses.
+   Example: Chrome 1000 MB, Discord 450 MB, Antimalware Service 300 MB.
+4. Also tell me how much RAM the PC has in total: 4 GB, 8 GB, 16 GB, etc.
+
+Then I can tell you what looks normal, what can be closed/disabled safely, and whether you may actually need more RAM.`,
+`Память загружена на ${p}%. ${severity}
+
+Это НЕ означает автоматически, что сама RAM неисправна. Обычно это значит, что Windows и запущенные программы используют большую часть доступной оперативной памяти.
+
+Давай найдём причину:
+
+1. Останься в Диспетчере задач Windows.
+2. Нажми столбец «Память», чтобы самые тяжёлые процессы оказались сверху.
+3. Напиши 3 верхних процесса и примерно сколько памяти использует каждый.
+   Например: Chrome 1000 МБ, Discord 450 МБ, Antimalware Service 300 МБ.
+4. Также напиши, сколько RAM установлено всего: 4 ГБ, 8 ГБ, 16 ГБ и т. д.
+
+После этого я смогу сказать, что выглядит нормально, что можно безопасно закрыть/отключить и действительно ли может понадобиться больше RAM.`,
+`Muistia käytetään ${p} %. ${severity}
+
+Tämä EI automaattisesti tarkoita, että RAM olisi viallinen. Yleensä Windows ja käynnissä olevat ohjelmat käyttävät suurimman osan käytettävissä olevasta muistista.
+
+Selvitetään syy:
+
+1. Pysy Windowsin Tehtävienhallinnassa.
+2. Napsauta “Memory”-saraketta, jotta suurimmat käyttäjät ovat ylimpänä.
+3. Kerro kolme ylintä prosessia ja suunnilleen paljonko muistia kukin käyttää.
+   Esimerkiksi: Chrome 1000 Mt, Discord 450 Mt, Antimalware Service 300 Mt.
+4. Kerro myös koneen RAM-muistin kokonaismäärä: 4 Gt, 8 Gt, 16 Gt jne.
+
+Sen jälkeen voin sanoa, mikä näyttää normaalilta, mitä voi turvallisesti sulkea/poistaa käytöstä ja tarvitaanko mahdollisesti lisää RAM-muistia.`);
+ S.lastAnswer=msg;
+ return {type:"answer",text:msg};
+}
+
+function currentAdvice(l){
+ if(isSlowContext() && S.facts && S.facts.totalMemoryPercent!=null){
+   const p=S.facts.totalMemoryPercent;
+   return memory85Answer(p,l);
+ }
+ if(isSlowContext()){
+   const msg=R(l,
+`Yes. We are still troubleshooting the slow PC.
+
+If Task Manager is open, tell me which is highest: CPU, Memory, or Disk — and the percentage. I will use that result to choose the next step.`,
+`Да. Мы всё ещё разбираемся, почему компьютер тормозит.
+
+Если Диспетчер задач открыт, напиши, что загружено сильнее всего: CPU, Память или Диск — и процент. По этому результату я выберу следующий шаг.`,
+`Kyllä. Selvitämme edelleen miksi tietokone on hidas.
+
+Jos Tehtävienhallinta on auki, kerro mikä on korkein: CPU, Memory vai Disk — sekä prosentti. Valitsen seuraavan vaiheen sen perusteella.`);
+   S.lastAnswer=msg;
+   return {type:"answer",text:msg};
+ }
+ return null;
+}
+
+function helpCurrent(l){
+ if(isSlowContext()){
+   const msg=R(l,
+`Yes — I can continue with this exact problem. We are troubleshooting your slow PC, not starting a new topic.
+
+${S.facts && S.facts.totalMemoryPercent!=null
+? `You reported Memory at ${S.facts.totalMemoryPercent}%. The next useful step is to sort Task Manager by Memory and send me the top 3 processes plus your total installed RAM.`
+: `Tell me the Task Manager result: CPU, Memory or Disk, and its percentage.`}
+
+If the steps become too technical, do not solve it, or you prefer a person to check the computer, press “Contact a specialist” below and I can show real IT-support contacts.`,
+`Да — я могу продолжить именно эту проблему. Мы всё ещё диагностируем медленную работу твоего ПК, а не начинаем новую тему.
+
+${S.facts && S.facts.totalMemoryPercent!=null
+? `Ты сообщил, что Память загружена на ${S.facts.totalMemoryPercent}%. Следующий полезный шаг — отсортировать Диспетчер задач по Памяти и прислать 3 верхних процесса плюс общий объём установленной RAM.`
+: `Напиши результат Диспетчера задач: CPU, Память или Диск и процент.`}
+
+Если действия окажутся слишком сложными, не помогут или ты хочешь, чтобы компьютер проверил человек, нажми кнопку «Contact a specialist» ниже — я покажу контакты реальных IT‑специалистов.`,
+`Kyllä — voin jatkaa juuri tämän ongelman kanssa. Selvitämme edelleen hidasta tietokonetta emmekä aloita uutta aihetta.
+
+${S.facts && S.facts.totalMemoryPercent!=null
+? `Kerroit Memory-käytön olevan ${S.facts.totalMemoryPercent} %. Seuraava hyödyllinen vaihe on lajitella Tehtävienhallinta Memory-sarakkeen mukaan ja kertoa kolme ylintä prosessia sekä RAM-muistin kokonaismäärä.`
+: `Kerro Tehtävienhallinnan tulos: CPU, Memory tai Disk ja prosentti.`}
+
+Jos vaiheet ovat liian teknisiä, eivät auta tai haluat ihmisen tarkistamaan koneen, paina alla olevaa “Contact a specialist” -painiketta, niin näytän oikeat IT-tukikontaktit.`);
+   S.lastAnswer=msg;
+   return {type:"answer",text:msg};
+ }
+ return null;
+}
+
+function escalation(l){
+ const msg=R(l,
+`I can keep helping, but at this point a real IT specialist is also a good option — especially if the PC remains slow after the checks or you do not want to change settings yourself.
+
+Press “Contact a specialist” below. I’ll show the available IT-support contacts.`,
+`Я могу продолжить помогать, но на этом этапе реальный IT‑специалист тоже будет хорошим вариантом — особенно если ПК продолжает тормозить после проверок или ты не хочешь менять настройки самостоятельно.
+
+Нажми «Contact a specialist» ниже. Я покажу доступные контакты IT‑поддержки.`,
+`Voin jatkaa auttamista, mutta tässä vaiheessa oikea IT-asiantuntija on myös hyvä vaihtoehto — etenkin jos kone on edelleen hidas tarkistusten jälkeen tai et halua muuttaa asetuksia itse.
+
+Paina alla “Contact a specialist”. Näytän saatavilla olevat IT-tukikontaktit.`);
+ S.lastAnswer=msg;
+ showHumanSoon(l);
+ return {type:"answer",text:msg};
+}
+
+V.handle=function(text,l){
+ const language=L(text);
+ const t=clean(text);
+
+ if(looksLikeSlowStart(text)){
+   S.rootProblem="slow_pc";
+   S.currentSymptom="slow_pc";
+ }
+
+ // Explicit request for a human / specialist.
+ if(wantsHuman(text)) return escalation(language);
+
+ // "1 / 2 / 3" after the slow-PC Task Manager question.
+ if(isSlowContext() && S.step==="slow_task_manager"){
+   const r=resource(text);
+   if(r) return askPercent(r,language);
+ }
+
+ // Concrete "Memory 85%" / "I see memory 85%" must be diagnostic evidence,
+ // not a dictionary request for the definition of RAM.
+ if(isSlowContext() && looksLikeMemoryFinding(text)){
+   return memory85Answer(pct(text),language);
+ }
+
+ // If ANITA already knows which resource and user replies only with "85%".
+ if(isSlowContext() && S.awaitingResourcePercent && pct(text)!==null){
+   const r=S.awaitingResourcePercent;
+   S.awaitingResourcePercent=null;
+   if(r==="memory") return memory85Answer(pct(text),language);
+   // Let existing detailed CPU/Disk branches handle richer replies later.
+   S.facts=S.facts||{};
+   S.facts.highResource=r;
+   S.facts.highResourcePercent=pct(text);
+   const msg=R(language,
+     `${r.toUpperCase()} is at ${pct(text)}%. Tell me which process is at the top when you sort Task Manager by ${r==="cpu"?"CPU":"Disk"}.`,
+     `${r==="cpu"?"CPU":"Диск"} загружен на ${pct(text)}%. Отсортируй Диспетчер задач по ${r==="cpu"?"CPU":"Диску"} и напиши, какой процесс находится сверху.`,
+     `${r==="cpu"?"CPU":"Disk"} on ${pct(text)} %. Lajittele Tehtävienhallinta sen mukaan ja kerro mikä prosessi on ylimpänä.`);
+   S.lastAnswer=msg;
+   return {type:"answer",text:msg};
+ }
+
+ // "What to do?" means current-context advice.
+ if(adviceQuestion(text)){
+   const r=currentAdvice(language);
+   if(r) return r;
+ }
+
+ // "Can you help with this?" must preserve the current issue.
+ if(canYouHelp(text)){
+   const r=helpCurrent(language);
+   if(r) return r;
+ }
+
+ // Count explicit failure language in a live troubleshooting session.
+ if(isSlowContext() && /\b(still|didn t help|didnt help|not fixed|same problem|не помог|всё ещё|все еще|не изменилось|ei auttanut|ei vieläkään)\b/i.test(t)){
+   S.supportFailures=(S.supportFailures||0)+1;
+   if(S.supportFailures>=2) return escalation(language);
+ }
+
+ const out=old(text,l);
+ return out;
+};
+
+window.ANITA_V12_7={version:"12.7"};
+console.log("[ANITA v12.7] Continuity + Escalation Engine loaded");
+})();
