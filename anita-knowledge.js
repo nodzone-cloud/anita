@@ -9217,3 +9217,234 @@ window.ANITA_V16_2={
 
 console.log("[ANITA v16.2] Strict RAM vs Program fix loaded");
 })();
+
+/* ================= ANITA v16.3 NEW REQUEST PRIORITY ROUTER =================
+   Fixes stale-context hijacking.
+
+   Problem:
+   A previous diagnostic question could wrongly treat a NEW full request such as:
+     "Программа не работает"
+   as if it were a short answer to the previous branch.
+
+   New priority:
+   1) Detect a complete/new IT request first.
+   2) If it is a new request, reset incompatible old answer/menu state.
+   3) Then route the new request normally.
+   4) Only genuinely short answers like yes/no/done/1/2/3 remain attached
+      to the previous question.
+
+   Examples:
+     "да" -> continue previous branch
+     "не помогло" -> continue previous branch
+     "сделал" -> continue previous branch
+     "2" -> continue previous menu
+
+     "Программа не работает" -> NEW software issue
+     "Теперь пропал интернет" -> NEW internet issue
+     "Монитор не показывает изображение" -> NEW display issue
+     "Chrome пишет ERR_CONNECTION_RESET" -> NEW browser/network issue
+   ========================================================================== */
+(function(){
+"use strict";
+
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+
+const V = window.ANITA_V12;
+const old = V.handle.bind(V);
+const S = V.state;
+
+function clean(s){
+  return String(s||"")
+    .toLowerCase()
+    .replace(/ё/g,"е")
+    .replace(/[?!.,:;()[\]{}"“”]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function langOf(text){
+  const st=String(S.language||"").toLowerCase();
+  if(st==="ru"||st==="en"||st==="fi") return st;
+  if(/[а-яё]/i.test(text||"")) return "ru";
+  if(/[äöå]/i.test(text||"")) return "fi";
+  return "en";
+}
+
+function isShortContextReply(text){
+  const t=clean(text);
+
+  // Numbers / menu answers
+  if(/^[1-9]$/.test(t)) return true;
+
+  // RU short contextual replies
+  if(/^(да|нет|не знаю|сделал|сделала|готово|не помогло|не сработало|заработало|работает|не работает пока|так же|тоже самое|то же самое|дальше|ок|окей)$/.test(t)) return true;
+
+  // EN
+  if(/^(yes|no|not sure|i don't know|i dont know|done|ready|did it|didn't help|didnt help|still doesn't work|still doesnt work|it worked|works now|same|same thing|next|ok|okay)$/.test(t)) return true;
+
+  // FI
+  if(/^(kyllä|ei|en tiedä|valmis|tein sen|ei auttanut|ei toimi vielä|toimii|nyt toimii|sama|seuraava|ok)$/.test(t)) return true;
+
+  return false;
+}
+
+function hasStrongNewIssueSignal(text){
+  const t=clean(text);
+
+  // Software
+  if(/(?:^|\s)(?:program|programme|app|application|software|программа|приложение|софт|ohjelma|sovellus)(?=\s|$)/i.test(t) &&
+     /(?:не\s+работа|не\s+запуска|зависа|вылета|закрыва|ошиб|медлен|тормоз|not\s+working|won't\s+start|wont\s+start|freeze|crash|close|error|slow|ei\s+toimi|ei\s+käynnisty|jääty|kaatu|virhe|hidas)/i.test(t))
+    return true;
+
+  // Internet / network
+  if(/(?:интернет|вай ?фай|wifi|wi-fi|network|connection|netti|verkko)/i.test(t) &&
+     /(?:нет|пропал|не\s+работа|отключ|медлен|падает|disconnected|no\s+internet|not\s+working|drops|slow|ei\s+toimi|katkea|hidas)/i.test(t))
+    return true;
+
+  // Monitor / display
+  if(/(?:монитор|экран|monitor|screen|display|näyttö)/i.test(t) &&
+     /(?:не\s+работа|нет\s+изображ|не\s+показы|черн|no\s+picture|no\s+display|not\s+working|black\s+screen|ei\s+kuvaa|ei\s+toimi|musta\s+näyttö)/i.test(t))
+    return true;
+
+  // Computer / laptop
+  if(/(?:комп\w*|компьютер\w*|пк|ноут\w*|pc|computer|laptop|machine|rig|tietokone|kone|läppäri)/i.test(t) &&
+     /(?:не\s+работа|тормоз|медлен|зависа|не\s+включ|перезагружа|ошиб|slow|freeze|crash|won't\s+turn\s+on|wont\s+turn\s+on|error|hidas|jääty|ei\s+käynnisty|virhe)/i.test(t))
+    return true;
+
+  // Explicit technical error/code is always a strong new request.
+  if(/\b(?:ERR_[A-Z0-9_]+|DNS_[A-Z0-9_]+|0x[0-9a-fA-F]{6,16}|STOP\s*CODE)\b/.test(String(text||""))) return true;
+
+  // "now / теперь" + a new concrete symptom
+  if(/(?:^|\s)(?:теперь|сейчас|now|nyt)(?=\s|$)/i.test(t) &&
+     /(?:интернет|монитор|экран|программа|program|app|комп|computer|ошиб|error|не\s+работа|not\s+working|пропал|gone)/i.test(t))
+    return true;
+
+  return false;
+}
+
+function isCompleteNewRequest(text){
+  const t=clean(text);
+  if(!t) return false;
+  if(isShortContextReply(t)) return false;
+
+  if(hasStrongNewIssueSignal(text)) return true;
+
+  // Any reasonably descriptive sentence containing an IT object + a problem verb
+  const words=t.split(/\s+/).filter(Boolean);
+  if(words.length>=2){
+    const object =
+      /(?:комп|компьютер|пк|ноут|program|programme|app|application|software|программа|приложение|монитор|экран|internet|интернет|wifi|вай ?фай|browser|браузер|printer|принтер|windows|винда|tietokone|ohjelma|näyttö|netti|selain|tulostin)/i.test(t);
+
+    const problem =
+      /(?:проблем|не\s+работа|не\s+запуска|зависа|вылета|тормоз|медлен|пропал|ошиб|problem|issue|not\s+working|won't|wont|freeze|crash|slow|error|ongelma|ei\s+toimi|ei\s+käynnisty|jääty|kaatu|hidas|virhe)/i.test(t);
+
+    if(object && problem) return true;
+  }
+
+  return false;
+}
+
+function clearAnswerContext(){
+  // Clear only "answer to previous question" state.
+  // Do not wipe persistent visitor/rating/learning data.
+  S.lastQuestion=null;
+  S.lastInstruction=null;
+  S.awaitingResult=false;
+  S.awaitingGenericSymptom=false;
+  S.awaitingMenu=false;
+  S.activeMenu=null;
+  S.menu=null;
+  S.pendingChoice=null;
+  S.lastProcedureAction=null;
+
+  // Let the new request establish its own branch.
+  S.currentSymptom=null;
+  S.observationProcess=null;
+}
+
+function softwareDirectAnswer(l){
+  S.rootProblem="software_problem";
+  S.issue="software_problem";
+  S.currentSymptom="not_working";
+  S.lastQuestion="software_symptom_detail";
+
+  if(l==="ru"){
+    return `Поняла — проблема с программой.
+
+Что именно происходит?
+1. Не запускается
+2. Запускается и сразу закрывается
+3. Зависает
+4. Работает медленно
+5. Показывает ошибку
+6. Что-то другое
+
+Если появляется ошибка — можешь скопировать её сюда как есть.`;
+  }
+
+  if(l==="fi"){
+    return `Selvä — ongelma liittyy ohjelmaan.
+
+Mitä tarkalleen tapahtuu?
+1. Ei käynnisty
+2. Käynnistyy ja sulkeutuu heti
+3. Jäätyy
+4. Toimii hitaasti
+5. Näyttää virheen
+6. Jotain muuta
+
+Jos näkyy virheilmoitus, voit liittää sen tähän sellaisenaan.`;
+  }
+
+  return `Got it — the problem is with a program.
+
+What exactly happens?
+1. It doesn't start
+2. It opens and immediately closes
+3. It freezes
+4. It runs slowly
+5. It shows an error
+6. Something else
+
+If there is an error message, paste it here exactly as shown.`;
+}
+
+function isGenericSoftwareNotWorking(text){
+  const t=clean(text);
+  return (
+    /^(?:программа|приложение)\s+не\s+работает$/i.test(t) ||
+    /^(?:program|programme|app|application)\s+(?:is\s+)?not\s+working$/i.test(t) ||
+    /^(?:ohjelma|sovellus)\s+ei\s+toimi$/i.test(t)
+  );
+}
+
+V.handle=function(text,l){
+  const raw=String(text||"");
+  const language=langOf(raw);
+
+  // A complete new request must override stale conversation state.
+  if(isCompleteNewRequest(raw)){
+    clearAnswerContext();
+
+    // Directly handle the exact case from the bug report so no old yes/no
+    // handler can capture it again.
+    if(isGenericSoftwareNotWorking(raw)){
+      return {type:"answer",text:softwareDirectAnswer(language)};
+    }
+
+    return old(raw,l);
+  }
+
+  // Short responses remain attached to the previous question/menu.
+  return old(text,l);
+};
+
+window.ANITA_V16_3={
+  version:"16.3",
+  isShortContextReply,
+  hasStrongNewIssueSignal,
+  isCompleteNewRequest
+};
+
+console.log("[ANITA v16.3] New Request Priority Router loaded");
+})();
