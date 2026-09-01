@@ -6916,3 +6916,323 @@ window.ANITA_V14={version:"14.0"};
 
 console.log("[ANITA v14] Learning + Case Memory Engine loaded");
 })();
+
+/* ================= ANITA v14.1 ANSWER-TO-QUESTION CONTEXT ROUTER =================
+   Fixes:
+   - If ANITA asks CPU / Memory / Disk and user replies "Browser", "Chrome",
+     "браузер", "хром", "selain", etc., treat it as an observation from
+     Task Manager, NOT as a new browser topic and NOT as fallback.
+   - Keeps the slow-PC root problem active.
+   - Understands process/app names as answers to Task Manager questions.
+   - Asks the missing measurement: CPU or Memory + value.
+   - If user then gives "Memory 85%" / "RAM 85%" / "CPU 90%" / "1000 MB",
+     continues diagnosis instead of glossary/fallback.
+   - Generic short replies are interpreted against ANITA's last question first.
+   ================================================================================ */
+(function(){
+"use strict";
+
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+
+const V = window.ANITA_V12;
+const old = V.handle.bind(V);
+const S = V.state;
+
+S.observationProcess = S.observationProcess || null;
+S.observationMetric = S.observationMetric || null;
+S.observationValue = S.observationValue || null;
+
+function clean(s){
+  return (s||"")
+    .toLowerCase()
+    .replace(/[’`]/g,"'")
+    .replace(/[?!.,:;()[\]{}"“”]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+function langOf(text){
+  if(/[а-яё]/i.test(text)) return "ru";
+  if(/[äöå]/i.test(text) || /\b(selain|muisti|levy|suoritin|tehtävienhallinta)\b/i.test(text)) return "fi";
+  return S.language || "en";
+}
+function R(l,en,ru,fi){ return l==="ru"?ru:l==="fi"?fi:en; }
+
+function isSlowContext(){
+  return S.procedure==="slow_pc" ||
+         S.rootProblem==="slow_pc" ||
+         S.issue==="slow_pc" ||
+         S.currentSymptom==="slow_pc";
+}
+
+function awaitingTaskManagerAnswer(){
+  const q=String(S.lastQuestion||"");
+  const i=String(S.lastInstruction||"");
+  const p=String(S.procedureStep||"");
+  return isSlowContext() && (
+    q==="slow_resource_report" ||
+    q==="task_manager_result" ||
+    q==="slow_task_manager" ||
+    p==="task_manager" ||
+    i==="slow_task_manager" ||
+    i==="check_task_manager"
+  );
+}
+
+function processName(text){
+  const t=clean(text);
+
+  const known=[
+    ["chrome", /\b(chrome|google chrome|хром|гугл хром)\b/i],
+    ["edge", /\b(edge|microsoft edge|эдж)\b/i],
+    ["firefox", /\b(firefox|mozilla|фаерфокс|мозилла)\b/i],
+    ["opera", /\b(opera|опера)\b/i],
+    ["browser", /\b(browser|браузер|selain)\b/i],
+    ["discord", /\b(discord|дискорд)\b/i],
+    ["steam", /\bsteam\b/i],
+    ["teams", /\b(teams|microsoft teams)\b/i],
+    ["antimalware service executable", /\b(antimalware|defender)\b/i],
+    ["onedrive", /\b(one ?drive|ван ?драйв)\b/i]
+  ];
+
+  for(const [name,re] of known){
+    if(re.test(t)) return name;
+  }
+
+  // A short app/process-looking answer after Task Manager can be accepted
+  // as an observation even if ANITA has never heard the program name before.
+  const words=t.split(/\s+/).filter(Boolean);
+  const forbidden=/^(cpu|ram|memory|disk|цп|память|диск|muisti|levy|suoritin|\d+|процент|percent|%|mb|gb|мб|гб)$/i;
+  if(words.length>=1 && words.length<=5 && !words.every(w=>forbidden.test(w))){
+    return t;
+  }
+  return null;
+}
+
+function metricReport(text){
+  const t=clean(text);
+
+  let metric=null;
+  if(/\b(cpu|processor|цп|процессор|suoritin)\b/i.test(t)) metric="cpu";
+  else if(/\b(memory|ram|память|оператив\w*|muisti)\b/i.test(t)) metric="memory";
+  else if(/\b(disk|диск|levy)\b/i.test(t)) metric="disk";
+
+  const pct=t.match(/(\d{1,3})\s*%?/);
+  let value=pct ? Number(pct[1]) : null;
+
+  // Avoid treating "8 GB RAM" as 8% if there is a GB/MB unit.
+  if(/\b\d+(?:[.,]\d+)?\s*(gb|гб|mb|мб|gt|mt)\b/i.test(t) && !/%/.test(t)){
+    value=null;
+  }
+
+  return metric ? {metric,value} : null;
+}
+
+function memoryAmount(text){
+  const t=clean(text);
+  const m=t.match(/(\d+(?:[.,]\d+)?)\s*(gb|гб|mb|мб|gt|mt)\b/i);
+  if(!m) return null;
+  return {value:Number(m[1].replace(",",".")),unit:m[2].toLowerCase()};
+}
+
+function rememberObservation(process){
+  S.observationProcess=process;
+  S.rootProblem="slow_pc";
+  S.issue="slow_pc";
+  S.currentSymptom="slow_pc";
+  S.procedure="slow_pc";
+  S.procedureStep="task_manager";
+  S.lastQuestion="process_resource_detail";
+  S.lastInstruction="inspect_process_resource";
+  S.awaitingResult=true;
+
+  if(!S.observations || !Array.isArray(S.observations)) S.observations=[];
+  S.observations.push({
+    type:"task_manager_process",
+    process:process,
+    at:Date.now()
+  });
+  if(S.observations.length>20) S.observations=S.observations.slice(-20);
+}
+
+function processObservationAnswer(process,l){
+  rememberObservation(process);
+
+  const pretty = process==="browser"
+    ? R(l,"the browser","браузер","selain")
+    : process;
+
+  const msg=R(l,
+`Got it — ${pretty} is at the top of Task Manager. That is useful information, but it does not yet tell us whether it is the cause of the slowdown.
+
+Look at that same row and tell me what is high:
+• CPU — and the %
+• Memory — and the % or MB/GB
+
+For example: “Memory 85%”, “Chrome 1000 MB”, or “CPU 90%”.`,
+`Поняла — ${pretty} находится наверху списка в Диспетчере задач. Это полезное наблюдение, но пока ещё не означает, что именно он является причиной тормозов.
+
+Посмотри на эту же строку и напиши, что у него высокое:
+• CPU/ЦП — и %
+• Память — и % или МБ/ГБ
+
+Например: «Память 85%», «Chrome 1000 МБ» или «CPU 90%».`,
+`Selvä — ${pretty} on Tehtävienhallinnan listan kärjessä. Se on hyödyllinen havainto, mutta ei vielä tarkoita, että juuri se aiheuttaa hidastumisen.
+
+Katso samaa riviä ja kerro mikä on korkea:
+• CPU — ja %
+• Memory — ja % tai Mt/Gt
+
+Esimerkiksi: “Memory 85 %”, “Chrome 1000 Mt” tai “CPU 90 %”.`);
+
+  S.lastAnswer=msg;
+  return {type:"answer",text:msg};
+}
+
+function metricAnswer(rep,l){
+  S.observationMetric=rep.metric;
+  S.observationValue=rep.value;
+  S.rootProblem="slow_pc";
+  S.issue="slow_pc";
+  S.procedure="slow_pc";
+
+  if(rep.metric==="memory"){
+    S.procedureStep="memory_pressure";
+    S.lastQuestion="memory_process_detail";
+    S.lastInstruction="inspect_memory_processes";
+
+    if(rep.value!==null && rep.value>=80){
+      const msg=R(l,
+`Memory is ${rep.value}%. That is high enough to contribute to the slowdown, but it does not mean the RAM is faulty.
+
+Now sort Task Manager by Memory. Tell me:
+1. the top 3 processes and roughly how much memory each uses;
+2. how much RAM the PC has in total, for example 8 GB or 16 GB.
+
+If Chrome is one of the biggest users, we can then open Chrome Task Manager with Shift + Esc and find the heavy tab or extension.`,
+`Память загружена на ${rep.value}%. Это уже достаточно много и может вызывать тормоза, но это не означает, что оперативная память неисправна.
+
+Теперь отсортируй Диспетчер задач по столбцу «Память». Напиши:
+1. три процесса, которые используют больше всего памяти, и примерно сколько каждый;
+2. сколько всего RAM установлено — например 8 ГБ или 16 ГБ.
+
+Если среди лидеров Chrome, следующим шагом откроем его внутренний диспетчер через Shift + Esc и найдём тяжёлую вкладку или расширение.`,
+`Muistin käyttö on ${rep.value} %. Se on riittävän korkea hidastamaan konetta, mutta se ei tarkoita, että RAM olisi viallinen.
+
+Lajittele Tehtävienhallinta Memory-sarakkeen mukaan. Kerro:
+1. kolme eniten muistia käyttävää prosessia ja niiden likimääräinen käyttö;
+2. paljonko RAM-muistia koneessa on yhteensä, esimerkiksi 8 Gt tai 16 Gt.
+
+Jos Chrome on suurimpien joukossa, seuraavaksi voimme avata Chromen oman tehtävienhallinnan Shift + Esc -näppäimillä ja etsiä raskaan välilehden tai laajennuksen.`);
+      S.lastAnswer=msg;
+      return {type:"answer",text:msg};
+    }
+
+    const msg=R(l,
+      `Memory is ${rep.value!==null?rep.value+"%":"the high resource you noticed"}. Tell me how much total RAM the PC has and which three processes are using the most memory.`,
+      `Память ${rep.value!==null?"загружена на "+rep.value+"%":"— тот ресурс, который ты заметил"}. Напиши, сколько всего RAM установлено и какие три процесса используют больше всего памяти.`,
+      `Muisti ${rep.value!==null?"on "+rep.value+" %":"on havaitsemasi korkea resurssi"}. Kerro RAM-muistin kokonaismäärä ja kolme eniten muistia käyttävää prosessia.`);
+    S.lastAnswer=msg;
+    return {type:"answer",text:msg};
+  }
+
+  if(rep.metric==="cpu"){
+    S.procedureStep="cpu_pressure";
+    S.lastQuestion="cpu_process_detail";
+    const high=rep.value!==null && rep.value>=85;
+    const msg=R(l,
+      `${rep.value!==null?"CPU is "+rep.value+"%. ":""}${high?"That is high enough to slow the PC. ":""}Sort Task Manager by CPU and tell me the top 3 processes and their CPU percentages.`,
+      `${rep.value!==null?"CPU загружен на "+rep.value+"%. ":""}${high?"Это достаточно высокая нагрузка и она может тормозить ПК. ":""}Отсортируй Диспетчер задач по CPU и напиши три процесса с самой высокой загрузкой и их проценты.`,
+      `${rep.value!==null?"CPU on "+rep.value+" %. ":""}${high?"Se on riittävän korkea hidastamaan konetta. ":""}Lajittele Tehtävienhallinta CPU:n mukaan ja kerro kolme eniten CPU:ta käyttävää prosessia prosentteineen.`);
+    S.lastAnswer=msg;
+    return {type:"answer",text:msg};
+  }
+
+  if(rep.metric==="disk"){
+    S.procedureStep="disk_pressure";
+    S.lastQuestion="disk_process_detail";
+    const msg=R(l,
+      `${rep.value!==null?"Disk is "+rep.value+"%. ":""}Sort Task Manager by Disk and tell me the top 3 processes. If Disk stays near 100% for several minutes, that can directly cause severe slowness.`,
+      `${rep.value!==null?"Диск загружен на "+rep.value+"%. ":""}Отсортируй Диспетчер задач по «Диск» и напиши три процесса наверху. Если диск несколько минут держится около 100%, это действительно может сильно тормозить компьютер.`,
+      `${rep.value!==null?"Disk on "+rep.value+" %. ":""}Lajittele Tehtävienhallinta Disk-sarakkeen mukaan ja kerro kolme ylintä prosessia. Jos levy pysyy lähellä 100 % useita minuutteja, se voi suoraan aiheuttaa voimakasta hidastumista.`);
+    S.lastAnswer=msg;
+    return {type:"answer",text:msg};
+  }
+
+  return null;
+}
+
+function amountAfterProcess(text,l){
+  if(!isSlowContext() || !S.observationProcess) return null;
+  const amt=memoryAmount(text);
+  if(!amt) return null;
+
+  S.procedureStep="memory_process_amount";
+  S.lastQuestion="memory_total_or_other_processes";
+
+  const process=S.observationProcess;
+  const pretty=process==="browser"
+    ? R(l,"The browser","Браузер","Selain")
+    : process;
+
+  const msg=R(l,
+`${pretty} is using about ${amt.value} ${amt.unit.toUpperCase()}. That can be normal or high depending on your total RAM and what the browser is doing.
+
+Tell me:
+1. total RAM in the PC (for example 8 GB);
+2. the overall Memory percentage in Task Manager.
+
+If this is Chrome, you can also press Shift + Esc inside Chrome to see which tab or extension is using the most memory.`,
+`${pretty} использует примерно ${amt.value} ${amt.unit.toUpperCase()}. Это может быть как нормально, так и много — зависит от общего объёма RAM и того, что открыто в браузере.
+
+Напиши:
+1. сколько всего RAM в компьютере, например 8 ГБ;
+2. общий процент «Память» в Диспетчере задач.
+
+Если это Chrome, можно также нажать Shift + Esc внутри Chrome и посмотреть, какая вкладка или расширение использует больше всего памяти.`,
+`${pretty} käyttää noin ${amt.value} ${amt.unit.toUpperCase()}. Se voi olla normaalia tai paljon riippuen RAM-muistin kokonaismäärästä ja selaimen sisällöstä.
+
+Kerro:
+1. RAM-muistin kokonaismäärä, esimerkiksi 8 Gt;
+2. Memory-kokonaisprosentti Tehtävienhallinnassa.
+
+Jos kyseessä on Chrome, voit myös painaa Chromessa Shift + Esc ja katsoa mikä välilehti tai laajennus käyttää eniten muistia.`);
+  S.lastAnswer=msg;
+  return {type:"answer",text:msg};
+}
+
+V.handle=function(text,l){
+  const language=langOf(text);
+
+  // 1) A metric/result should beat glossary matching.
+  if(isSlowContext()){
+    const rep=metricReport(text);
+    if(rep){
+      const ans=metricAnswer(rep,language);
+      if(ans) return ans;
+    }
+
+    const amt=amountAfterProcess(text,language);
+    if(amt) return amt;
+  }
+
+  // 2) If ANITA just asked for Task Manager findings, a process/app name
+  // is an ANSWER TO THAT QUESTION, not a brand-new browser question.
+  if(awaitingTaskManagerAnswer()){
+    const p=processName(text);
+    if(p){
+      return processObservationAnswer(p,language);
+    }
+  }
+
+  return old(text,l);
+};
+
+window.ANITA_V14_1={
+  version:"14.1",
+  awaitingTaskManagerAnswer,
+  processName,
+  metricReport
+};
+
+console.log("[ANITA v14.1] Answer-to-Question Context Router loaded");
+})();
