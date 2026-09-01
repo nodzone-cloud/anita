@@ -9625,3 +9625,180 @@ window.ANITA_V16_4={
 
 console.log("[ANITA v16.4] AUTO language + RU software router fix loaded");
 })();
+
+/* ================= ANITA v16.5 MAIN PIPELINE LANGUAGE FIX =================
+   IMPORTANT:
+   The Tilda front-end sends messages through window.ANITA_V7.handle(q, l).
+   Therefore this fix wraps the ACTUAL main pipeline directly, instead of
+   relying only on nested ANITA_V12 wrappers.
+
+   Fixes:
+   - AUTO Russian message -> Russian reply.
+   - Manual Russian -> Russian reply.
+   - "Программа не работает" -> Russian software troubleshooting.
+   - "program not working" -> English when AUTO/English.
+   - "ohjelma ei toimi" -> Finnish when AUTO/Finnish.
+   - Keeps selected language supplied by Tilda's processMessage(q,l).
+   - Removes duplicate JS-created microphone if Tilda already has #micButton.
+   ========================================================================== */
+(function(){
+"use strict";
+
+if(!window.ANITA_V7 || typeof window.ANITA_V7.handle!=="function") return;
+
+const previousMainHandle = window.ANITA_V7.handle.bind(window.ANITA_V7);
+
+function norm(s){
+  return String(s||"")
+    .toLowerCase()
+    .replace(/ё/g,"е")
+    .replace(/[?!.,:;()[\]{}"“”]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function messageLanguage(text, supplied){
+  const l=String(supplied||"").toLowerCase();
+
+  // The Tilda processMessage already resolves AUTO -> ru/en/fi and manual
+  // selection -> chosen language. Trust it first.
+  if(["ru","en","fi"].includes(l)) return l;
+
+  const raw=String(text||"");
+  if(/[а-яё]/i.test(raw)) return "ru";
+  if(/[äöå]/i.test(raw) ||
+     /\b(?:tietokone|ohjelma|sovellus|ongelma|näyttö|netti|selain|tulostin|ei toimi|ei käynnisty|hidas|virhe)\b/i.test(raw))
+    return "fi";
+  return "en";
+}
+
+function isSoftwareNotWorking(text){
+  const t=norm(text);
+  return (
+    /^(?:программа|приложение|софт)\s+(?:не\s+работает|не\s+запускается)$/i.test(t) ||
+    /^(?:program|programme|app|application|software)\s+(?:(?:is\s+)?not\s+working|won't\s+start|wont\s+start)$/i.test(t) ||
+    /^(?:ohjelma|sovellus)\s+(?:ei\s+toimi|ei\s+käynnisty)$/i.test(t)
+  );
+}
+
+function clearTransientState(){
+  try{
+    const S=window.ANITA_V12 && window.ANITA_V12.state;
+    if(!S) return;
+    S.lastQuestion=null;
+    S.lastInstruction=null;
+    S.awaitingResult=false;
+    S.awaitingGenericSymptom=false;
+    S.awaitingMenu=false;
+    S.activeMenu=null;
+    S.menu=null;
+    S.pendingChoice=null;
+    S.lastProcedureAction=null;
+    S.currentSymptom=null;
+    S.observationProcess=null;
+  }catch(_){}
+}
+
+function syncLanguage(l){
+  try{
+    if(window.ANITA_V12 && window.ANITA_V12.state){
+      window.ANITA_V12.state.language=l;
+    }
+  }catch(_){}
+}
+
+function softwareReply(l){
+  syncLanguage(l);
+
+  if(l==="ru"){
+    return {
+      type:"answer",
+      text:`Поняла — проблема с программой.
+
+Что именно происходит?
+1. Не запускается
+2. Запускается и сразу закрывается
+3. Зависает
+4. Работает медленно
+5. Показывает ошибку
+6. Что-то другое
+
+Если появляется ошибка, можешь скопировать её сюда как есть.`
+    };
+  }
+
+  if(l==="fi"){
+    return {
+      type:"answer",
+      text:`Selvä — ongelma liittyy ohjelmaan.
+
+Mitä tarkalleen tapahtuu?
+1. Ei käynnisty
+2. Käynnistyy ja sulkeutuu heti
+3. Jäätyy
+4. Toimii hitaasti
+5. Näyttää virheen
+6. Jotain muuta
+
+Jos virheilmoitus näkyy, voit liittää sen tähän sellaisenaan.`
+    };
+  }
+
+  return {
+    type:"answer",
+    text:`Got it — the problem is with a program.
+
+What exactly happens?
+1. It doesn't start
+2. It opens and immediately closes
+3. It freezes
+4. It runs slowly
+5. It shows an error
+6. Something else
+
+If there is an error message, paste it here exactly as shown.`
+  };
+}
+
+window.ANITA_V7.handle=function(text,l){
+  const resolved=messageLanguage(text,l);
+
+  // Synchronize nested conversation state BEFORE any old router runs.
+  syncLanguage(resolved);
+
+  // Highest-priority direct new-intent route.
+  if(isSoftwareNotWorking(text)){
+    clearTransientState();
+    syncLanguage(resolved);
+    return softwareReply(resolved);
+  }
+
+  return previousMainHandle(text,resolved);
+};
+
+// Tilda now owns the microphone UI. Remove the extra microphone that the
+// older v16 knowledge module may have inserted.
+function removeDuplicateMic(){
+  const tildaMic=document.getElementById("micButton");
+  const injected=document.getElementById("anitaMic");
+  const injectedStatus=document.getElementById("anitaVoiceStatus");
+
+  if(tildaMic && injected){
+    try{ injected.remove(); }catch(_){}
+  }
+  if(tildaMic && injectedStatus){
+    try{ injectedStatus.remove(); }catch(_){}
+  }
+}
+removeDuplicateMic();
+setTimeout(removeDuplicateMic,0);
+setTimeout(removeDuplicateMic,500);
+
+window.ANITA_V16_5={
+  version:"16.5",
+  messageLanguage,
+  isSoftwareNotWorking
+};
+
+console.log("[ANITA v16.5] MAIN pipeline language fix loaded");
+})();
