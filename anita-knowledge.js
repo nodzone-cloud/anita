@@ -1984,3 +1984,1734 @@ console.log("[ANITA v10] Context + Strict Tokens loaded. Phrase bank:",
   V10.phraseBank.ru.length,"RU,",
   V10.phraseBank.fi.length,"FI");
 })();
+
+/* ================= ANITA v11 GUIDED FOLLOW-UP ENGINE =================
+   Makes short follow-ups such as:
+   "how?", "how do I do that?", "как?", "как это сделать?",
+   "miten?", "miten teen sen?"
+   use the previous IT topic instead of repeating a generic answer.
+
+   Deterministic / no external AI.
+   ===================================================================== */
+(function(){
+"use strict";
+
+const V11 = {};
+V11.version = "11.0";
+V11.lastTopic = null;
+V11.lastAction = null;
+V11.lastUserLanguage = "en";
+V11.lastUserText = "";
+
+const getLang = l => {
+  l=(l||"").toLowerCase();
+  if(l.startsWith("ru")) return "ru";
+  if(l.startsWith("fi")) return "fi";
+  return "en";
+};
+
+const clean = s => (s||"").toLowerCase()
+  .replace(/[’`]/g,"'")
+  .replace(/[?!.,:;()[\]{}"“”]/g," ")
+  .replace(/\s+/g," ")
+  .trim();
+
+const toks = s => clean(s).split(/\s+/).filter(Boolean);
+const hasToken = (s,w) => toks(s).includes(w);
+const hasPhrase = (s,p) => (" "+clean(s)+" ").includes(" "+clean(p)+" ");
+
+function detectLangFromText(text, fallback){
+  const t=clean(text);
+  if(/[а-яё]/i.test(text)) return "ru";
+  if(/[äöå]/i.test(text) || /\b(miten|miksi|verkko|selain|tietokone|windowsissa|asetukset|toimi|toimii)\b/i.test(t)) return "fi";
+  return getLang(fallback);
+}
+
+V11.isHowFollowup = function(text){
+  const t=clean(text);
+  const forms = [
+    "how","how then","how do i do that","how do i do this","how can i do that",
+    "how can i do this","how exactly","show me how","what do i do","what should i do",
+    "what next","then what","and how","ok how","okay how",
+    "как","как это сделать","как сделать","а как","и как","как именно","что делать",
+    "что дальше","покажи как","объясни как","как проверить","как мне это сделать",
+    "miten","miten se tehdään","miten teen sen","miten teen tämän","miten tarkistan",
+    "mitä teen","mitä seuraavaksi","näytä miten","selitä miten","entä miten"
+  ];
+  if(forms.includes(t)) return true;
+  // Short natural follow-up containing a how-word, but not a new detailed question.
+  if(toks(t).length <= 6 && (/^how\b/.test(t) || /^как\b/.test(t) || /^miten\b/.test(t))) return true;
+  return false;
+};
+
+V11.detectTopic = function(text){
+  const t=clean(text);
+
+  // Networking
+  if(hasToken(t,"dns") || hasPhrase(t,"domain name system")) return "dns";
+  if(hasToken(t,"isp") || hasPhrase(t,"internet service provider") || hasPhrase(t,"интернет провайдер") || hasToken(t,"провайдер") || hasToken(t,"operaattori")) return "isp";
+  if(hasToken(t,"dhcp")) return "dhcp";
+  if(hasPhrase(t,"ip address") || hasPhrase(t,"ip адрес") || hasPhrase(t,"ip-osoite") || hasToken(t,"ip")) return "ip";
+  if(hasToken(t,"gateway") || hasToken(t,"шлюз") || hasToken(t,"yhdyskäytävä")) return "gateway";
+  if(hasToken(t,"proxy") || hasToken(t,"прокси") || hasToken(t,"välityspalvelin")) return "proxy";
+  if(hasToken(t,"vpn")) return "vpn";
+  if(hasPhrase(t,"network reset") || hasPhrase(t,"сброс сети") || hasPhrase(t,"verkon nollaus")) return "network_reset";
+  if(hasToken(t,"wifi") || hasToken(t,"wi-fi") || hasToken(t,"вайфай") || hasToken(t,"wlan")) return "wifi";
+  if(hasToken(t,"router") || hasToken(t,"роутер") || hasToken(t,"reititin")) return "router";
+
+  // Windows / diagnostics
+  if(hasPhrase(t,"flushdns") || hasPhrase(t,"ipconfig flushdns")) return "dns";
+  if(hasToken(t,"sfc") || hasPhrase(t,"system file checker")) return "sfc";
+  if(hasToken(t,"dism")) return "dism";
+  if(hasPhrase(t,"safe mode") || hasPhrase(t,"безопасный режим") || hasPhrase(t,"vikasietotila")) return "safe_mode";
+  if(hasPhrase(t,"restore point") || hasPhrase(t,"точка восстановления") || hasPhrase(t,"palautuspiste")) return "restore_point";
+  if(hasPhrase(t,"windows update") || hasPhrase(t,"обновление windows") || hasPhrase(t,"windows päivitys")) return "windows_update";
+  if(hasPhrase(t,"device manager") || hasPhrase(t,"диспетчер устройств") || hasPhrase(t,"laitehallinta")) return "device_manager";
+  if(hasToken(t,"driver") || hasToken(t,"drivers") || hasToken(t,"драйвер") || hasToken(t,"драйверы") || hasToken(t,"ajuri") || hasToken(t,"ajurit")) return "drivers";
+  if(hasPhrase(t,"task manager") || hasPhrase(t,"диспетчер задач") || hasPhrase(t,"tehtävienhallinta")) return "task_manager";
+
+  // Browser / security
+  if(hasPhrase(t,"clear cache") || hasToken(t,"cache") || hasToken(t,"кэш") || hasToken(t,"välimuisti")) return "browser_cache";
+  if(hasToken(t,"virus") || hasToken(t,"malware") || hasToken(t,"вирус") || hasToken(t,"вредонос") || hasToken(t,"haittaohjelma")) return "malware_scan";
+  if(hasToken(t,"defender") || hasPhrase(t,"windows security") || hasPhrase(t,"безопасность windows")) return "defender_scan";
+
+  // Apps
+  if(hasToken(t,"uninstall") || hasToken(t,"удалить") || hasToken(t,"poistaa")) return "uninstall_app";
+  if(hasPhrase(t,"restart router") || hasPhrase(t,"перезагрузить роутер") || hasPhrase(t,"käynnistä reititin uudelleen")) return "router_restart";
+
+  return null;
+};
+
+const STEPS = {
+dns:{
+en:`Sure. If ANITA suggested flushing DNS or trying another DNS server, do it like this.
+
+A) Flush the DNS cache:
+1. Press Windows key.
+2. Type cmd.
+3. Right-click Command Prompt → Run as administrator.
+4. Type: ipconfig /flushdns
+5. Press Enter.
+6. You should see a message that the DNS Resolver Cache was successfully flushed.
+7. Close the browser completely, reopen it and test the website again.
+
+B) If that does not help, try a different DNS server:
+1. Press Windows + R.
+2. Type ncpa.cpl and press Enter.
+3. Right-click your active Wi-Fi or Ethernet connection → Properties.
+4. Double-click Internet Protocol Version 4 (TCP/IPv4).
+5. Select “Use the following DNS server addresses”.
+6. For a test you can use:
+   Preferred DNS: 1.1.1.1
+   Alternate DNS: 1.0.0.1
+7. Press OK → Close.
+8. Reopen the browser and test again.
+
+If you tell me what happens after step A, I can tell you whether you even need step B.`,
+ru:`Конечно. Если ANITA предложила очистить DNS-кэш или попробовать другой DNS, сделай так.
+
+A) Сначала очистим DNS-кэш:
+1. Нажми клавишу Windows.
+2. Напиши cmd.
+3. Нажми правой кнопкой на «Командная строка» → «Запуск от имени администратора».
+4. Введи: ipconfig /flushdns
+5. Нажми Enter.
+6. Должно появиться сообщение об успешной очистке DNS Resolver Cache.
+7. Полностью закрой браузер, открой снова и проверь сайт.
+
+B) Если не помогло — можно временно поставить другой DNS:
+1. Нажми Windows + R.
+2. Введи ncpa.cpl → Enter.
+3. Правой кнопкой по активному Wi‑Fi или Ethernet → «Свойства».
+4. Дважды нажми «IP версии 4 (TCP/IPv4)».
+5. Выбери «Использовать следующие адреса DNS-серверов».
+6. Для проверки можно указать:
+   Предпочитаемый DNS: 1.1.1.1
+   Альтернативный DNS: 1.0.0.1
+7. Нажми OK → Закрыть.
+8. Снова открой браузер и проверь сайт.
+
+Напиши, что произошло после шага A — тогда я скажу, нужен ли вообще шаг B.`,
+fi:`Totta. Jos ANITA ehdotti DNS-välimuistin tyhjentämistä tai toisen DNS-palvelimen kokeilemista, tee näin.
+
+A) Tyhjennä ensin DNS-välimuisti:
+1. Paina Windows-näppäintä.
+2. Kirjoita cmd.
+3. Napsauta Komentokehotetta hiiren oikealla → Suorita järjestelmänvalvojana.
+4. Kirjoita: ipconfig /flushdns
+5. Paina Enter.
+6. Näytölle pitäisi tulla ilmoitus, että DNS Resolver Cache tyhjennettiin onnistuneesti.
+7. Sulje selain kokonaan, avaa se uudelleen ja testaa sivua.
+
+B) Jos tämä ei auta, kokeile toista DNS-palvelinta:
+1. Paina Windows + R.
+2. Kirjoita ncpa.cpl → Enter.
+3. Napsauta aktiivista Wi-Fi- tai Ethernet-yhteyttä oikealla → Ominaisuudet.
+4. Avaa Internet Protocol Version 4 (TCP/IPv4).
+5. Valitse “Use the following DNS server addresses”.
+6. Testiksi voit käyttää:
+   Preferred DNS: 1.1.1.1
+   Alternate DNS: 1.0.0.1
+7. Paina OK → Close.
+8. Avaa selain uudelleen ja testaa.
+
+Kerro mitä tapahtui vaiheen A jälkeen, niin voin sanoa tarvitaanko vaihetta B.`
+},
+isp:{
+en:`Here is how to check whether the problem is your ISP rather than your computer.
+
+1. Check another device on the same Wi‑Fi, for example your phone.
+2. If the second device also has no Internet, look at the router.
+3. Check the Internet/WAN light. If it is red, orange, blinking unusually, or completely off, the connection from the ISP may be down.
+4. Restart the router: unplug its power cable, wait about 30 seconds, plug it back in, then wait 3–5 minutes.
+5. Test the Internet again on two devices.
+6. If both devices are still offline, use mobile data on your phone and open your ISP’s service-status/outage page or contact their support.
+7. If only your PC is offline while the phone works on the same Wi‑Fi, the ISP is probably not the cause — then we should troubleshoot Windows/network settings on the PC.
+
+Tell me: does Internet work on your phone while it is connected to the same Wi‑Fi?`,
+ru:`Вот как проверить, виноват ли интернет‑провайдер, а не сам компьютер.
+
+1. Проверь интернет на другом устройстве в той же Wi‑Fi сети, например на телефоне.
+2. Если на втором устройстве интернета тоже нет — посмотри на роутер.
+3. Проверь индикатор Internet/WAN. Если он красный, оранжевый, необычно мигает или вообще не горит, соединение со стороны провайдера может отсутствовать.
+4. Перезагрузи роутер: отключи питание примерно на 30 секунд, включи обратно и подожди 3–5 минут.
+5. Снова проверь интернет минимум на двух устройствах.
+6. Если оба устройства всё ещё без интернета, включи мобильный интернет на телефоне и проверь страницу с авариями/статусом сети своего провайдера или свяжись с его поддержкой.
+7. Если телефон в том же Wi‑Fi работает, а только ПК — нет, провайдер скорее всего ни при чём. Тогда нужно проверять настройки Windows/сети на компьютере.
+
+Скажи мне: интернет на телефоне работает, когда телефон подключён к тому же Wi‑Fi?`,
+fi:`Näin voit tarkistaa, johtuuko ongelma internet-operaattorista eikä tietokoneesta.
+
+1. Testaa internet toisella laitteella samassa Wi‑Fi-verkossa, esimerkiksi puhelimella.
+2. Jos toisellakaan laitteella ei ole internetiä, tarkista reititin.
+3. Katso Internet/WAN-merkkivaloa. Jos se on punainen, oranssi, vilkkuu oudosti tai ei pala lainkaan, operaattorin yhteys voi olla poikki.
+4. Käynnistä reititin uudelleen: irrota virtajohto noin 30 sekunniksi, kytke takaisin ja odota 3–5 minuuttia.
+5. Testaa internet uudelleen kahdella laitteella.
+6. Jos molemmat ovat edelleen ilman internetiä, käytä puhelimen mobiilidataa ja tarkista operaattorin häiriö-/palvelutilasivu tai ota yhteyttä tukeen.
+7. Jos puhelin toimii samassa Wi‑Fi-verkossa mutta tietokone ei, operaattori ei todennäköisesti ole syy — silloin tarkistetaan Windowsin verkkoasetukset.
+
+Kerro: toimiiko internet puhelimessa, kun se on samassa Wi‑Fi-verkossa?`
+},
+router_restart:{
+en:`To restart the router safely:
+1. Find the router/modem that provides your Wi‑Fi.
+2. Do not press the small RESET button.
+3. Unplug only the power cable.
+4. Wait about 30 seconds.
+5. Plug the power cable back in.
+6. Wait 3–5 minutes for the Internet/WAN and Wi‑Fi lights to stabilize.
+7. Reconnect your PC and test the Internet.`,
+ru:`Чтобы безопасно перезагрузить роутер:
+1. Найди роутер/модем, который раздаёт Wi‑Fi.
+2. Не нажимай маленькую кнопку RESET.
+3. Отключи только кабель питания.
+4. Подожди около 30 секунд.
+5. Подключи питание обратно.
+6. Подожди 3–5 минут, пока индикаторы Internet/WAN и Wi‑Fi стабилизируются.
+7. Подключись с ПК и снова проверь интернет.`,
+fi:`Reitittimen turvallinen uudelleenkäynnistys:
+1. Etsi Wi‑Fiä jakava reititin/modeemi.
+2. Älä paina pientä RESET-painiketta.
+3. Irrota vain virtajohto.
+4. Odota noin 30 sekuntia.
+5. Kytke virtajohto takaisin.
+6. Odota 3–5 minuuttia, kunnes Internet/WAN- ja Wi‑Fi-valot tasaantuvat.
+7. Yhdistä tietokone uudelleen ja testaa internet.`
+},
+wifi:{
+en:`To reconnect Wi‑Fi in Windows:
+1. Click the network icon near the clock.
+2. Turn Wi‑Fi off.
+3. Wait 10 seconds.
+4. Turn Wi‑Fi back on.
+5. Select your network → Connect.
+6. If it still fails, choose the network → Forget, then reconnect and enter the Wi‑Fi password again.
+7. If Windows says “Connected, no Internet”, tell me that exact message.`,
+ru:`Чтобы переподключить Wi‑Fi в Windows:
+1. Нажми значок сети возле часов.
+2. Выключи Wi‑Fi.
+3. Подожди 10 секунд.
+4. Включи Wi‑Fi снова.
+5. Выбери свою сеть → «Подключиться».
+6. Если не помогло, выбери сеть → «Забыть», затем подключись заново и введи пароль Wi‑Fi.
+7. Если Windows пишет «Подключено, без доступа к Интернету», сообщи мне эту точную надпись.`,
+fi:`Wi‑Fi-yhteyden muodostaminen uudelleen Windowsissa:
+1. Napsauta kellon lähellä olevaa verkkokuvaketta.
+2. Sammuta Wi‑Fi.
+3. Odota 10 sekuntia.
+4. Käynnistä Wi‑Fi uudelleen.
+5. Valitse oma verkko → Yhdistä.
+6. Jos se ei auta, valitse verkko → Unohda ja yhdistä uudelleen salasanalla.
+7. Jos Windows näyttää “Connected, no Internet”, kerro tarkka ilmoitus.`
+},
+network_reset:{
+en:`Windows network reset is a stronger step, so use it after simpler checks:
+1. Open Settings.
+2. Go to Network & Internet.
+3. Open Advanced network settings.
+4. Choose Network reset.
+5. Click Reset now.
+6. Confirm.
+7. Windows will remove and reinstall network adapters and then restart.
+8. After restart, reconnect to Wi‑Fi and test again.
+
+Note: saved VPN/network adapter settings may need to be configured again.`,
+ru:`Сброс сети Windows — более сильный шаг, поэтому его лучше делать после простых проверок:
+1. Открой «Параметры».
+2. Перейди «Сеть и Интернет».
+3. Открой «Дополнительные сетевые параметры».
+4. Выбери «Сброс сети».
+5. Нажми «Сбросить сейчас».
+6. Подтверди.
+7. Windows удалит и заново установит сетевые адаптеры, после чего перезагрузится.
+8. После перезапуска снова подключись к Wi‑Fi и проверь.
+
+Важно: VPN и некоторые специальные сетевые настройки могут потребовать повторной настройки.`,
+fi:`Windowsin verkon nollaus on voimakkaampi toimenpide, joten tee se vasta yksinkertaisten testien jälkeen:
+1. Avaa Asetukset.
+2. Avaa Verkko ja Internet.
+3. Avaa Verkon lisäasetukset.
+4. Valitse Verkon nollaus.
+5. Paina Reset now.
+6. Vahvista.
+7. Windows poistaa ja asentaa verkkosovittimet uudelleen ja käynnistyy uudelleen.
+8. Yhdistä Wi‑Fiin uudelleen ja testaa.
+
+Huom: VPN- ja erikoisverkkoasetukset voivat vaatia uuden määrityksen.`
+},
+task_manager:{
+en:`To open Task Manager and check what is slowing the PC:
+1. Press Ctrl + Shift + Esc.
+2. If you see a small window, click More details.
+3. Open the Processes tab.
+4. Click CPU, Memory or Disk at the top to sort from highest usage.
+5. Look for a program that stays unusually high.
+6. Do not end Windows/system processes unless you know what they are.
+7. Tell me the top 3 items and their CPU/Memory/Disk percentages.`,
+ru:`Чтобы открыть Диспетчер задач и посмотреть, что тормозит ПК:
+1. Нажми Ctrl + Shift + Esc.
+2. Если открылось маленькое окно — нажми «Подробнее».
+3. Открой вкладку «Процессы».
+4. Нажми сверху CPU/ЦП, Память или Диск, чтобы отсортировать по нагрузке.
+5. Посмотри, какая программа долго остаётся сверху с высокой нагрузкой.
+6. Не завершай системные процессы Windows, если не знаешь, что это.
+7. Напиши мне 3 верхних процесса и проценты CPU/Память/Диск.`,
+fi:`Tehtävienhallinnan avaaminen ja hidastavan ohjelman tarkistus:
+1. Paina Ctrl + Shift + Esc.
+2. Jos näkyy pieni ikkuna, valitse More details.
+3. Avaa Processes-välilehti.
+4. Napsauta CPU, Memory tai Disk lajittelua.
+5. Katso mikä ohjelma pysyy pitkään korkealla.
+6. Älä lopeta Windowsin järjestelmäprosesseja, ellet tiedä mitä ne ovat.
+7. Kerro kolme ylintä prosessia ja niiden CPU/Memory/Disk-prosentit.`
+},
+browser_cache:{
+en:`To test whether browser cache is the problem:
+1. First open the same page in a private/incognito window.
+2. If it works there, cache/cookies or an extension may be involved.
+3. In Chrome/Edge press Ctrl + Shift + Delete.
+4. Choose Cached images and files.
+5. Start with cached files only; you do not have to delete saved passwords.
+6. Clear the data.
+7. Restart the browser and test again.`,
+ru:`Чтобы проверить, виноват ли кэш браузера:
+1. Сначала открой тот же сайт в режиме инкогнито/приватном окне.
+2. Если там всё работает, проблема может быть в кэше, cookies или расширении.
+3. В Chrome/Edge нажми Ctrl + Shift + Delete.
+4. Выбери «Кэшированные изображения и файлы».
+5. Для начала не нужно удалять сохранённые пароли.
+6. Очисти данные.
+7. Перезапусти браузер и проверь снова.`,
+fi:`Selaimen välimuistin testaaminen:
+1. Avaa sama sivu ensin yksityisessä/incognito-ikkunassa.
+2. Jos se toimii siellä, syy voi olla välimuisti, eväste tai laajennus.
+3. Chromessa/Edgessä paina Ctrl + Shift + Delete.
+4. Valitse Cached images and files.
+5. Tallennettuja salasanoja ei tarvitse poistaa.
+6. Tyhjennä tiedot.
+7. Käynnistä selain uudelleen ja testaa.`
+},
+windows_update:{
+en:`To check Windows Update:
+1. Press Windows + I.
+2. Open Windows Update.
+3. Click Check for updates.
+4. Install normal security/quality updates.
+5. Restart if Windows asks.
+6. After restart, return to Windows Update once more and check again.
+If the problem started immediately after an update, tell me — the next steps are different.`,
+ru:`Чтобы проверить Windows Update:
+1. Нажми Windows + I.
+2. Открой «Центр обновления Windows».
+3. Нажми «Проверить наличие обновлений».
+4. Установи обычные обновления безопасности/качества.
+5. Перезагрузи ПК, если Windows попросит.
+6. После перезагрузки снова открой Windows Update и ещё раз проверь обновления.
+Если проблема началась сразу после обновления — скажи мне, тогда действия будут другими.`,
+fi:`Windows Updaten tarkistus:
+1. Paina Windows + I.
+2. Avaa Windows Update.
+3. Paina Check for updates.
+4. Asenna tavalliset tietoturva- ja laatu-päivitykset.
+5. Käynnistä tietokone uudelleen pyydettäessä.
+6. Tarkista päivitykset vielä kerran uudelleenkäynnistyksen jälkeen.
+Jos ongelma alkoi heti päivityksen jälkeen, kerro siitä — seuraavat vaiheet ovat silloin eri.`
+},
+drivers:{
+en:`To check a driver:
+1. Right-click Start → Device Manager.
+2. Look for a device with a yellow warning symbol.
+3. Open the relevant category, for example Display adapters, Network adapters, Bluetooth or Sound.
+4. Right-click the device → Properties.
+5. Check Device status for an error code.
+6. Tell me the device name and error code before uninstalling anything.
+For graphics/network drivers, the safest source is usually the PC/device manufacturer's official support page.`,
+ru:`Чтобы проверить драйвер:
+1. Правой кнопкой по «Пуск» → «Диспетчер устройств».
+2. Найди устройство с жёлтым значком предупреждения.
+3. Открой нужный раздел: Видеоадаптеры, Сетевые адаптеры, Bluetooth, Звук и т. д.
+4. Правой кнопкой по устройству → «Свойства».
+5. Посмотри «Состояние устройства» и код ошибки.
+6. Перед удалением чего-либо напиши мне название устройства и код ошибки.
+Для видеокарты/сети безопаснее всего брать драйвер с официального сайта производителя устройства или ПК.`,
+fi:`Ajurin tarkistus:
+1. Napsauta Käynnistä oikealla → Laitehallinta.
+2. Etsi laite, jossa on keltainen varoitusmerkki.
+3. Avaa sopiva luokka, esim. Näytönohjaimet, Verkkosovittimet, Bluetooth tai Ääni.
+4. Napsauta laitetta oikealla → Ominaisuudet.
+5. Tarkista Device status ja mahdollinen virhekoodi.
+6. Kerro laitteen nimi ja virhekoodi ennen kuin poistat mitään.
+Grafiikka- ja verkkoajurit kannattaa hakea laitteen/tietokoneen valmistajan viralliselta tukisivulta.`
+},
+sfc:{
+en:`To run SFC:
+1. Press Windows key and type cmd.
+2. Right-click Command Prompt → Run as administrator.
+3. Type: sfc /scannow
+4. Press Enter.
+5. Let it reach 100%; do not close the window.
+6. Tell me the final message exactly — for example whether Windows found corrupt files and repaired them.`,
+ru:`Чтобы запустить SFC:
+1. Нажми Windows и напиши cmd.
+2. Правой кнопкой по «Командная строка» → «Запуск от имени администратора».
+3. Введи: sfc /scannow
+4. Нажми Enter.
+5. Дождись 100%, не закрывая окно.
+6. Пришли мне последнюю строку результата — особенно пишет ли Windows, что повреждённые файлы найдены и исправлены.`,
+fi:`SFC-tarkistus:
+1. Paina Windows ja kirjoita cmd.
+2. Napsauta Komentokehotetta oikealla → Suorita järjestelmänvalvojana.
+3. Kirjoita: sfc /scannow
+4. Paina Enter.
+5. Odota 100 %:iin asti sulkematta ikkunaa.
+6. Kerro lopullinen viesti tarkasti — löysikö Windows vioittuneita tiedostoja ja korjasiko se ne.`
+},
+dism:{
+en:`To repair the Windows component image with DISM:
+1. Open Command Prompt as administrator.
+2. Type: DISM /Online /Cleanup-Image /RestoreHealth
+3. Press Enter.
+4. Leave it running even if the percentage seems stuck for a while.
+5. Wait for completion.
+6. Restart Windows.
+7. Then run: sfc /scannow
+8. Tell me whether DISM completed successfully.`,
+ru:`Чтобы восстановить хранилище компонентов Windows через DISM:
+1. Открой Командную строку от имени администратора.
+2. Введи: DISM /Online /Cleanup-Image /RestoreHealth
+3. Нажми Enter.
+4. Не закрывай окно, даже если процент какое-то время не меняется.
+5. Дождись завершения.
+6. Перезагрузи Windows.
+7. Затем запусти: sfc /scannow
+8. Напиши, завершился ли DISM успешно.`,
+fi:`Windows-komponenttikuvan korjaaminen DISM:llä:
+1. Avaa Komentokehote järjestelmänvalvojana.
+2. Kirjoita: DISM /Online /Cleanup-Image /RestoreHealth
+3. Paina Enter.
+4. Anna sen jatkaa, vaikka prosentti näyttäisi pysähtyneen hetkeksi.
+5. Odota valmistumista.
+6. Käynnistä Windows uudelleen.
+7. Suorita sitten: sfc /scannow
+8. Kerro valmistuiko DISM onnistuneesti.`
+},
+safe_mode:{
+en:`To enter Safe Mode in Windows 11/10:
+1. Hold Shift while clicking Restart from the Start menu.
+2. Choose Troubleshoot.
+3. Advanced options.
+4. Startup Settings.
+5. Restart.
+6. After restart press 4 for Safe Mode, or 5 for Safe Mode with Networking.
+7. Test whether the same problem happens there.
+If the problem disappears in Safe Mode, a startup app, driver or third-party service becomes more likely.`,
+ru:`Чтобы войти в безопасный режим Windows 10/11:
+1. Зажми Shift и, не отпуская, нажми «Перезагрузка» в меню Пуск.
+2. Выбери «Поиск и устранение неисправностей».
+3. «Дополнительные параметры».
+4. «Параметры загрузки».
+5. «Перезагрузить».
+6. После перезагрузки нажми 4 для безопасного режима или 5 для безопасного режима с сетью.
+7. Проверь, повторяется ли проблема.
+Если в безопасном режиме проблемы нет, вероятнее виноваты автозагрузка, драйвер или сторонняя служба.`,
+fi:`Windows 10/11 vikasietotilaan:
+1. Pidä Shift pohjassa ja valitse Käynnistä-valikosta Käynnistä uudelleen.
+2. Valitse Troubleshoot.
+3. Advanced options.
+4. Startup Settings.
+5. Restart.
+6. Paina uudelleenkäynnistyksen jälkeen 4 (Safe Mode) tai 5 (Safe Mode with Networking).
+7. Testaa esiintyykö sama ongelma.
+Jos ongelma katoaa vikasietotilassa, syy voi olla käynnistysohjelmassa, ajurissa tai kolmannen osapuolen palvelussa.`
+},
+defender_scan:{
+en:`To run a Microsoft Defender scan:
+1. Open Start and search Windows Security.
+2. Open Virus & threat protection.
+3. Click Quick scan first.
+4. If you suspect malware or the quick scan finds something, open Scan options.
+5. Choose Full scan for a deeper check.
+6. Let it finish and do not install random “virus cleaner” programs from popups.
+7. Tell me what Defender reports.`,
+ru:`Чтобы проверить ПК через Microsoft Defender:
+1. Открой Пуск и найди «Безопасность Windows».
+2. Открой «Защита от вирусов и угроз».
+3. Сначала запусти «Быструю проверку».
+4. Если есть подозрение на вирус или что-то найдено — открой «Параметры сканирования».
+5. Выбери «Полная проверка».
+6. Дождись окончания и не устанавливай случайные «очистители вирусов» из всплывающей рекламы.
+7. Напиши, что сообщил Defender.`,
+fi:`Microsoft Defender -tarkistus:
+1. Avaa Käynnistä ja etsi Windows Security.
+2. Avaa Virus & threat protection.
+3. Suorita ensin Quick scan.
+4. Jos epäilet haittaohjelmaa tai jotain löytyy, avaa Scan options.
+5. Valitse Full scan.
+6. Anna tarkistuksen valmistua äläkä asenna satunnaisia “virus cleaner” -ohjelmia ponnahdusikkunoista.
+7. Kerro mitä Defender ilmoitti.`
+}
+};
+
+V11.genericHow = function(l){
+  const ll=getLang(l);
+  return {
+    en:`I can explain it step by step, but I need to know which previous step you mean. Tell me the exact thing you want to do — for example “how do I change DNS?”, “how do I check my ISP?”, or “how do I restart the router?”`,
+    ru:`Я могу объяснить пошагово, но нужно понять, какой именно предыдущий пункт ты имеешь в виду. Напиши конкретно, например: «как поменять DNS?», «как проверить провайдера?» или «как перезагрузить роутер?»`,
+    fi:`Voin selittää sen vaihe vaiheelta, mutta minun pitää tietää mitä edellistä kohtaa tarkoitat. Kirjoita esimerkiksi “miten vaihdan DNS:n?”, “miten tarkistan operaattorin?” tai “miten käynnistän reitittimen uudelleen?”`
+  }[ll];
+};
+
+V11.handle = function(text,l){
+  const ll=detectLangFromText(text,l);
+  V11.lastUserLanguage=ll;
+  V11.lastUserText=clean(text);
+
+  // Remember topic from every substantive user message BEFORE older layers answer.
+  const topic=V11.detectTopic(text);
+  if(topic) V11.lastTopic=topic;
+
+  // Some phrases imply a specific action even without naming the topic again.
+  const t=clean(text);
+  if(hasPhrase(t,"restart the router") || hasPhrase(t,"перезагрузить роутер") || hasPhrase(t,"käynnistä reititin uudelleen"))
+    V11.lastTopic="router_restart";
+  if(hasPhrase(t,"clear cache") || hasPhrase(t,"очистить кэш") || hasPhrase(t,"tyhjennä välimuisti"))
+    V11.lastTopic="browser_cache";
+
+  if(V11.isHowFollowup(text)){
+    const key=V11.lastTopic;
+    if(key && STEPS[key]){
+      V11.lastAction="guided_"+key;
+      return {type:"answer",text:STEPS[key][ll] || STEPS[key].en};
+    }
+    return {type:"answer",text:V11.genericHow(ll)};
+  }
+
+  return null;
+};
+
+window.ANITA_V11=V11;
+
+// Wrap the current V7 pipeline so v11 gets first chance before v10/v9/v8.
+if(window.ANITA_V7 && typeof window.ANITA_V7.handle==="function"){
+  const previous=window.ANITA_V7.handle.bind(window.ANITA_V7);
+  window.ANITA_V7.handle=function(text,l){
+    const r=V11.handle(text,l);
+    if(r) return r;
+    return previous(text,l);
+  };
+}
+
+window.anitaGuidedFollowup = V11.handle;
+console.log("[ANITA v11] Guided Follow-Up Engine loaded");
+})();
+
+/* ================= ANITA v12 CONVERSATION CORE =================
+   Multilingual conversational IT-support state engine for RU / EN / FI.
+   Works on top of ANITA v11 and preserves the existing knowledge layers.
+
+   Goals:
+   - remember the current problem and diagnostic branch
+   - understand short replies: yes/no/done/still broken/how/why/back/continue
+   - keep context even when the user changes language
+   - guide one step at a time instead of dumping a generic checklist
+   - explain WHY a step is being done
+   - resume troubleshooting after a side question
+   - avoid repeating the same answer
+   - keep deterministic behavior; no generative AI
+   ===================================================================== */
+(function(){
+"use strict";
+
+const C = {};
+C.version = "12.0";
+
+C.state = {
+  issue: null,
+  branch: null,
+  step: null,
+  language: "en",
+  device: "computer",
+  os: "windows",
+  app: null,
+  lastQuestion: null,
+  lastInstruction: null,
+  lastAnswer: null,
+  completed: [],
+  failed: [],
+  facts: {},
+  pausedForDefinition: false,
+  resumeStep: null,
+  history: []
+};
+
+const S = C.state;
+
+const clean = s => (s || "")
+  .toLowerCase()
+  .replace(/[’`]/g, "'")
+  .replace(/[?!.,:;()[\]{}"“”]/g, " ")
+  .replace(/\s+/g, " ")
+  .trim();
+
+const words = s => clean(s).split(/\s+/).filter(Boolean);
+const has = (s, p) => (" " + clean(s) + " ").includes(" " + clean(p) + " ");
+const any = (s, arr) => arr.some(p => has(s,p));
+
+function langOf(text, fallback){
+  const t = clean(text);
+  if(/[а-яё]/i.test(text)) return "ru";
+  if(/[äöå]/i.test(text) || any(t,[
+    "miten","miksi","kyllä","ei","valmis","jatka","takaisin","tietokone","selain",
+    "verkko","netti","reititin","tulostin","ääni","näyttö","bluetooth","päivitys"
+  ])) return "fi";
+  if(/[a-z]/i.test(text)) return "en";
+  return fallback || S.language || "en";
+}
+
+function T(en,ru,fi,l){
+  return ({en,ru,fi})[l || S.language] || en;
+}
+
+function rememberHistory(role,text){
+  S.history.push({role,text:String(text||""),time:Date.now()});
+  if(S.history.length > 30) S.history.shift();
+}
+
+function resetIssue(){
+  S.issue=null; S.branch=null; S.step=null; S.app=null;
+  S.lastQuestion=null; S.lastInstruction=null; S.lastAnswer=null;
+  S.completed=[]; S.failed=[]; S.facts={};
+  S.pausedForDefinition=false; S.resumeStep=null;
+}
+
+function setIssue(issue, step){
+  if(S.issue !== issue){
+    resetIssue();
+    S.issue = issue;
+  }
+  if(step) S.step = step;
+}
+
+function markDone(name){
+  if(name && !S.completed.includes(name)) S.completed.push(name);
+}
+function markFailed(name){
+  if(name && !S.failed.includes(name)) S.failed.push(name);
+}
+
+function answer(text, meta={}){
+  S.lastAnswer = text;
+  if(meta.question) S.lastQuestion = meta.question;
+  if(meta.instruction) S.lastInstruction = meta.instruction;
+  rememberHistory("assistant", text);
+  return {type:"answer", text};
+}
+
+function q(text, id){
+  S.lastQuestion=id || null;
+  return answer(text,{question:id});
+}
+
+function instr(text, id){
+  S.lastInstruction=id || null;
+  return answer(text,{instruction:id});
+}
+
+const RX = {
+  yes: [
+    "yes","yeah","yep","yup","it does","works","working","correct","right","sure",
+    "да","ага","угу","работает","есть","подключен","подключён","вижу","получилось",
+    "kyllä","joo","toimii","on","näkyy","onnistui"
+  ],
+  no: [
+    "no","nope","nah","doesn't","doesnt","not working","not","can't","cant",
+    "нет","неа","не работает","не вижу","не получилось","не подключен","не подключён",
+    "ei","eip","ei toimi","en näe","ei onnistunut"
+  ],
+  done: [
+    "done","did it","finished","ready","completed","ok done","okay done",
+    "готово","сделал","сделала","выполнил","выполнила","сделано","готов",
+    "valmis","tehty","tein sen","onnistui"
+  ],
+  still: [
+    "still doesn't work","still doesnt work","still broken","same","same problem",
+    "nothing changed","didn't help","didnt help","not fixed","still not working",
+    "всё ещё не работает","все еще не работает","не помогло","ничего не изменилось",
+    "та же проблема","так же","всё так же","все так же",
+    "ei vieläkään toimi","ei auttanut","sama ongelma","mikään ei muuttunut"
+  ],
+  why: [
+    "why","why this","why do this","what for","what is this for",
+    "почему","зачем","для чего","а зачем","почему это",
+    "miksi","miksi tämä","mihin tätä tarvitaan"
+  ],
+  how: [
+    "how","how do i do that","how do i do this","how exactly","show me how",
+    "как","как это сделать","как сделать","как именно","покажи как",
+    "miten","miten teen sen","miten tämä tehdään","näytä miten"
+  ],
+  back: [
+    "back","go back","previous","previous step","undo","return",
+    "назад","вернись","предыдущий шаг","отмена","вернуть",
+    "takaisin","edellinen","peruuta"
+  ],
+  continue: [
+    "continue","next","go on","okay continue","ok continue","what next","then what",
+    "продолжай","дальше","что дальше","следующий","ок продолжай",
+    "jatka","seuraava","mitä seuraavaksi"
+  ]
+};
+
+function kind(text){
+  const t=clean(text);
+  const w=words(t);
+  const short=w.length <= 7;
+  for(const [k,arr] of Object.entries(RX)){
+    if(arr.some(p => t === clean(p))) return k;
+    if(short && arr.some(p => has(t,p))) return k;
+  }
+  return "other";
+}
+
+function detectIssue(text){
+  const t=clean(text);
+
+  if(any(t,["dns","domain name system","днс","dns сервер","dns-сервер"])) return "dns";
+  if(any(t,["isp","internet service provider","провайдер","интернет провайдер","operaattori"])) return "isp";
+
+  if(any(t,[
+    "internet not working","internet doesn't work","internet doesnt work","no internet",
+    "нет интернета","интернет не работает","пропал интернет",
+    "netti ei toimi","internet ei toimi","ei internetiä"
+  ])) return "internet";
+
+  if(any(t,[
+    "wifi not working","wi fi not working","can't connect to wifi","cant connect to wifi",
+    "wifi не работает","wi fi не работает","не подключается к wifi","не подключается к wi fi",
+    "wifi ei toimi","wi fi ei toimi","ei yhdistä wifiin"
+  ])) return "wifi";
+
+  if(any(t,[
+    "browser","chrome","edge","firefox","website","websites","page","pages",
+    "браузер","хром","эдж","firefox","сайт","сайты","страница","страницы",
+    "selain","chrome","edge","firefox","sivu","sivut","verkkosivu"
+  ]) && any(t,[
+    "not load","doesn't load","doesnt load","won't load","wont load","blank","stops","slow",
+    "не груз","не откры","белый экран","завис","медленно",
+    "ei lata","ei avaudu","tyhjä","hidas"
+  ])) return "browser";
+
+  if(any(t,[
+    "pc slow","computer slow","windows slow","slow computer","laggy","sluggish",
+    "компьютер тормозит","комп тормозит","windows тормозит","медленно работает","лагает",
+    "tietokone hidas","windows hidas","kone hidas","lagaa"
+  ])) return "slow_pc";
+
+  if(any(t,[
+    "printer","принтер","tulostin"
+  ]) && any(t,[
+    "not working","doesn't print","doesnt print","offline","not printing",
+    "не работает","не печатает","офлайн",
+    "ei toimi","ei tulosta","offline"
+  ])) return "printer";
+
+  if(any(t,[
+    "no sound","sound not working","audio not working","can't hear","cant hear",
+    "нет звука","звук не работает","не слышно",
+    "ei ääntä","ääni ei toimi"
+  ])) return "sound";
+
+  if(any(t,[
+    "monitor not working","display not working","black screen","second monitor","no signal",
+    "монитор не работает","черный экран","чёрный экран","нет сигнала","второй монитор",
+    "näyttö ei toimi","musta ruutu","ei signaalia","toinen näyttö"
+  ])) return "display";
+
+  if(any(t,["bluetooth"]) && any(t,[
+    "not working","can't connect","cant connect","not connecting",
+    "не работает","не подключается",
+    "ei toimi","ei yhdistä"
+  ])) return "bluetooth";
+
+  if(any(t,[
+    "windows update problem","update failed","windows update failed","can't update",
+    "ошибка обновления","windows update не работает","не обновляется",
+    "windows update ei toimi","päivitys epäonnistui"
+  ])) return "windows_update_problem";
+
+  if(any(t,[
+    "virus","malware","trojan","ransomware","spyware","infected",
+    "вирус","троян","вредонос","заражен","заражён",
+    "haittaohjelma","virus","troijalainen"
+  ])) return "malware";
+
+  if(any(t,[
+    "app crashes","program crashes","application crashes","program not opening","app not opening",
+    "программа вылетает","программа не открывается","приложение вылетает","не запускается",
+    "ohjelma kaatuu","sovellus kaatuu","ohjelma ei avaudu"
+  ])) return "app_crash";
+
+  return null;
+}
+
+function whyForCurrent(l){
+  const map = {
+    internet_device_test: T(
+      "This tells us whether the problem affects only this computer or the whole network. If another device works, the router and ISP are less likely to be the cause.",
+      "Это помогает понять, проблема только на этом компьютере или во всей сети. Если другое устройство работает, роутер и провайдер с меньшей вероятностью являются причиной.",
+      "Tämä kertoo, koskeeko ongelma vain tätä tietokonetta vai koko verkkoa. Jos toinen laite toimii, reititin ja operaattori ovat epätodennäköisempi syy.",
+      l
+    ),
+    internet_wifi_state: T(
+      "We need to separate a Wi-Fi connection problem from an Internet-access problem. Those are diagnosed differently.",
+      "Нужно отделить проблему подключения к Wi‑Fi от проблемы доступа в интернет. Это две разные ветки диагностики.",
+      "Meidän pitää erottaa Wi‑Fi-yhteysongelma internet-yhteysongelmasta. Ne tutkitaan eri tavalla.",
+      l
+    ),
+    dns_flush: T(
+      "Flushing DNS removes cached name-resolution entries. If a cached DNS record is corrupted or stale, this can fix websites that fail by name without changing your files or Wi-Fi password.",
+      "Очистка DNS удаляет сохранённые записи разрешения имён. Если запись устарела или повреждена, сайты могут снова начать открываться. Это не удаляет файлы и не меняет пароль Wi‑Fi.",
+      "DNS-välimuistin tyhjennys poistaa tallennetut nimenselvitystiedot. Vanhentunut tai vioittunut merkintä voi estää sivujen avautumisen. Tämä ei poista tiedostoja eikä muuta Wi‑Fi-salasanaa.",
+      l
+    ),
+    browser_private: T(
+      "A private window uses a cleaner browser session. If the site works there, cache, cookies, or an extension is more likely than Windows networking.",
+      "Приватное окно запускает более чистую сессию браузера. Если сайт там работает, вероятнее проблема в кэше, cookies или расширении, а не в сети Windows.",
+      "Yksityinen ikkuna käyttää puhtaampaa selainistuntoa. Jos sivu toimii siellä, välimuisti, eväste tai laajennus on todennäköisempi syy kuin Windowsin verkko.",
+      l
+    ),
+    slow_task_manager: T(
+      "Task Manager shows whether CPU, memory, or disk usage is unusually high. That helps us avoid guessing what makes the PC slow.",
+      "Диспетчер задач показывает, есть ли высокая нагрузка на процессор, память или диск. Так мы не будем гадать, из-за чего тормозит ПК.",
+      "Tehtävienhallinta näyttää, onko CPU-, muisti- tai levynkuormitus poikkeuksellisen suuri. Näin emme arvaa syytä.",
+      l
+    ),
+    printer_queue: T(
+      "A stuck print job can block every job behind it. Clearing or inspecting the queue is a safe first check before reinstalling drivers.",
+      "Зависшее задание печати может блокировать все следующие. Проверка очереди — безопасный первый шаг до переустановки драйверов.",
+      "Jumiutunut tulostustyö voi estää kaikki seuraavat työt. Tulostusjonon tarkistus on turvallinen ensimmäinen askel ennen ajureita.",
+      l
+    )
+  };
+  return map[S.lastInstruction] || map[S.lastQuestion] || T(
+    "That step helps narrow down the cause instead of changing random settings. If you tell me which step you mean, I can explain it more precisely.",
+    "Этот шаг нужен, чтобы сузить причину проблемы, а не менять настройки наугад. Если скажешь, какой именно шаг имеешь в виду, я объясню точнее.",
+    "Tämän vaiheen tarkoitus on rajata syytä ilman satunnaisten asetusten muuttamista. Jos kerrot mitä vaihetta tarkoitat, selitän tarkemmin.",
+    l
+  );
+}
+
+function repeatHow(l){
+  if(S.lastInstruction){
+    const guide = instructionText(S.lastInstruction,l);
+    if(guide) return guide;
+  }
+  return T(
+    "Tell me which step you want me to show in more detail, and I will give you the exact clicks/keys.",
+    "Скажи, какой именно шаг показать подробнее, и я дам точные кнопки и действия.",
+    "Kerro mikä vaihe pitää näyttää tarkemmin, niin annan tarkat painikkeet ja valinnat.",
+    l
+  );
+}
+
+function instructionText(id,l){
+  const m = {
+    dns_flush: T(
+`Do this exactly:
+1. Press the Windows key.
+2. Type cmd.
+3. Right-click Command Prompt → Run as administrator.
+4. Type: ipconfig /flushdns
+5. Press Enter.
+6. When you see the success message, close the browser completely and reopen it.
+Tell me “done” when you have done that.`,
+`Сделай точно так:
+1. Нажми клавишу Windows.
+2. Напиши cmd.
+3. Правой кнопкой по «Командная строка» → «Запуск от имени администратора».
+4. Введи: ipconfig /flushdns
+5. Нажми Enter.
+6. Когда увидишь сообщение об успешной очистке, полностью закрой браузер и открой снова.
+Напиши «готово», когда сделаешь.`,
+`Tee näin:
+1. Paina Windows-näppäintä.
+2. Kirjoita cmd.
+3. Napsauta Komentokehotetta oikealla → Suorita järjestelmänvalvojana.
+4. Kirjoita: ipconfig /flushdns
+5. Paina Enter.
+6. Kun onnistumisviesti näkyy, sulje selain kokonaan ja avaa se uudelleen.
+Kirjoita “valmis”, kun olet tehnyt tämän.`,l),
+    browser_private: T(
+`Open a private browser window:
+• Chrome / Edge: press Ctrl + Shift + N
+• Firefox: press Ctrl + Shift + P
+Then open the same website there.
+Tell me whether the page loads: yes or no.`,
+`Открой приватное окно браузера:
+• Chrome / Edge: Ctrl + Shift + N
+• Firefox: Ctrl + Shift + P
+Затем открой там тот же сайт.
+Напиши, загрузился сайт: да или нет.`,
+`Avaa yksityinen selainikkuna:
+• Chrome / Edge: Ctrl + Shift + N
+• Firefox: Ctrl + Shift + P
+Avaa sitten sama verkkosivu.
+Kerro latautuuko sivu: kyllä vai ei.`,l),
+    slow_task_manager: T(
+`Press Ctrl + Shift + Esc to open Task Manager.
+Then look at CPU, Memory and Disk.
+Tell me which one is highest and approximately what percentage you see.`,
+`Нажми Ctrl + Shift + Esc, чтобы открыть Диспетчер задач.
+Посмотри на ЦП/CPU, Память и Диск.
+Напиши, что из них загружено сильнее всего и примерно на сколько процентов.`,
+`Paina Ctrl + Shift + Esc avataksesi Tehtävienhallinnan.
+Katso CPU, Memory ja Disk.
+Kerro mikä niistä on korkein ja suunnilleen kuinka monta prosenttia.`,l),
+    printer_queue: T(
+`Open the print queue:
+1. Press Windows + I.
+2. Open Bluetooth & devices → Printers & scanners.
+3. Select your printer.
+4. Open print queue.
+Tell me whether you see a document stuck there.`,
+`Открой очередь печати:
+1. Нажми Windows + I.
+2. «Bluetooth и устройства» → «Принтеры и сканеры».
+3. Выбери свой принтер.
+4. Открой очередь печати.
+Напиши, есть ли там зависшее задание.`,
+`Avaa tulostusjono:
+1. Paina Windows + I.
+2. Bluetooth & devices → Printers & scanners.
+3. Valitse tulostin.
+4. Avaa tulostusjono.
+Kerro näkyykö siellä jumiutunut työ.`,l),
+    sound_output: T(
+`Check the selected sound output:
+1. Click the speaker icon near the clock.
+2. Click the output-device selector next to the volume control.
+3. Choose the speakers/headphones you are actually using.
+4. Set volume to about 50%.
+Tell me whether sound returns.`,
+`Проверь устройство вывода звука:
+1. Нажми значок динамика возле часов.
+2. Открой выбор устройства вывода рядом с громкостью.
+3. Выбери колонки/наушники, которыми реально пользуешься.
+4. Поставь громкость примерно 50%.
+Напиши, появился ли звук.`,
+`Tarkista äänilähtö:
+1. Napsauta kaiutinkuvaketta kellon lähellä.
+2. Avaa äänen ulostulolaitteen valinta.
+3. Valitse käyttämäsi kaiuttimet/kuulokkeet.
+4. Aseta äänenvoimakkuus noin 50 %:iin.
+Kerro palaako ääni.`,l),
+    display_detect: T(
+`Press Windows + P.
+Choose “Extend” if you use a second monitor.
+If nothing appears, open Settings → System → Display and click Detect.
+Tell me whether Windows finds the monitor.`,
+`Нажми Windows + P.
+Если используешь второй монитор, выбери «Расширить».
+Если ничего не появилось: Параметры → Система → Дисплей → «Обнаружить».
+Напиши, видит ли Windows монитор.`,
+`Paina Windows + P.
+Jos käytät toista näyttöä, valitse Extend.
+Jos mitään ei näy: Settings → System → Display → Detect.
+Kerro löytääkö Windows näytön.`,l),
+    bluetooth_toggle: T(
+`Press Windows + I → Bluetooth & devices.
+Turn Bluetooth off, wait 10 seconds, then turn it back on.
+Put the accessory into pairing mode and try Add device again.
+Tell me whether the device appears in the list.`,
+`Нажми Windows + I → «Bluetooth и устройства».
+Выключи Bluetooth, подожди 10 секунд и включи снова.
+Переведи устройство в режим сопряжения и снова нажми «Добавить устройство».
+Напиши, появляется ли оно в списке.`,
+`Paina Windows + I → Bluetooth & devices.
+Sammuta Bluetooth, odota 10 sekuntia ja käynnistä se uudelleen.
+Aseta lisälaite pariliitostilaan ja valitse Add device.
+Kerro näkyykö laite listassa.`,l),
+    defender_scan: T(
+`Open Windows Security → Virus & threat protection → Quick scan.
+Let it finish.
+Tell me whether Defender found anything.`,
+`Открой «Безопасность Windows» → «Защита от вирусов и угроз» → «Быстрая проверка».
+Дождись окончания.
+Напиши, нашёл ли Defender что-нибудь.`,
+`Avaa Windows Security → Virus & threat protection → Quick scan.
+Anna tarkistuksen valmistua.
+Kerro löytyikö mitään.`,l)
+  };
+  return m[id] || null;
+}
+
+/* ---------- Internet conversation ---------- */
+function internetStart(l){
+  setIssue("internet","internet_wifi_state");
+  return q(T(
+    "Let's diagnose it step by step. Is Wi‑Fi connected on this computer right now, or can the computer not connect to Wi‑Fi at all? You can answer “connected” or “not connected”.",
+    "Давай проверим по шагам. Wi‑Fi на этом компьютере сейчас подключён, или компьютер вообще не может подключиться к Wi‑Fi? Можно ответить «подключён» или «не подключён».",
+    "Tutkitaan vaihe vaiheelta. Onko Wi‑Fi tällä tietokoneella nyt yhdistetty, vai eikö tietokone saa Wi‑Fi-yhteyttä lainkaan? Voit vastata “yhdistetty” tai “ei yhdistetty”.",
+    l),"internet_wifi_state");
+}
+
+function internetFlow(text,k,l){
+  const t=clean(text);
+
+  if(S.step==="internet_wifi_state"){
+    if(any(t,["connected","подключен","подключён","yhdistetty","wifi is connected","wi fi is connected"]) || k==="yes"){
+      S.facts.wifiConnected=true;
+      S.step="internet_device_test";
+      return q(T(
+        "Good. Now check another device on the same Wi‑Fi, for example your phone. Does the Internet work there?",
+        "Хорошо. Теперь проверь другое устройство в той же Wi‑Fi сети, например телефон. Интернет на нём работает?",
+        "Hyvä. Tarkista nyt toinen laite samassa Wi‑Fi-verkossa, esimerkiksi puhelin. Toimiiko internet siinä?",
+        l),"internet_device_test");
+    }
+    if(any(t,["not connected","can't connect","cant connect","не подключен","не подключён","не подключается","ei yhdistetty","ei yhdistä"]) || k==="no"){
+      S.facts.wifiConnected=false;
+      S.issue="wifi"; S.step="wifi_visible";
+      return q(T(
+        "Understood. Do you see your Wi‑Fi network name in the list of available networks?",
+        "Понял. Ты видишь название своей Wi‑Fi сети в списке доступных сетей?",
+        "Selvä. Näkyykö oman Wi‑Fi-verkkosi nimi saatavilla olevien verkkojen listassa?",
+        l),"wifi_visible");
+    }
+  }
+
+  if(S.step==="internet_device_test"){
+    if(k==="yes"){
+      S.facts.otherDeviceWorks=true;
+      S.step="internet_browser_scope";
+      return q(T(
+        "That means the Internet connection itself is probably working and the problem is local to this computer. Do ALL websites fail here, or only one particular website?",
+        "Это значит, что само интернет-соединение, скорее всего, работает, а проблема находится на этом компьютере. Здесь не открываются ВСЕ сайты или только один конкретный сайт?",
+        "Tämä tarkoittaa, että internet-yhteys itsessään todennäköisesti toimii ja ongelma on tässä tietokoneessa. Eivätkö KAIKKI sivut avaudu vai vain yksi tietty sivu?",
+        l),"internet_browser_scope");
+    }
+    if(k==="no"){
+      S.facts.otherDeviceWorks=false;
+      S.step="internet_router_restart";
+      S.lastInstruction="router_restart";
+      return instr(T(
+        "If two devices are offline, let's test the router first. Do NOT press the RESET button. Unplug the router's power cable for about 30 seconds, plug it back in, then wait 3–5 minutes. Tell me “done” when it has restarted.",
+        "Если интернета нет на двух устройствах, сначала проверим роутер. НЕ нажимай RESET. Отключи питание роутера примерно на 30 секунд, включи обратно и подожди 3–5 минут. Напиши «готово», когда он перезапустится.",
+        "Jos kahdella laitteella ei ole internetiä, testataan ensin reititin. ÄLÄ paina RESET-painiketta. Irrota virtajohto noin 30 sekunniksi, kytke takaisin ja odota 3–5 minuuttia. Kirjoita “valmis”, kun se on käynnistynyt.",
+        l),"router_restart");
+    }
+  }
+
+  if(S.step==="internet_router_restart"){
+    if(k==="done" || k==="continue" || k==="yes"){
+      markDone("router_restart");
+      S.step="internet_after_router";
+      return q(T(
+        "Now test the Internet on both the computer and the other device. Does it work on either of them?",
+        "Теперь проверь интернет и на компьютере, и на другом устройстве. Он заработал хотя бы на одном из них?",
+        "Testaa nyt internet sekä tietokoneella että toisella laitteella. Toimiiko se kummallakaan?",
+        l),"internet_after_router");
+    }
+  }
+
+  if(S.step==="internet_after_router"){
+    if(k==="yes"){
+      return finish(T(
+        "Good — the router restart restored the connection. If the problem returns often, the router, line, or ISP may need a closer check.",
+        "Хорошо — перезапуск роутера восстановил соединение. Если проблема часто повторяется, стоит отдельно проверить роутер, линию или провайдера.",
+        "Hyvä — reitittimen uudelleenkäynnistys palautti yhteyden. Jos ongelma toistuu usein, reititin, yhteys tai operaattori kannattaa tarkistaa tarkemmin.",
+        l));
+    }
+    if(k==="no" || k==="still"){
+      S.issue="isp"; S.step="isp_status";
+      return q(T(
+        "Because multiple devices are still offline after a router restart, the ISP/line is now a strong possibility. Using mobile data on your phone, can you check your ISP's outage/service-status page?",
+        "Поскольку после перезапуска роутера интернета всё ещё нет на нескольких устройствах, вероятна проблема у провайдера или на линии. Можешь через мобильный интернет на телефоне проверить страницу аварий/статуса своего провайдера?",
+        "Koska useat laitteet ovat edelleen ilman internetiä reitittimen uudelleenkäynnistyksen jälkeen, operaattori/yhteys on nyt vahva epäily. Voitko tarkistaa puhelimen mobiilidatalla operaattorin häiriö-/palvelutilasivun?",
+        l),"isp_status");
+    }
+  }
+
+  if(S.step==="internet_browser_scope"){
+    if(any(t,["all","all websites","every site","все","все сайты","kaikki","kaikki sivut"])){
+      S.facts.allSites=true;
+      S.step="dns_flush";
+      S.lastInstruction="dns_flush";
+      return instr(instructionText("dns_flush",l),"dns_flush");
+    }
+    if(any(t,["one","one website","only one","один","только один","yksi","vain yksi"])){
+      S.facts.allSites=false;
+      S.issue="browser"; S.step="browser_private";
+      S.lastInstruction="browser_private";
+      return instr(T(
+        "If only one site fails, first test that same site in a private/incognito window. " + instructionText("browser_private",l),
+        "Если не открывается только один сайт, сначала проверь его в приватном/инкогнито окне.\n" + instructionText("browser_private",l),
+        "Jos vain yksi sivu ei avaudu, testaa sama sivu ensin yksityisessä/incognito-ikkunassa.\n" + instructionText("browser_private",l),
+        l),"browser_private");
+    }
+  }
+
+  if(S.step==="dns_flush"){
+    if(k==="done" || k==="continue"){
+      markDone("dns_flush");
+      S.step="dns_result";
+      return q(T(
+        "Now try opening two or three websites. Do they load normally?",
+        "Теперь попробуй открыть два-три сайта. Они загружаются нормально?",
+        "Kokeile nyt avata kaksi tai kolme verkkosivua. Latautuvatko ne normaalisti?",
+        l),"dns_result");
+    }
+  }
+
+  if(S.step==="dns_result"){
+    if(k==="yes"){
+      return finish(T(
+        "Great. The DNS cache was likely stale or corrupted, and flushing it fixed the issue.",
+        "Отлично. Скорее всего, DNS-кэш был устаревшим или повреждённым, и очистка решила проблему.",
+        "Hyvä. DNS-välimuisti oli todennäköisesti vanhentunut tai vioittunut, ja tyhjennys korjasi ongelman.",
+        l));
+    }
+    if(k==="no" || k==="still"){
+      S.step="dns_change";
+      return instr(T(
+`Then let's test a different DNS resolver:
+1. Press Windows + R.
+2. Type ncpa.cpl → Enter.
+3. Right-click the active Wi‑Fi/Ethernet adapter → Properties.
+4. Double-click Internet Protocol Version 4 (TCP/IPv4).
+5. Choose “Use the following DNS server addresses”.
+6. Preferred DNS: 1.1.1.1
+7. Alternate DNS: 1.0.0.1
+8. Press OK and test the browser again.
+Tell me whether anything changes.`,
+`Тогда проверим другой DNS:
+1. Нажми Windows + R.
+2. Введи ncpa.cpl → Enter.
+3. Правой кнопкой по активному Wi‑Fi/Ethernet → «Свойства».
+4. Дважды нажми «IP версии 4 (TCP/IPv4)».
+5. Выбери «Использовать следующие адреса DNS-серверов».
+6. Предпочитаемый DNS: 1.1.1.1
+7. Альтернативный DNS: 1.0.0.1
+8. Нажми OK и снова проверь браузер.
+Напиши, изменилось ли что-нибудь.`,
+`Testataan sitten toista DNS-palvelinta:
+1. Paina Windows + R.
+2. Kirjoita ncpa.cpl → Enter.
+3. Napsauta aktiivista Wi‑Fi/Ethernet-sovitinta oikealla → Properties.
+4. Avaa Internet Protocol Version 4 (TCP/IPv4).
+5. Valitse “Use the following DNS server addresses”.
+6. Preferred DNS: 1.1.1.1
+7. Alternate DNS: 1.0.0.1
+8. Paina OK ja testaa selainta.
+Kerro muuttuiko tilanne.`,l),"dns_change");
+    }
+  }
+}
+
+/* ---------- Wi-Fi branch ---------- */
+function wifiStart(l){
+  setIssue("wifi","wifi_visible");
+  return q(T(
+    "Do you see your Wi‑Fi network name in the list of available networks?",
+    "Ты видишь название своей Wi‑Fi сети в списке доступных сетей?",
+    "Näkyykö oman Wi‑Fi-verkkosi nimi saatavilla olevien verkkojen listassa?",
+    l),"wifi_visible");
+}
+function wifiFlow(text,k,l){
+  if(S.step==="wifi_visible"){
+    if(k==="yes"){
+      S.step="wifi_connect_error";
+      return q(T(
+        "When you click it and choose Connect, what happens: does it ask for the password, say “Can't connect to this network”, or connect with “No Internet”?",
+        "Когда нажимаешь на сеть и «Подключиться», что происходит: просит пароль, пишет «Не удаётся подключиться к этой сети» или подключается, но пишет «Без доступа к Интернету»?",
+        "Kun valitset verkon ja Yhdistä, mitä tapahtuu: pyytääkö se salasanaa, näyttääkö “Can't connect to this network” vai yhdistääkö se mutta näyttää “No Internet”?",
+        l),"wifi_connect_error");
+    }
+    if(k==="no"){
+      S.step="wifi_toggle";
+      return instr(T(
+        "Turn Wi‑Fi off, wait 10 seconds, and turn it back on. Then look at the network list again. Tell me whether your network appears.",
+        "Выключи Wi‑Fi, подожди 10 секунд и включи снова. Затем снова открой список сетей. Напиши, появилась ли твоя сеть.",
+        "Sammuta Wi‑Fi, odota 10 sekuntia ja käynnistä se uudelleen. Katso sitten verkkolista uudelleen. Kerro näkyykö oma verkkosi.",
+        l),"wifi_toggle");
+    }
+  }
+  if(S.step==="wifi_toggle" && (k==="done" || k==="continue" || k==="yes" || k==="no")){
+    if(k==="yes"){
+      S.step="wifi_visible";
+      return q(T("Good. Can you connect to it now?","Хорошо. Теперь получается подключиться?","Hyvä. Pystytkö yhdistämään siihen nyt?",l),"wifi_connect_now");
+    }
+    S.step="wifi_adapter";
+    return instr(T(
+`Let's check the Wi‑Fi adapter:
+1. Right-click Start → Device Manager.
+2. Open Network adapters.
+3. Look for a Wireless / Wi‑Fi adapter.
+Tell me whether you see it and whether it has a yellow warning icon.`,
+`Проверим Wi‑Fi адаптер:
+1. Правой кнопкой по Пуск → «Диспетчер устройств».
+2. Открой «Сетевые адаптеры».
+3. Найди Wireless / Wi‑Fi адаптер.
+Напиши, видишь ли его и есть ли возле него жёлтый значок предупреждения.`,
+`Tarkistetaan Wi‑Fi-sovitin:
+1. Napsauta Käynnistä oikealla → Laitehallinta.
+2. Avaa Verkkosovittimet.
+3. Etsi Wireless / Wi‑Fi -sovitin.
+Kerro näkyykö se ja onko siinä keltainen varoitusmerkki.`,l),"wifi_adapter");
+  }
+}
+
+/* ---------- Browser branch ---------- */
+function browserStart(l){
+  setIssue("browser","browser_private");
+  S.lastInstruction="browser_private";
+  return instr(instructionText("browser_private",l),"browser_private");
+}
+function browserFlow(text,k,l){
+  if(S.step==="browser_private"){
+    if(k==="yes"){
+      S.step="browser_cache";
+      return instr(T(
+`Good — that points to browser data or an extension.
+Next:
+1. In Chrome/Edge press Ctrl + Shift + Delete.
+2. Select Cached images and files.
+3. You do not need to delete saved passwords.
+4. Clear the cache.
+5. Restart the browser.
+Tell me “done” when finished.`,
+`Хорошо — это указывает на данные браузера или расширение.
+Дальше:
+1. В Chrome/Edge нажми Ctrl + Shift + Delete.
+2. Выбери «Кэшированные изображения и файлы».
+3. Сохранённые пароли удалять не нужно.
+4. Очисти кэш.
+5. Перезапусти браузер.
+Напиши «готово».`,
+`Hyvä — tämä viittaa selaimen tietoihin tai laajennukseen.
+Seuraavaksi:
+1. Chromessa/Edgessä paina Ctrl + Shift + Delete.
+2. Valitse Cached images and files.
+3. Tallennettuja salasanoja ei tarvitse poistaa.
+4. Tyhjennä välimuisti.
+5. Käynnistä selain uudelleen.
+Kirjoita “valmis”.`,l),"browser_cache");
+    }
+    if(k==="no"){
+      S.step="browser_other_browser";
+      return q(T(
+        "Does the same website fail in another browser too, for example Edge if you normally use Chrome?",
+        "Тот же сайт не открывается и в другом браузере, например Edge, если обычно используешь Chrome?",
+        "Eikö sama sivu avaudu myöskään toisessa selaimessa, esimerkiksi Edgessä jos käytät yleensä Chromea?",
+        l),"browser_other_browser");
+    }
+  }
+  if(S.step==="browser_cache" && (k==="done" || k==="continue")){
+    S.step="browser_cache_result";
+    return q(T("Test the site again. Does it work now?","Проверь сайт снова. Теперь работает?","Testaa sivua uudelleen. Toimiiko se nyt?",l),"browser_cache_result");
+  }
+  if(S.step==="browser_cache_result"){
+    if(k==="yes") return finish(T("Great — the browser cache was the likely cause.","Отлично — вероятной причиной был кэш браузера.","Hyvä — selaimen välimuisti oli todennäköinen syy.",l));
+    if(k==="no" || k==="still"){
+      S.step="browser_extensions";
+      return instr(T(
+        "Next, temporarily disable browser extensions one by one, especially ad blockers, VPN extensions, security extensions, and script blockers. Test the page after each change. Tell me if one of them makes the page work.",
+        "Теперь временно отключай расширения браузера по одному, особенно блокировщики рекламы, VPN, защитные расширения и script blocker. После каждого отключения проверяй сайт. Напиши, если после какого-то расширения сайт заработает.",
+        "Poista seuraavaksi selaimen laajennuksia väliaikaisesti käytöstä yksi kerrallaan, erityisesti mainosesto-, VPN-, tietoturva- ja script blocker -laajennukset. Testaa sivu jokaisen muutoksen jälkeen. Kerro jos jokin niistä korjaa ongelman.",
+        l),"browser_extensions");
+    }
+  }
+  if(S.step==="browser_other_browser"){
+    if(k==="yes"){
+      S.issue="internet"; S.step="dns_flush"; S.lastInstruction="dns_flush";
+      return instr(T(
+        "Because the problem happens in more than one browser, let's check Windows networking/DNS rather than only browser settings.\n\n"+instructionText("dns_flush",l),
+        "Поскольку проблема повторяется в нескольких браузерах, проверим сеть/DNS Windows, а не только настройки браузера.\n\n"+instructionText("dns_flush",l),
+        "Koska ongelma esiintyy useammassa selaimessa, tarkistetaan Windowsin verkko/DNS eikä vain selaimen asetuksia.\n\n"+instructionText("dns_flush",l),
+        l),"dns_flush");
+    }
+    if(k==="no"){
+      return q(T(
+        "Then the problem is specific to the original browser. Which browser is it: Chrome, Edge, Firefox, or something else?",
+        "Тогда проблема относится именно к исходному браузеру. Какой это браузер: Chrome, Edge, Firefox или другой?",
+        "Silloin ongelma koskee vain alkuperäistä selainta. Mikä selain se on: Chrome, Edge, Firefox vai jokin muu?",
+        l),"browser_name");
+    }
+  }
+}
+
+/* ---------- Slow PC ---------- */
+function slowStart(l){
+  setIssue("slow_pc","slow_task_manager");
+  S.lastInstruction="slow_task_manager";
+  return instr(T(
+    "Let's first see what resource is actually under load instead of guessing.\n\n"+instructionText("slow_task_manager",l),
+    "Сначала посмотрим, какой ресурс реально перегружен, чтобы не гадать.\n\n"+instructionText("slow_task_manager",l),
+    "Katsotaan ensin mikä resurssi on oikeasti kuormitettu, jotta emme arvaa.\n\n"+instructionText("slow_task_manager",l),
+    l),"slow_task_manager");
+}
+function slowFlow(text,k,l){
+  const t=clean(text);
+  if(S.step==="slow_task_manager"){
+    if(any(t,["cpu","processor","процессор","цп"]) && any(t,["100","90","80","high","высок","korkea"])){
+      S.facts.high="cpu"; S.step="slow_top_process";
+      return q(T(
+        "CPU is high. In Task Manager, click the CPU column to sort highest first. What program/process is at the top?",
+        "Высокая загрузка CPU. В Диспетчере задач нажми столбец ЦП/CPU, чтобы отсортировать по убыванию. Какая программа или процесс стоит первой?",
+        "CPU-kuormitus on korkea. Napsauta Tehtävienhallinnassa CPU-saraketta lajitellaksesi suurimmasta pienimpään. Mikä ohjelma/prosessi on ylimpänä?",
+        l),"slow_top_process");
+    }
+    if(any(t,["memory","ram","память","muisti"]) && any(t,["100","90","80","high","высок","korkea"])){
+      S.facts.high="memory"; S.step="slow_top_process";
+      return q(T(
+        "Memory usage is high. Sort by Memory and tell me the top three programs and their approximate usage.",
+        "Память сильно загружена. Отсортируй по «Память» и напиши три верхние программы и их примерное потребление.",
+        "Muistinkäyttö on korkea. Lajittele Memory-sarakkeen mukaan ja kerro kolme ylintä ohjelmaa sekä niiden käyttö.",
+        l),"slow_top_process");
+    }
+    if(any(t,["disk","диск","levy"]) && any(t,["100","90","80","high","высок","korkea"])){
+      S.facts.high="disk"; S.step="slow_top_process";
+      return q(T(
+        "Disk usage is high. Sort by Disk and tell me which process stays at the top for about 20–30 seconds.",
+        "Диск сильно загружен. Отсортируй по «Диск» и напиши, какой процесс держится сверху примерно 20–30 секунд.",
+        "Levyn käyttö on korkea. Lajittele Disk-sarakkeen mukaan ja kerro mikä prosessi pysyy ylimpänä noin 20–30 sekuntia.",
+        l),"slow_top_process");
+    }
+    if(k==="done" || k==="continue"){
+      return q(T(
+        "What do you see as highest: CPU, Memory, or Disk? You can also give me the percentages.",
+        "Что загружено сильнее всего: CPU/ЦП, Память или Диск? Можешь написать проценты.",
+        "Mikä on korkein: CPU, Memory vai Disk? Voit myös antaa prosentit.",
+        l),"slow_resource");
+    }
+  }
+}
+
+/* ---------- Printer ---------- */
+function printerStart(l){
+  setIssue("printer","printer_power");
+  return q(T(
+    "Let's narrow it down. Is the printer powered on and does Windows show it as Online/Ready, or Offline?",
+    "Давай уточним. Принтер включён, и Windows показывает его как «Готов/Online» или как «Offline/Не в сети»?",
+    "Rajataan ongelmaa. Onko tulostin päällä ja näyttääkö Windows sen tilaksi Online/Ready vai Offline?",
+    l),"printer_power");
+}
+function printerFlow(text,k,l){
+  const t=clean(text);
+  if(S.step==="printer_power"){
+    if(any(t,["offline","не в сети","офлайн"])){
+      S.step="printer_connection";
+      return q(T(
+        "Is this printer connected by USB cable or through Wi‑Fi/network?",
+        "Этот принтер подключён USB-кабелем или через Wi‑Fi/сеть?",
+        "Onko tulostin yhdistetty USB-kaapelilla vai Wi‑Fi/verkon kautta?",
+        l),"printer_connection");
+    }
+    if(any(t,["online","ready","готов","готово","valmis"]) || k==="yes"){
+      S.step="printer_queue"; S.lastInstruction="printer_queue";
+      return instr(instructionText("printer_queue",l),"printer_queue");
+    }
+  }
+  if(S.step==="printer_queue"){
+    if(k==="yes"){
+      return instr(T(
+        "Select the stuck print job and cancel it. If several jobs are stuck, cancel all of them. Then try printing one simple page again. Tell me whether it prints.",
+        "Выбери зависшее задание и отмени его. Если зависло несколько — отмени все. Затем попробуй напечатать одну простую страницу. Напиши, печатает ли.",
+        "Valitse jumiutunut tulostustyö ja peruuta se. Jos useita töitä on jumissa, peruuta kaikki. Tulosta sitten yksi yksinkertainen sivu ja kerro onnistuuko.",
+        l),"printer_clear_queue");
+    }
+    if(k==="no"){
+      S.step="printer_test_page";
+      return instr(T(
+        "Open printer properties and try Print Test Page. If the test page also fails, tell me whether Windows shows any error message.",
+        "Открой свойства принтера и попробуй «Печать пробной страницы». Если она тоже не печатается, напиши, какую ошибку показывает Windows.",
+        "Avaa tulostimen ominaisuudet ja kokeile Print Test Page. Jos testisivukaan ei tulostu, kerro näkyykö Windowsissa virheilmoitus.",
+        l),"printer_test_page");
+    }
+  }
+}
+
+/* ---------- Sound ---------- */
+function soundStart(l){
+  setIssue("sound","sound_output");
+  S.lastInstruction="sound_output";
+  return instr(instructionText("sound_output",l),"sound_output");
+}
+function soundFlow(text,k,l){
+  if(S.step==="sound_output"){
+    if(k==="yes") return finish(T("Great — the wrong output device was selected.","Отлично — было выбрано неправильное устройство вывода.","Hyvä — väärä äänilähtö oli valittuna.",l));
+    if(k==="no" || k==="still"){
+      S.step="sound_mute_app";
+      return q(T(
+        "Is there no sound everywhere in Windows, or only in one application/browser?",
+        "Звука нет вообще во всей Windows или только в одной программе/браузере?",
+        "Puuttuuko ääni kaikkialta Windowsissa vai vain yhdessä ohjelmassa/selaimessa?",
+        l),"sound_scope");
+    }
+  }
+}
+
+/* ---------- Display ---------- */
+function displayStart(l){
+  setIssue("display","display_detect");
+  S.lastInstruction="display_detect";
+  return instr(instructionText("display_detect",l),"display_detect");
+}
+function displayFlow(text,k,l){
+  if(S.step==="display_detect"){
+    if(k==="yes"){
+      S.step="display_mode";
+      return q(T(
+        "Good. Is the monitor detected but still black, or does it now show the desktop?",
+        "Хорошо. Монитор определяется, но экран всё ещё чёрный, или рабочий стол уже появился?",
+        "Hyvä. Tunnistaako Windows näytön mutta se on yhä musta, vai näkyykö työpöytä jo?",
+        l),"display_mode");
+    }
+    if(k==="no"){
+      S.step="display_cable";
+      return instr(T(
+        "Check both ends of the HDMI/DisplayPort cable, then if possible try another cable or another port. Also make sure the monitor input/source matches the cable (HDMI/DP). Tell me what changes.",
+        "Проверь оба конца HDMI/DisplayPort кабеля, затем по возможности попробуй другой кабель или другой порт. Также проверь, что на мониторе выбран правильный источник сигнала HDMI/DP. Напиши, что изменилось.",
+        "Tarkista HDMI/DisplayPort-kaapelin molemmat päät ja kokeile mahdollisuuksien mukaan toista kaapelia tai porttia. Varmista myös, että näytön tulolähde vastaa kaapelia (HDMI/DP). Kerro mitä muuttuu.",
+        l),"display_cable");
+    }
+  }
+}
+
+/* ---------- Bluetooth ---------- */
+function bluetoothStart(l){
+  setIssue("bluetooth","bluetooth_toggle");
+  S.lastInstruction="bluetooth_toggle";
+  return instr(instructionText("bluetooth_toggle",l),"bluetooth_toggle");
+}
+function bluetoothFlow(text,k,l){
+  if(S.step==="bluetooth_toggle"){
+    if(k==="yes"){
+      return q(T(
+        "Good. When you select the device, does pairing complete or show an error?",
+        "Хорошо. Когда выбираешь устройство, сопряжение завершается или появляется ошибка?",
+        "Hyvä. Kun valitset laitteen, onnistuuko pariliitos vai tuleeko virhe?",
+        l),"bluetooth_pair_result");
+    }
+    if(k==="no"){
+      S.step="bluetooth_adapter";
+      return instr(T(
+        "Open Device Manager → Bluetooth. Do you see a Bluetooth adapter there, and does it have a yellow warning symbol?",
+        "Открой Диспетчер устройств → Bluetooth. Видишь там Bluetooth-адаптер и есть ли возле него жёлтый значок предупреждения?",
+        "Avaa Laitehallinta → Bluetooth. Näkyykö siellä Bluetooth-sovitin ja onko siinä keltainen varoitusmerkki?",
+        l),"bluetooth_adapter");
+    }
+  }
+}
+
+/* ---------- Malware ---------- */
+function malwareStart(l){
+  setIssue("malware","defender_scan");
+  S.lastInstruction="defender_scan";
+  return instr(T(
+    "Let's start with a safe built-in scan rather than downloading random cleaners.\n\n"+instructionText("defender_scan",l),
+    "Начнём с безопасной встроенной проверки, а не со случайных «чистильщиков» из интернета.\n\n"+instructionText("defender_scan",l),
+    "Aloitetaan turvallisella sisäänrakennetulla tarkistuksella eikä satunnaisilla puhdistusohjelmilla.\n\n"+instructionText("defender_scan",l),
+    l),"defender_scan");
+}
+function malwareFlow(text,k,l){
+  if(S.step==="defender_scan" && (k==="done" || k==="continue")){
+    return q(T(
+      "What did Defender report: no threats, threats found, or scan could not complete?",
+      "Что сообщил Defender: угроз не найдено, угрозы найдены или проверка не завершилась?",
+      "Mitä Defender ilmoitti: ei uhkia, uhkia löytyi vai tarkistus ei valmistunut?",
+      l),"defender_result");
+  }
+}
+
+/* ---------- Windows Update ---------- */
+function updateStart(l){
+  setIssue("windows_update_problem","update_check");
+  return instr(T(
+`Open Settings → Windows Update.
+1. Click Check for updates.
+2. If an update fails, note the error code, for example 0x800....
+3. Restart the PC once and try again.
+Tell me the exact error code or message if it still fails.`,
+`Открой Параметры → Windows Update.
+1. Нажми «Проверить наличие обновлений».
+2. Если обновление не устанавливается, запиши код ошибки, например 0x800....
+3. Один раз перезагрузи ПК и попробуй снова.
+Если снова не получится — напиши точный код или текст ошибки.`,
+`Avaa Asetukset → Windows Update.
+1. Valitse Check for updates.
+2. Jos päivitys epäonnistuu, kirjoita virhekoodi, esimerkiksi 0x800....
+3. Käynnistä tietokone kerran uudelleen ja yritä uudelleen.
+Jos se epäonnistuu taas, kerro tarkka virhekoodi tai viesti.`,l),"update_check");
+}
+
+/* ---------- ISP ---------- */
+function ispStart(l){
+  setIssue("isp","isp_device_test");
+  return q(T(
+    "Let's check whether it is really the ISP. Does the Internet fail on more than one device connected to the same router?",
+    "Давай проверим, действительно ли проблема у провайдера. Интернет не работает более чем на одном устройстве, подключённом к тому же роутеру?",
+    "Tarkistetaan onko syy todella operaattorissa. Eikö internet toimi useammalla kuin yhdellä samaan reitittimeen yhdistetyllä laitteella?",
+    l),"isp_device_test");
+}
+function ispFlow(text,k,l){
+  if(S.step==="isp_device_test"){
+    if(k==="yes"){
+      S.step="isp_router_restart"; S.lastInstruction="router_restart";
+      return instr(T(
+        "Before blaming the ISP, restart the router safely: unplug power for about 30 seconds, reconnect it, wait 3–5 minutes, and test two devices again. Do not press RESET. Tell me “done”.",
+        "Прежде чем считать виноватым провайдера, безопасно перезапусти роутер: отключи питание примерно на 30 секунд, включи обратно, подожди 3–5 минут и снова проверь два устройства. RESET не нажимай. Напиши «готово».",
+        "Ennen kuin epäilemme operaattoria, käynnistä reititin turvallisesti uudelleen: irrota virta noin 30 sekunniksi, kytke takaisin, odota 3–5 minuuttia ja testaa kaksi laitetta. Älä paina RESET. Kirjoita “valmis”.",
+        l),"router_restart");
+    }
+    if(k==="no"){
+      return answer(T(
+        "If only one device is affected, the ISP is unlikely to be the main cause. We should troubleshoot that device instead. Tell me what device it is and what exactly does not work.",
+        "Если проблема только на одном устройстве, провайдер маловероятно является основной причиной. Лучше проверять само устройство. Напиши, что это за устройство и что именно не работает.",
+        "Jos ongelma koskee vain yhtä laitetta, operaattori ei todennäköisesti ole pääsyy. Tutkitaan itse laitetta. Kerro mikä laite se on ja mikä tarkalleen ei toimi.",
+        l));
+    }
+  }
+  if(S.step==="isp_router_restart" && (k==="done" || k==="continue")){
+    S.step="isp_status";
+    return q(T(
+        "After the restart, are multiple devices still offline?",
+        "После перезапуска интернета всё ещё нет на нескольких устройствах?",
+        "Ovatko useat laitteet edelleen ilman internetiä uudelleenkäynnistyksen jälkeen?",
+        l),"isp_status");
+  }
+  if(S.step==="isp_status"){
+    if(k==="yes"){
+      return answer(T(
+        "Then the ISP/line is a strong possibility. Use mobile data to check your provider's outage page or contact support. If you tell me your ISP name, I can tell you what information to look for.",
+        "Тогда проблема у провайдера или на линии вполне вероятна. Через мобильный интернет проверь страницу аварий своего оператора или обратись в поддержку. Если назовёшь провайдера, я подскажу, что именно искать.",
+        "Silloin operaattori/yhteys on vahva mahdollisuus. Tarkista mobiilidatalla operaattorin häiriösivu tai ota yhteyttä tukeen. Jos kerrot operaattorin nimen, voin sanoa mitä tietoja kannattaa etsiä.",
+        l));
+    }
+    if(k==="no"){
+      return finish(T(
+        "Good. The connection recovered after the router restart, so the ISP may not have been the cause.",
+        "Хорошо. После перезапуска роутера связь восстановилась, поэтому провайдер мог быть ни при чём.",
+        "Hyvä. Yhteys palautui reitittimen uudelleenkäynnistyksen jälkeen, joten operaattori ei välttämättä ollut syy.",
+        l));
+    }
+  }
+}
+
+/* ---------- DNS direct ---------- */
+function dnsStart(l){
+  setIssue("dns","dns_intent");
+  return q(T(
+    "Do you want to know what DNS is, or are you trying to fix a DNS/website problem? You can answer “explain” or “fix”.",
+    "Ты хочешь узнать, что такое DNS, или пытаешься исправить проблему DNS/открытия сайтов? Можно ответить «объясни» или «исправить».",
+    "Haluatko tietää mikä DNS on, vai yritätkö korjata DNS-/verkkosivuongelmaa? Voit vastata “selitä” tai “korjaa”.",
+    l),"dns_intent");
+}
+function dnsFlow(text,k,l){
+  const t=clean(text);
+  if(S.step==="dns_intent"){
+    if(any(t,["explain","what is","объясни","что это","selitä","mikä se on"])){
+      S.resumeStep="dns_intent"; S.pausedForDefinition=true;
+      return answer(T(
+        "DNS is the Internet's address book: it translates names such as example.com into IP addresses. If DNS fails, Wi‑Fi can still be connected while websites do not open by name. If you want, say “fix” and I'll guide you step by step.",
+        "DNS — это «адресная книга интернета»: он переводит имена вроде example.com в IP‑адреса. При сбое DNS Wi‑Fi может оставаться подключённым, но сайты по именам не открываются. Если хочешь исправить — напиши «исправить», и я проведу по шагам.",
+        "DNS on internetin osoitekirja: se muuntaa nimet kuten example.com IP-osoitteiksi. DNS-ongelmassa Wi‑Fi voi olla yhdistetty mutta sivut eivät avaudu nimellä. Jos haluat korjata ongelmaa, kirjoita “korjaa”, niin etenemme vaiheittain.",
+        l));
+    }
+    if(any(t,["fix","repair","исправить","починить","korjaa"]) || k==="continue"){
+      S.step="dns_flush"; S.lastInstruction="dns_flush";
+      return instr(instructionText("dns_flush",l),"dns_flush");
+    }
+  }
+  if(S.step==="dns_flush"){
+    if(k==="done" || k==="continue"){
+      S.step="dns_result";
+      return q(T(
+        "Now test two or three websites. Do they open normally?",
+        "Теперь проверь два-три сайта. Они открываются нормально?",
+        "Testaa nyt kaksi tai kolme verkkosivua. Avautuvatko ne normaalisti?",
+        l),"dns_result");
+    }
+  }
+  if(S.step==="dns_result"){
+    if(k==="yes") return finish(T("Great. The DNS cache was likely the problem.","Отлично. Скорее всего, проблема была в DNS-кэше.","Hyvä. DNS-välimuisti oli todennäköisesti ongelma.",l));
+    if(k==="no" || k==="still"){
+      S.issue="internet"; S.step="internet_device_test";
+      return q(T(
+        "Flushing DNS did not fix it, so let's not repeat the same step. Does the Internet work on another device connected to the same Wi‑Fi?",
+        "Очистка DNS не помогла, поэтому повторять её не будем. Интернет работает на другом устройстве в той же Wi‑Fi сети?",
+        "DNS-välimuistin tyhjennys ei auttanut, joten emme toista samaa vaihetta. Toimiiko internet toisella samaan Wi‑Fi-verkkoon yhdistetyllä laitteella?",
+        l),"internet_device_test");
+    }
+  }
+}
+
+function finish(text){
+  const r=answer(text);
+  S.step="finished";
+  return r;
+}
+
+function handleSideCommands(text,k,l){
+  if(k==="why"){
+    return answer(whyForCurrent(l));
+  }
+  if(k==="how"){
+    return answer(repeatHow(l));
+  }
+  if(k==="back"){
+    return answer(T(
+      "I won't change anything automatically. Tell me which previous action you want to undo, and I will show you how to return it safely.",
+      "Я ничего не меняю автоматически. Напиши, какое предыдущее действие хочешь отменить, и я покажу, как безопасно вернуть всё назад.",
+      "En muuta mitään automaattisesti. Kerro mikä aiempi toimenpide halutaan perua, niin näytän miten se palautetaan turvallisesti.",
+      l));
+  }
+  if(S.step==="finished" && k==="continue"){
+    return answer(T(
+      "That troubleshooting path is complete. Tell me what still feels wrong, or describe a new IT problem.",
+      "Эта ветка диагностики завершена. Напиши, что всё ещё работает неправильно, или опиши новую IT‑проблему.",
+      "Tämä vianmäärityshaara on valmis. Kerro mikä toimii edelleen väärin tai kuvaa uusi IT-ongelma.",
+      l));
+  }
+  return null;
+}
+
+C.handle = function(text,l){
+  if(!text || !String(text).trim()) return null;
+
+  const previousLang=S.language;
+  const detected=langOf(text,l || previousLang);
+  S.language=detected;
+  rememberHistory("user",text);
+
+  const k=kind(text);
+  const issue=detectIssue(text);
+
+  // A new explicit issue can switch the active branch.
+  if(issue && issue !== S.issue){
+    switch(issue){
+      case "internet": return internetStart(detected);
+      case "wifi": return wifiStart(detected);
+      case "browser": return browserStart(detected);
+      case "slow_pc": return slowStart(detected);
+      case "printer": return printerStart(detected);
+      case "sound": return soundStart(detected);
+      case "display": return displayStart(detected);
+      case "bluetooth": return bluetoothStart(detected);
+      case "malware": return malwareStart(detected);
+      case "windows_update_problem": return updateStart(detected);
+      case "isp": return ispStart(detected);
+      case "dns": return dnsStart(detected);
+    }
+  }
+
+  // Side commands must work in the middle of a diagnostic branch.
+  const side=handleSideCommands(text,k,detected);
+  if(side) return side;
+
+  // Continue the active troubleshooting tree.
+  if(S.issue){
+    let r=null;
+    switch(S.issue){
+      case "internet": r=internetFlow(text,k,detected); break;
+      case "wifi": r=wifiFlow(text,k,detected); break;
+      case "browser": r=browserFlow(text,k,detected); break;
+      case "slow_pc": r=slowFlow(text,k,detected); break;
+      case "printer": r=printerFlow(text,k,detected); break;
+      case "sound": r=soundFlow(text,k,detected); break;
+      case "display": r=displayFlow(text,k,detected); break;
+      case "bluetooth": r=bluetoothFlow(text,k,detected); break;
+      case "malware": r=malwareFlow(text,k,detected); break;
+      case "isp": r=ispFlow(text,k,detected); break;
+      case "dns": r=dnsFlow(text,k,detected); break;
+    }
+    if(r) return r;
+
+    // Helpful contextual fallback instead of losing the thread.
+    if(k==="still"){
+      markFailed(S.lastInstruction || S.step);
+      return answer(T(
+        "Understood — that did not fix it. I will not repeat the same step. Tell me what you see now: an error message, no change at all, or a different symptom?",
+        "Понял — это не помогло. Повторять тот же шаг не буду. Что сейчас видно: появилась ошибка, вообще ничего не изменилось или симптом стал другим?",
+        "Selvä — se ei korjannut ongelmaa. En toista samaa vaihetta. Mitä näet nyt: virheilmoituksen, ei mitään muutosta vai erilaisen oireen?",
+        detected));
+    }
+
+    if(k==="done"){
+      return answer(T(
+        "Good. What happened after you did it? Did the problem disappear, stay exactly the same, or change?",
+        "Хорошо. Что произошло после этого? Проблема исчезла, осталась точно такой же или изменилась?",
+        "Hyvä. Mitä tapahtui sen jälkeen? Poistuiko ongelma, pysyikö se täysin samana vai muuttuiko se?",
+        detected));
+    }
+
+    if(k==="yes" || k==="no"){
+      return answer(T(
+        "I understood your yes/no answer, but I need one more detail for this branch. Please answer the last question with a few words so I know exactly what you are confirming.",
+        "Я понял ответ «да/нет», но для этой ветки нужна ещё одна деталь. Ответь на последний вопрос парой слов, чтобы было понятно, что именно ты подтверждаешь.",
+        "Ymmärsin kyllä/ei-vastauksen, mutta tässä haarassa tarvitsen vielä yhden yksityiskohdan. Vastaa viimeiseen kysymykseen muutamalla sanalla, jotta tiedän mitä vahvistat.",
+        detected));
+    }
+  }
+
+  return null;
+};
+
+window.ANITA_V12=C;
+
+// Wrap the existing ANITA_V7 pipeline so Conversation Core gets first chance.
+if(window.ANITA_V7 && typeof window.ANITA_V7.handle==="function"){
+  const previous=window.ANITA_V7.handle.bind(window.ANITA_V7);
+  window.ANITA_V7.handle=function(text,l){
+    const r=C.handle(text,l);
+    if(r) return r;
+    return previous(text,l);
+  };
+}
+
+// Optional helper for debugging in browser console.
+window.anitaConversationState=function(){
+  return JSON.parse(JSON.stringify(C.state));
+};
+
+console.log("[ANITA v12] Multilingual Conversation Core loaded");
+})();
