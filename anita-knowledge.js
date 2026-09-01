@@ -7236,3 +7236,228 @@ window.ANITA_V14_1={
 
 console.log("[ANITA v14.1] Answer-to-Question Context Router loaded");
 })();
+
+/* ================= ANITA v14.2 GENERIC PROBLEM INTENT ROUTER =================
+   Fixes vague problem reports such as:
+   - "Проблема с компом"
+   - "Проблема с компьютером"
+   - "something is wrong with my pc"
+   - "my computer has a problem"
+   - "koneessa on ongelma"
+
+   Behavior:
+   - recognizes the device/object
+   - recognizes that user is reporting a problem
+   - if symptom is missing, asks a short guided clarification
+   - does NOT fall into the old generic fallback
+   - keeps the conversation ready for the next symptom
+   - supports RU / EN / FI and common slang
+   =========================================================================== */
+(function(){
+"use strict";
+
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+
+const V = window.ANITA_V12;
+const old = V.handle.bind(V);
+const S = V.state;
+
+S.awaitingGenericSymptom = S.awaitingGenericSymptom || false;
+S.genericProblemDevice = S.genericProblemDevice || null;
+
+function clean(s){
+  return (s||"")
+    .toLowerCase()
+    .replace(/[’`]/g,"'")
+    .replace(/[?!.,:;()[\]{}"“”]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function langOf(text){
+  if(/[а-яё]/i.test(text)) return "ru";
+  if(/[äöå]/i.test(text) || /\b(kone|tietokone|läppäri|ongelma)\b/i.test(text)) return "fi";
+  return S.language || "en";
+}
+
+function R(l,en,ru,fi){ return l==="ru"?ru:l==="fi"?fi:en; }
+
+function detectDevice(text){
+  const t=clean(text);
+
+  if(/\b(компьютер|комп|компик|пк|ноут|ноутбук)\b/i.test(t)) return "computer";
+  if(/\b(pc|computer|desktop|machine|rig|laptop|notebook)\b/i.test(t)) return "computer";
+  if(/\b(tietokone|kone|pc|läppäri)\b/i.test(t)) return "computer";
+
+  if(/\b(монитор|экран|monitor|screen|display|näyttö)\b/i.test(t)) return "display";
+  if(/\b(принтер|printer|tulostin)\b/i.test(t)) return "printer";
+  if(/\b(интернет|wifi|wi fi|вайфай|internet|netti|verkko)\b/i.test(t)) return "internet";
+  if(/\b(браузер|browser|chrome|edge|firefox|selain)\b/i.test(t)) return "browser";
+  return null;
+}
+
+function hasProblemIntent(text){
+  const t=clean(text);
+  return (
+    /\b(проблема|неполадка|что то не так|что-то не так|сломал\w*|глючит)\b/i.test(t) ||
+    /\b(problem|issue|something wrong|not right|trouble|acting weird|glitching)\b/i.test(t) ||
+    /\b(ongelma|vika|jotain vialla|ei kunnossa)\b/i.test(t)
+  );
+}
+
+function hasSpecificSymptom(text){
+  const t=clean(text);
+
+  return (
+    /\b(медленно|тормозит|лагает|зависает|завис|не включается|не запускается|перезагружается|выключается|нет изображения|черный экран|чёрный экран|не работает|пропал интернет|нет интернета|шумит|греется|перегревается|ошибка|синий экран)\b/i.test(t) ||
+    /\b(slow|sluggish|lagging|freezes|freezing|crashes|won't start|wont start|won't turn on|wont turn on|restarts|shuts down|no display|black screen|no internet|not working|overheating|error|blue screen)\b/i.test(t) ||
+    /\b(hidas|lagaa|jäätyy|kaatuu|ei käynnisty|sammuu|käynnistyy uudelleen|ei kuvaa|musta näyttö|ei internetiä|ei nettiä|ei toimi|ylikuumenee|virhe)\b/i.test(t)
+  );
+}
+
+function genericProblemIntent(text){
+  const dev=detectDevice(text);
+  if(!dev) return null;
+  if(!hasProblemIntent(text)) return null;
+  if(hasSpecificSymptom(text)) return null;
+  return dev;
+}
+
+function askSymptom(device,l){
+  S.awaitingGenericSymptom=true;
+  S.genericProblemDevice=device;
+  S.rootProblem=null;
+  S.issue=null;
+  S.currentSymptom=null;
+  S.lastQuestion="generic_symptom";
+  S.lastInstruction="describe_symptom";
+  S.language=l;
+
+  let msg;
+
+  if(device==="computer"){
+    msg=R(l,
+`Got it — there is a problem with the computer.
+
+What exactly is happening?
+For example: is it slow, freezing, not turning on, restarting, showing no picture, losing Internet, or doing something else?
+
+You can describe it in your own words.`,
+`Поняла — проблема именно с компьютером.
+
+Что конкретно происходит?
+Например: он медленно работает, зависает, не включается, перезагружается, нет изображения, пропадает интернет или происходит что-то другое?
+
+Можешь просто описать своими словами.`,
+`Selvä — tietokoneessa on ongelma.
+
+Mitä tarkalleen tapahtuu?
+Esimerkiksi: onko se hidas, jäätyykö se, eikö se käynnisty, käynnistyykö se uudelleen, puuttuuko kuva, katkeaako Internet vai tapahtuuko jotain muuta?
+
+Voit kuvailla omin sanoin.`);
+  } else if(device==="display"){
+    msg=R(l,
+`Got it — the problem is with the monitor/display. What exactly happens: no picture, flickering, wrong resolution, “No signal”, or something else?`,
+`Поняла — проблема с монитором/экраном. Что именно происходит: нет изображения, мигает, неправильное разрешение, пишет «Нет сигнала» или что-то другое?`,
+`Selvä — ongelma liittyy näyttöön. Mitä tarkalleen tapahtuu: ei kuvaa, välkkyy, väärä resoluutio, “No signal” vai jotain muuta?`);
+  } else if(device==="printer"){
+    msg=R(l,
+`Got it — the problem is with the printer. Does it not print, is it offline, is there a paper/error message, or something else?`,
+`Поняла — проблема с принтером. Он не печатает, показывает «Offline», пишет ошибку/замятие бумаги или происходит что-то другое?`,
+`Selvä — ongelma liittyy tulostimeen. Eikö se tulosta, näkyykö Offline-tila, paperi-/virheilmoitus vai jotain muuta?`);
+  } else if(device==="internet"){
+    msg=R(l,
+`Got it — the problem is with the Internet. Is there no connection at all, is it slow, does Wi‑Fi disconnect, or does only one device/app have the problem?`,
+`Поняла — проблема с интернетом. Интернета нет совсем, он медленный, Wi‑Fi отключается или проблема только на одном устройстве/в одной программе?`,
+`Selvä — ongelma liittyy Internetiin. Puuttuuko yhteys kokonaan, onko se hidas, katkeaako Wi‑Fi vai onko ongelma vain yhdessä laitteessa/ohjelmassa?`);
+  } else {
+    msg=R(l,
+`Got it. What exactly is happening? Describe the symptom in your own words.`,
+`Поняла. Что именно происходит? Опиши симптом своими словами.`,
+`Selvä. Mitä tarkalleen tapahtuu? Kuvaile oire omin sanoin.`);
+  }
+
+  S.lastAnswer=msg;
+  return {type:"answer",text:msg};
+}
+
+function looksLikeSymptomReply(text){
+  const t=clean(text);
+  if(!t) return false;
+
+  // If the user replies after ANITA asked "what exactly happens?",
+  // almost any short descriptive phrase should be treated as the symptom,
+  // not discarded by the generic fallback.
+  if(hasSpecificSymptom(t)) return true;
+
+  const genericDescriptive = [
+    /\b(странно|глючит|тупит|плохо работает|иногда|сам по себе|что то происходит|что-то происходит)\b/i,
+    /\b(weird|acting weird|sometimes|randomly|bad|badly|something happens)\b/i,
+    /\b(outo|oudosti|joskus|satunnaisesti|huonosti)\b/i
+  ];
+
+  if(genericDescriptive.some(r=>r.test(t))) return true;
+
+  // Accept reasonably short free-form symptom descriptions.
+  const words=t.split(/\s+/);
+  return words.length>=2 && words.length<=20;
+}
+
+V.handle=function(text,l){
+  const language=langOf(text);
+
+  // 1) Vague "problem with my computer" should ask for the missing symptom.
+  const generic=genericProblemIntent(text);
+  if(generic){
+    return askSymptom(generic,language);
+  }
+
+  // 2) If ANITA just asked for the symptom, preserve that conversational state.
+  // Let old handlers recognize concrete known symptoms first, but if they fail,
+  // respond contextually instead of the old giant fallback.
+  if(S.awaitingGenericSymptom && looksLikeSymptomReply(text)){
+    S.awaitingGenericSymptom=false;
+
+    const result=old(text,l);
+
+    // Detect the known generic fallback by its wording.
+    const fallbackText = result && typeof result.text==="string" ? result.text.toLowerCase() : "";
+    const looksFallback =
+      fallbackText.includes("я пока не до конца поняла") ||
+      fallbackText.includes("i'm not fully sure what you mean") ||
+      fallbackText.includes("i am not fully sure what you mean") ||
+      fallbackText.includes("en ole vielä täysin varma");
+
+    if(!looksFallback){
+      return result;
+    }
+
+    const msg=R(language,
+`Okay, I understand that as the symptom of the current ${S.genericProblemDevice==="computer"?"computer":"device"} problem.
+
+Tell me one more thing: when did it start, and what do you notice most clearly when it happens?`,
+`Хорошо, я понимаю это как симптом текущей проблемы с ${S.genericProblemDevice==="computer"?"компьютером":"устройством"}.
+
+Уточни ещё две вещи: когда это началось и что именно ты замечаешь сильнее всего в момент проблемы?`,
+`Hyvä, ymmärrän tämän nykyisen ${S.genericProblemDevice==="computer"?"tietokone":"laitteen"} ongelman oireeksi.
+
+Kerro vielä kaksi asiaa: milloin tämä alkoi ja mikä näkyy kaikkein selvimmin silloin kun ongelma tapahtuu?`);
+
+    S.lastQuestion="generic_symptom_detail";
+    S.lastAnswer=msg;
+    return {type:"answer",text:msg};
+  }
+
+  return old(text,l);
+};
+
+window.ANITA_V14_2={
+  version:"14.2",
+  genericProblemIntent,
+  detectDevice,
+  hasProblemIntent,
+  hasSpecificSymptom
+};
+
+console.log("[ANITA v14.2] Generic Problem Intent Router loaded");
+})();
