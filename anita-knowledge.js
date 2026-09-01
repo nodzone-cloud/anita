@@ -8590,3 +8590,427 @@ window.ANITA_V15_1={
 
 console.log("[ANITA v15.1] Vague Problem Router Hotfix loaded");
 })();
+
+/* ================= ANITA v16 VOICE INPUT CORE =================
+   Browser-side speech-to-text for RU / EN / FI.
+
+   UX:
+   - Adds microphone button next to the existing Send button.
+   - Uses selected ANITA language:
+       RU -> ru-RU
+       EN -> en-US
+       FI -> fi-FI
+   - In AUTO mode, uses current conversation language where possible.
+   - Recognized speech appears in the normal text input FIRST.
+     User can edit it before pressing Send.
+   - Poor/uncertain recognition is NOT sent to troubleshooting.
+     ANITA politely asks the user to repeat more clearly.
+   - Handles silence / no-speech / permission errors.
+   - Does not require GitHub server-side processing.
+   ================================================================= */
+(function(){
+"use strict";
+
+const SpeechRecognition =
+  window.SpeechRecognition || window.webkitSpeechRecognition;
+
+const inputEl =
+  (typeof input !== "undefined" && input) ||
+  document.querySelector("#input");
+
+const formEl =
+  (typeof form !== "undefined" && form) ||
+  document.querySelector("#form");
+
+const sendEl =
+  (typeof send !== "undefined" && send) ||
+  document.querySelector("#send");
+
+const chatEl =
+  (typeof chat !== "undefined" && chat) ||
+  document.querySelector("#chat");
+
+if(!inputEl || !formEl || !sendEl){
+  console.warn("[ANITA v16] Voice UI not mounted: input/form/send not found.");
+  return;
+}
+
+function getUiLanguage(){
+  // Read ANITA's existing language variables if available.
+  try{
+    if(typeof languageMode !== "undefined" && languageMode && languageMode !== "auto"){
+      if(["ru","en","fi"].includes(languageMode)) return languageMode;
+    }
+  }catch(_){}
+
+  try{
+    if(typeof currentLanguage !== "undefined" && ["ru","en","fi"].includes(currentLanguage)){
+      return currentLanguage;
+    }
+  }catch(_){}
+
+  const htmlLang=(document.documentElement.lang||"").toLowerCase();
+  if(htmlLang.startsWith("ru")) return "ru";
+  if(htmlLang.startsWith("fi")) return "fi";
+  return "en";
+}
+
+function speechLocale(){
+  const l=getUiLanguage();
+  return l==="ru" ? "ru-RU" : l==="fi" ? "fi-FI" : "en-US";
+}
+
+function T(l,en,ru,fi){
+  return l==="ru" ? ru : l==="fi" ? fi : en;
+}
+
+function botMessage(text){
+  try{
+    if(typeof addMessage === "function"){
+      addMessage(text,"bot");
+      return;
+    }
+  }catch(_){}
+
+  if(chatEl){
+    const d=document.createElement("div");
+    d.className="msg bot";
+    d.textContent=text;
+    chatEl.appendChild(d);
+    chatEl.scrollTop=chatEl.scrollHeight;
+  }
+}
+
+function voiceStatus(text){
+  statusEl.textContent=text||"";
+  statusEl.style.display=text ? "block" : "none";
+}
+
+function looksBadTranscript(text, confidence){
+  const s=String(text||"").trim();
+  if(!s) return true;
+
+  // A very low browser confidence is strong evidence that the microphone
+  // did not hear the user clearly. Some engines return 0 even for useful
+  // speech, therefore confidence is only one signal.
+  if(typeof confidence==="number" && confidence>0 && confidence<0.32) return true;
+
+  const compact=s.replace(/\s+/g,"");
+  const words=s.split(/\s+/).filter(Boolean);
+
+  // Only punctuation/digits or nearly no letters.
+  const letters=(s.match(/[A-Za-zА-Яа-яЁёÄÖÅäöå]/g)||[]).length;
+  const digits=(s.match(/\d/g)||[]).length;
+  if(letters===0) return true;
+  if(digits>=4 && letters<=2) return true;
+
+  // Extremely short interjections/noise are not useful IT requests.
+  const noise=/^(?:э+|эм+|мм+|м+|ээ+|uh+|um+|hmm+|hm+|ah+|oh+|öö+|hmm)$/i;
+  if(noise.test(s)) return true;
+
+  // Long single "word" with little vowel structure often indicates
+  // corrupted speech recognition.
+  if(words.length===1 && compact.length>=10){
+    const vowels=(compact.match(/[aeiouyаеёиоуыэюяäöå]/gi)||[]).length;
+    if(vowels/compact.length < 0.12) return true;
+  }
+
+  // Repeated symbol-like fragments.
+  if(/^(?:[a-zа-я]\s*){1,3}\d{3,}$/i.test(s)) return true;
+
+  return false;
+}
+
+function repeatPrompt(reason){
+  const l=getUiLanguage();
+
+  if(reason==="no-speech"){
+    return T(l,
+      "I didn't hear enough speech. Please tap the microphone and say the sentence again a little closer to the microphone.",
+      "Я почти не услышала речь. Нажми на микрофон ещё раз и повтори фразу немного ближе к микрофону.",
+      "En kuullut puhetta riittävästi. Paina mikrofonia uudelleen ja toista lause hieman lähempänä mikrofonia.");
+  }
+
+  return T(l,
+    "It looks like the speech wasn't recognized clearly. Please tap the microphone and repeat the phrase a little more clearly or closer to the microphone.",
+    "Похоже, речь распозналась нечётко. Нажми на микрофон ещё раз и повтори фразу чуть яснее или ближе к микрофону.",
+    "Puhe ei näyttänyt tunnistuvan selkeästi. Paina mikrofonia uudelleen ja toista lause hieman selvemmin tai lähempänä mikrofonia.");
+}
+
+function permissionPrompt(){
+  const l=getUiLanguage();
+  return T(l,
+    "I can't access the microphone. Allow microphone access for this site in the browser settings, then try again. You can still type your message normally.",
+    "Я не могу получить доступ к микрофону. Разреши этому сайту доступ к микрофону в настройках браузера и попробуй снова. Текстовый ввод продолжает работать как обычно.",
+    "En pääse käyttämään mikrofonia. Salli mikrofonin käyttö tälle sivustolle selaimen asetuksissa ja yritä uudelleen. Voit edelleen kirjoittaa viestin normaalisti.");
+}
+
+function unsupportedPrompt(){
+  const l=getUiLanguage();
+  return T(l,
+    "Voice input isn't supported by this browser. You can still type your message normally.",
+    "Этот браузер не поддерживает голосовой ввод ANITA. Сообщение всё равно можно написать вручную.",
+    "Tämä selain ei tue ANITAn äänisyöttöä. Voit silti kirjoittaa viestin normaalisti.");
+}
+
+/* ---------- UI ---------- */
+
+const style=document.createElement("style");
+style.id="anitaVoiceStyle";
+style.textContent=`
+  #anitaVoiceWrap{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  #anitaMic{
+    width:44px;
+    height:44px;
+    min-width:44px;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:12px;
+    background:#171717;
+    color:#ff7a00;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    font-size:21px;
+    line-height:1;
+    transition:transform .15s ease, background .15s ease, box-shadow .15s ease;
+  }
+  #anitaMic:hover{ transform:translateY(-1px); }
+  #anitaMic.listening{
+    background:#ff7a00;
+    color:#111;
+    box-shadow:0 0 0 4px rgba(255,122,0,.18);
+    animation:anitaMicPulse 1.15s infinite;
+  }
+  #anitaMic:disabled{
+    opacity:.45;
+    cursor:not-allowed;
+    animation:none;
+  }
+  #anitaVoiceStatus{
+    display:none;
+    margin-top:6px;
+    font-size:12px;
+    opacity:.72;
+    line-height:1.3;
+  }
+  @keyframes anitaMicPulse{
+    0%{box-shadow:0 0 0 0 rgba(255,122,0,.30)}
+    70%{box-shadow:0 0 0 8px rgba(255,122,0,0)}
+    100%{box-shadow:0 0 0 0 rgba(255,122,0,0)}
+  }
+`;
+if(!document.getElementById(style.id)) document.head.appendChild(style);
+
+const mic=document.createElement("button");
+mic.type="button";
+mic.id="anitaMic";
+mic.setAttribute("aria-label","Voice input");
+mic.setAttribute("title","Voice input");
+mic.textContent="🎙️";
+
+const statusEl=document.createElement("div");
+statusEl.id="anitaVoiceStatus";
+
+// Put mic immediately before existing Send button where possible.
+sendEl.parentNode.insertBefore(mic,sendEl);
+const parent=sendEl.parentElement;
+if(parent && !document.getElementById("anitaVoiceStatus")){
+  parent.insertAdjacentElement("afterend",statusEl);
+}
+
+/* ---------- recognition ---------- */
+
+let recognition=null;
+let listening=false;
+let gotResult=false;
+
+function setListening(v){
+  listening=!!v;
+  mic.classList.toggle("listening",listening);
+  mic.setAttribute("aria-pressed",listening ? "true":"false");
+  const l=getUiLanguage();
+  mic.title=listening
+    ? T(l,"Listening… tap to stop","Слушаю… нажми, чтобы остановить","Kuuntelen… paina lopettaaksesi")
+    : T(l,"Voice input","Голосовой ввод","Äänisyöttö");
+  voiceStatus(listening
+    ? T(l,"Listening…","Слушаю…","Kuuntelen…")
+    : "");
+}
+
+function buildRecognition(){
+  if(!SpeechRecognition) return null;
+
+  const r=new SpeechRecognition();
+  r.continuous=false;
+  r.interimResults=true;
+  r.maxAlternatives=3;
+
+  r.onstart=()=>{
+    gotResult=false;
+    setListening(true);
+  };
+
+  r.onspeechstart=()=>{
+    const l=getUiLanguage();
+    voiceStatus(T(l,"I can hear you…","Я слышу тебя…","Kuulen sinut…"));
+  };
+
+  r.onresult=(event)=>{
+    let interim="";
+    let finalText="";
+    let confidence=0;
+
+    for(let i=event.resultIndex;i<event.results.length;i++){
+      const result=event.results[i];
+      const alt=result[0];
+      if(result.isFinal){
+        finalText += (finalText?" ":"") + alt.transcript.trim();
+        confidence=Math.max(confidence,Number(alt.confidence)||0);
+      }else{
+        interim += (interim?" ":"") + alt.transcript.trim();
+      }
+    }
+
+    const preview=(finalText||interim).trim();
+    if(preview){
+      inputEl.value=preview;
+      inputEl.dispatchEvent(new Event("input",{bubbles:true}));
+    }
+
+    if(finalText){
+      gotResult=true;
+
+      if(looksBadTranscript(finalText,confidence)){
+        inputEl.value="";
+        inputEl.dispatchEvent(new Event("input",{bubbles:true}));
+        botMessage(repeatPrompt("unclear"));
+        return;
+      }
+
+      inputEl.value=finalText.trim();
+      inputEl.dispatchEvent(new Event("input",{bubbles:true}));
+      inputEl.focus();
+
+      const l=getUiLanguage();
+      voiceStatus(T(l,
+        "Speech converted to text — edit it if needed, then press Send.",
+        "Речь преобразована в текст — при необходимости исправь её и нажми «Отправить».",
+        "Puhe muutettiin tekstiksi — korjaa tarvittaessa ja paina Lähetä."));
+    }
+  };
+
+  r.onerror=(event)=>{
+    setListening(false);
+    const err=event && event.error ? event.error : "unknown";
+
+    if(err==="not-allowed" || err==="service-not-allowed"){
+      botMessage(permissionPrompt());
+      return;
+    }
+
+    if(err==="no-speech"){
+      inputEl.value="";
+      botMessage(repeatPrompt("no-speech"));
+      return;
+    }
+
+    if(err==="audio-capture"){
+      const l=getUiLanguage();
+      botMessage(T(l,
+        "I couldn't access a working microphone. Check that the microphone is connected/enabled and try again.",
+        "Не удалось получить звук с микрофона. Проверь, что микрофон подключён и включён, затем попробуй ещё раз.",
+        "En saanut ääntä mikrofonista. Tarkista, että mikrofoni on kytketty ja käytössä, ja yritä uudelleen."));
+      return;
+    }
+
+    if(err!=="aborted"){
+      botMessage(repeatPrompt("unclear"));
+    }
+  };
+
+  r.onend=()=>{
+    setListening(false);
+    if(!gotResult && !inputEl.value.trim()){
+      // onerror normally handles real no-speech. This catches engines that end
+      // silently without returning a result.
+      const l=getUiLanguage();
+      voiceStatus(T(l,
+        "No speech recognized. Tap the microphone to try again.",
+        "Речь не распознана. Нажми на микрофон, чтобы попробовать ещё раз.",
+        "Puhetta ei tunnistettu. Paina mikrofonia ja yritä uudelleen."));
+    }
+  };
+
+  return r;
+}
+
+if(!SpeechRecognition){
+  mic.disabled=true;
+  mic.title="Voice input not supported";
+  mic.addEventListener("click",()=>botMessage(unsupportedPrompt()));
+}else{
+  mic.addEventListener("click",()=>{
+    if(listening && recognition){
+      recognition.stop();
+      return;
+    }
+
+    recognition=buildRecognition();
+    if(!recognition){
+      botMessage(unsupportedPrompt());
+      return;
+    }
+
+    recognition.lang=speechLocale();
+
+    // Clear stale "listening" status, but do NOT destroy the user's typed text
+    // until actual speech results begin.
+    gotResult=false;
+
+    try{
+      recognition.start();
+    }catch(err){
+      console.warn("[ANITA v16] SpeechRecognition.start failed",err);
+      setListening(false);
+      botMessage(repeatPrompt("unclear"));
+    }
+  });
+}
+
+/* ---------- keep mic language/title synchronized ---------- */
+
+document.querySelectorAll(".langBtn").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    setTimeout(()=>{
+      const l=getUiLanguage();
+      mic.setAttribute(
+        "aria-label",
+        T(l,"Voice input","Голосовой ввод","Äänisyöttö")
+      );
+      mic.title=T(l,"Voice input","Голосовой ввод","Äänisyöttö");
+    },0);
+  });
+});
+
+/* ---------- public helper ---------- */
+
+window.ANITA_VOICE={
+  version:"16.0",
+  supported:!!SpeechRecognition,
+  start:function(){ mic.click(); },
+  stop:function(){ if(recognition && listening) recognition.stop(); },
+  locale:speechLocale,
+  getLanguage:getUiLanguage,
+  looksBadTranscript
+};
+
+console.log("[ANITA v16] Voice Input Core loaded",{
+  supported:!!SpeechRecognition,
+  locale:speechLocale()
+});
+})();
