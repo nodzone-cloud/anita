@@ -7461,3 +7461,960 @@ window.ANITA_V14_2={
 
 console.log("[ANITA v14.2] Generic Problem Intent Router loaded");
 })();
+
+/* ================= ANITA v14.3 RUSSIAN SLANG + MORPHOLOGY ROUTER =================
+   Fixes Russian natural/slang device forms that strict word boundaries miss:
+   комп, компа, компу, компом, компе, компы, компик...
+   компьютер, компьютером, компьютере...
+   ноут, ноута, ноутом...
+   ПК / PC.
+
+   Examples now treated as vague computer-problem intent:
+   "Проблема с компом"
+   "Что-то с компом"
+   "С компом проблема"
+   "У меня с компом что-то не так"
+   "Проблемы с компьютером"
+   "Что-то не так с ноутом"
+
+   This runs before older fallback handlers.
+   ================================================================================ */
+(function(){
+"use strict";
+
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+
+const V = window.ANITA_V12;
+const old = V.handle.bind(V);
+const S = V.state;
+
+function clean(s){
+  return (s||"")
+    .toLowerCase()
+    .replace(/[ё]/g,"е")
+    .replace(/[’`]/g,"'")
+    .replace(/[?!.,:;()[\]{}"“”]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+function R(l,en,ru,fi){ return l==="ru"?ru:l==="fi"?fi:en; }
+
+function ruComputerMention(text){
+  const t=clean(text);
+  // Stems intentionally allow Russian case endings.
+  return /(^|\s)(комп(ьютер)?\w*|компик\w*|пк|ноут\w*)(\s|$)/i.test(t);
+}
+
+function ruProblemMention(text){
+  const t=clean(text);
+  return (
+    /(^|\s)проблем\w*(\s|$)/i.test(t) ||
+    /(^|\s)неполад\w*(\s|$)/i.test(t) ||
+    /что\s*то\s+не\s+так/i.test(t) ||
+    /не\s+так\s+с/i.test(t) ||
+    /с\s+.+\s+что\s*то/i.test(t) ||
+    /глюч\w*/i.test(t)
+  );
+}
+
+function ruSpecificSymptom(text){
+  const t=clean(text);
+  return (
+    /медлен\w*|тормоз\w*|лага\w*|туп\w*|зависа\w*|не\s+включ\w*|не\s+запуска\w*|перезагружа\w*|выключа\w*|нет\s+изображ\w*|черн\w*\s+экран|не\s+работа\w*|нет\s+интернет\w*|пропал\w*\s+интернет|гре\w*|перегрева\w*|ошиб\w*|син\w*\s+экран|шум\w*/i
+  ).test(t);
+}
+
+function isVagueRuComputerProblem(text){
+  return ruComputerMention(text) && ruProblemMention(text) && !ruSpecificSymptom(text);
+}
+
+function askRuComputerSymptom(){
+  S.awaitingGenericSymptom=true;
+  S.genericProblemDevice="computer";
+  S.rootProblem=null;
+  S.issue=null;
+  S.currentSymptom=null;
+  S.lastQuestion="generic_symptom";
+  S.lastInstruction="describe_symptom";
+  S.language="ru";
+
+  const msg=`Поняла — проблема с компьютером.
+
+Что именно происходит?
+Например: он медленно работает, зависает, не включается, перезагружается, нет изображения, пропадает интернет или происходит что-то другое?
+
+Можешь описать своими словами — необязательно использовать точные технические термины.`;
+
+  S.lastAnswer=msg;
+  return {type:"answer",text:msg};
+}
+
+V.handle=function(text,l){
+  // Highest-priority Russian morphology/slang route.
+  if(isVagueRuComputerProblem(text)){
+    return askRuComputerSymptom();
+  }
+
+  return old(text,l);
+};
+
+window.ANITA_V14_3={
+  version:"14.3",
+  ruComputerMention,
+  ruProblemMention,
+  ruSpecificSymptom,
+  isVagueRuComputerProblem
+};
+
+console.log("[ANITA v14.3] Russian Slang + Morphology Router loaded");
+})();
+
+/* ================= ANITA v15 KNOWLEDGE + ERROR UNDERSTANDING CORE =================
+   Major knowledge/skills upgrade for home-user IT support.
+
+   Adds:
+   1) Russian + English computer slang normalization before intent routing.
+   2) Russian morphology for common device words/cases.
+   3) Mixed-language technical error handling:
+      if UI language is RU/FI and the pasted error is English, ANITA keeps
+      answering in the selected language.
+   4) Common HTTP error knowledge (400/401/403/404/408/409/410/413/414/415/
+      429/500/501/502/503/504).
+   5) Common browser/network error patterns:
+      ERR_NAME_NOT_RESOLVED, ERR_INTERNET_DISCONNECTED,
+      ERR_CONNECTION_TIMED_OUT, ERR_CONNECTION_RESET,
+      ERR_CONNECTION_REFUSED, ERR_SSL_PROTOCOL_ERROR,
+      ERR_CERT_DATE_INVALID, DNS_PROBE_FINISHED_NXDOMAIN,
+      "Aw, Snap!", "This site can't be reached".
+   6) Windows error-pattern understanding:
+      hexadecimal codes 0x........, HRESULT-like errors,
+      BSOD/STOP CODE, PAGE_FAULT_IN_NONPAGED_AREA, MEMORY_MANAGEMENT,
+      DRIVER_IRQL_NOT_LESS_OR_EQUAL, CRITICAL_PROCESS_DIED,
+      INACCESSIBLE_BOOT_DEVICE, SYSTEM_SERVICE_EXCEPTION,
+      DPC_WATCHDOG_VIOLATION, WHEA_UNCORRECTABLE_ERROR.
+   7) Generic technical-error language:
+      "Something went wrong", "Internal error", "Unexpected error",
+      "Access denied", "Permission denied", "File not found",
+      "Not enough memory", "Out of memory", "No space left",
+      "Connection failed", "Timeout", "Fatal error", "Exception".
+   8) Disk-space vs performance reasoning:
+      "increase/free disk space" -> cleanup, Storage Sense, temporary files,
+      unused apps, large files; defrag does NOT free space.
+      "speed up HDD/defragment" -> Windows Optimize Drives instructions.
+      SSD -> Windows Optimize/Trim, do not recommend repeated manual defrag.
+   9) Error fallback improvement:
+      unfamiliar pasted error/code -> identify it as technical evidence and
+      ask targeted context questions instead of "I don't understand".
+
+   This module is deterministic. It does not claim to know every error code.
+   ================================================================================ */
+(function(){
+"use strict";
+
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+
+const V = window.ANITA_V12;
+const old = V.handle.bind(V);
+const S = V.state;
+
+/* ---------- language handling ---------- */
+
+function clean(s){
+  return String(s||"")
+    .toLowerCase()
+    .replace(/[ё]/g,"е")
+    .replace(/[’`]/g,"'")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function selectedLang(text){
+  // Respect an explicitly/manual selected language if the surrounding ANITA
+  // state exposes one. This is intentionally checked BEFORE script detection,
+  // because a Russian-speaking user may paste an English Windows/browser error.
+  const candidates = [
+    S.manualLanguage, S.selectedLanguage, S.language, S.lang,
+    window.ANITA_LANGUAGE, window.anitaLanguage
+  ];
+  for(const x of candidates){
+    const v=String(x||"").toLowerCase();
+    if(v==="ru" || v==="en" || v==="fi") return v;
+    if(v.startsWith("ru")) return "ru";
+    if(v.startsWith("en")) return "en";
+    if(v.startsWith("fi")) return "fi";
+  }
+
+  // Only infer language when there is no stored/selected language.
+  if(/[а-яё]/i.test(text||"")) return "ru";
+  if(/[äöå]/i.test(text||"")) return "fi";
+  return "en";
+}
+
+function R(l,en,ru,fi){
+  return l==="ru" ? ru : l==="fi" ? fi : en;
+}
+
+/* ---------- slang + morphology normalization ---------- */
+
+const SLANG_RULES = [
+  // Russian computer/device
+  [/(^|\s)(компьютер\w*|компик\w*|комп\w*|пк)(?=\s|$)/gi, "$1 computer "],
+  [/(^|\s)(ноутбук\w*|ноутик\w*|ноут\w*)(?=\s|$)/gi, "$1 laptop "],
+  [/(^|\s)(винда|виндовс|виндами|винде|винду|виндой)(?=\s|$)/gi, "$1 windows "],
+  [/(^|\s)(оперативка|оперативы|оперативку|оперативной|рам|озу)(?=\s|$)/gi, "$1 ram "],
+  [/(^|\s)(видюха|видяха|видеокарта|гпу)(?=\s|$)/gi, "$1 gpu "],
+  [/(^|\s)(проц|процик|процессор|цп)(?=\s|$)/gi, "$1 cpu "],
+  [/(^|\s)(материнка|мать|материнская плата)(?=\s|$)/gi, "$1 motherboard "],
+  [/(^|\s)(хард|жесткий диск|жёсткий диск|винчестер)(?=\s|$)/gi, "$1 hdd "],
+  [/(^|\s)(ссд|эсэсди)(?=\s|$)/gi, "$1 ssd "],
+  [/(^|\s)(инет|интернетик|сеть)(?=\s|$)/gi, "$1 internet "],
+  [/(^|\s)(вай ?фай|вафля)(?=\s|$)/gi, "$1 wifi "],
+  [/(^|\s)(браузер|хром|гугл хром)(?=\s|$)/gi, "$1 browser "],
+  [/(^|\s)(тормозит|тупит|лагает|подлагивает|тормозной)(?=\s|$)/gi, "$1 slow "],
+  [/(^|\s)(вылетает|крашится|крашит)(?=\s|$)/gi, "$1 crash "],
+  [/(^|\s)(зависает|фризит|фризится)(?=\s|$)/gi, "$1 freeze "],
+  [/(^|\s)(глючит|чудит|ведет себя странно|ведёт себя странно)(?=\s|$)/gi, "$1 weird "],
+
+  // English computer/device slang
+  [/\b(pc|desktop|computer|machine|rig|box)\b/gi, " computer "],
+  [/\b(laptop|notebook|lappy)\b/gi, " laptop "],
+  [/\b(win|windows|win11|win10)\b/gi, " windows "],
+  [/\b(ram|memory|mem)\b/gi, " ram "],
+  [/\b(gpu|graphics card|video card)\b/gi, " gpu "],
+  [/\b(cpu|processor|chip)\b/gi, " cpu "],
+  [/\b(mobo|motherboard)\b/gi, " motherboard "],
+  [/\b(hard drive|harddrive|hdd|spinning drive)\b/gi, " hdd "],
+  [/\b(solid state drive|ssd)\b/gi, " ssd "],
+  [/\b(net|internet|connection)\b/gi, " internet "],
+  [/\b(wifi|wi-fi|wireless)\b/gi, " wifi "],
+  [/\b(browser|chrome|edge|firefox|opera)\b/gi, " browser "],
+  [/\b(laggy|lagging|sluggish|slow as hell|slow af)\b/gi, " slow "],
+  [/\b(crashing|crashes|crash)\b/gi, " crash "],
+  [/\b(freezing|freezes|frozen|hangs|hanging)\b/gi, " freeze "],
+  [/\b(acting weird|glitchy|glitching|buggy)\b/gi, " weird "]
+];
+
+function normalizeSlang(text){
+  let t=" "+String(text||"")+" ";
+  for(const [re,to] of SLANG_RULES) t=t.replace(re,to);
+  return t.replace(/\s+/g," ").trim();
+}
+
+/* ---------- HTTP knowledge ---------- */
+
+const HTTP = {
+  400:{name:"Bad Request",kind:"client",
+    en:"The server rejected the request because it was malformed or invalid.",
+    ru:"Сервер отклонил запрос как некорректный или неправильно сформированный.",
+    fi:"Palvelin hylkäsi pyynnön virheellisenä tai väärin muodostettuna."},
+  401:{name:"Unauthorized",kind:"auth",
+    en:"The service requires valid authentication or your login/session is not accepted.",
+    ru:"Сервис требует корректную авторизацию, либо текущий вход/сеанс не принят.",
+    fi:"Palvelu vaatii kelvollisen tunnistautumisen tai nykyinen kirjautuminen ei kelpaa."},
+  403:{name:"Forbidden",kind:"permission",
+    en:"The server understood the request but refuses access.",
+    ru:"Сервер понял запрос, но не разрешает доступ.",
+    fi:"Palvelin ymmärsi pyynnön, mutta estää pääsyn."},
+  404:{name:"Not Found",kind:"notfound",
+    en:"The requested page or resource was not found at that address.",
+    ru:"Страница или ресурс по этому адресу не найдены.",
+    fi:"Pyydettyä sivua tai resurssia ei löytynyt tästä osoitteesta."},
+  408:{name:"Request Timeout",kind:"timeout",
+    en:"The request took too long and timed out.",
+    ru:"Запрос выполнялся слишком долго и был прерван по тайм-ауту.",
+    fi:"Pyyntö kesti liian kauan ja aikakatkaistiin."},
+  409:{name:"Conflict",kind:"conflict",
+    en:"The request conflicts with the current state of the resource.",
+    ru:"Запрос конфликтует с текущим состоянием ресурса.",
+    fi:"Pyyntö on ristiriidassa resurssin nykytilan kanssa."},
+  410:{name:"Gone",kind:"notfound",
+    en:"The resource is no longer available and was intentionally removed.",
+    ru:"Ресурс больше недоступен и был удалён.",
+    fi:"Resurssi ei ole enää saatavilla ja se on poistettu."},
+  413:{name:"Content Too Large",kind:"size",
+    en:"The upload/request is larger than the server allows.",
+    ru:"Файл или запрос превышает допустимый сервером размер.",
+    fi:"Lähetys tai pyyntö on suurempi kuin palvelin sallii."},
+  414:{name:"URI Too Long",kind:"request",
+    en:"The web address/request URI is too long for the server.",
+    ru:"Адрес/URI запроса слишком длинный для сервера.",
+    fi:"Osoite/URI on palvelimelle liian pitkä."},
+  415:{name:"Unsupported Media Type",kind:"format",
+    en:"The server does not accept the submitted file/content format.",
+    ru:"Сервер не принимает отправленный формат файла или данных.",
+    fi:"Palvelin ei hyväksy lähetettyä tiedosto- tai sisältömuotoa."},
+  429:{name:"Too Many Requests",kind:"rate",
+    en:"Too many requests were sent in a short time; the service is rate-limiting you.",
+    ru:"За короткое время отправлено слишком много запросов, и сервис временно ограничил их.",
+    fi:"Pyyntöjä lähetettiin liian monta lyhyessä ajassa, joten palvelu rajoittaa niitä."},
+  500:{name:"Internal Server Error",kind:"server",
+    en:"The website/server failed internally. This is usually server-side rather than a problem with your PC.",
+    ru:"На сайте/сервере произошла внутренняя ошибка. Обычно это проблема сервера, а не вашего ПК.",
+    fi:"Sivustolla/palvelimella tapahtui sisäinen virhe. Se on yleensä palvelinpuolen ongelma, ei tietokoneesi vika."},
+  501:{name:"Not Implemented",kind:"server",
+    en:"The server does not support the requested function.",
+    ru:"Сервер не поддерживает запрошенную функцию.",
+    fi:"Palvelin ei tue pyydettyä toimintoa."},
+  502:{name:"Bad Gateway",kind:"server",
+    en:"A gateway/proxy received an invalid response from another server.",
+    ru:"Шлюз или прокси получил некорректный ответ от другого сервера.",
+    fi:"Yhdyskäytävä tai välityspalvelin sai virheellisen vastauksen toiselta palvelimelta."},
+  503:{name:"Service Unavailable",kind:"server",
+    en:"The service is temporarily unavailable, overloaded, or under maintenance.",
+    ru:"Сервис временно недоступен, перегружен или находится на обслуживании.",
+    fi:"Palvelu on tilapäisesti pois käytöstä, ylikuormitettu tai huollossa."},
+  504:{name:"Gateway Timeout",kind:"server",
+    en:"A gateway/proxy did not receive a response from another server in time.",
+    ru:"Шлюз или прокси не дождался ответа от другого сервера.",
+    fi:"Yhdyskäytävä tai välityspalvelin ei saanut vastausta toiselta palvelimelta ajoissa."}
+};
+
+function findHttp(text){
+  const t=String(text||"");
+  const m=t.match(/(?:http(?:\/\d(?:\.\d)?)?\s*)?(?:error\s*)?\b(400|401|403|404|408|409|410|413|414|415|429|500|501|502|503|504)\b/i);
+  if(!m) return null;
+  const code=Number(m[1]);
+  return HTTP[code] ? {code,...HTTP[code]} : null;
+}
+
+function httpAdvice(h,l){
+  let next;
+  if(h.kind==="server"){
+    next=R(l,
+      "Try reloading once, then wait a few minutes and try again. If other websites work, the problem is probably on that service's side.",
+      "Обнови страницу один раз, затем подожди несколько минут и попробуй снова. Если другие сайты работают, проблема, скорее всего, на стороне этого сервиса.",
+      "Päivitä sivu kerran, odota sitten muutama minuutti ja kokeile uudelleen. Jos muut sivustot toimivat, ongelma on todennäköisesti palvelun puolella.");
+  } else if(h.kind==="notfound"){
+    next=R(l,
+      "Check the address/link for a typo and try opening the site's main page. If the link used to work, the page may have been moved or removed.",
+      "Проверь адрес/ссылку на опечатки и попробуй открыть главную страницу сайта. Если ссылка раньше работала, страницу могли переместить или удалить.",
+      "Tarkista osoite/linkki kirjoitusvirheiden varalta ja kokeile sivuston etusivua. Jos linkki toimi aiemmin, sivu on voitu siirtää tai poistaa.");
+  } else if(h.kind==="auth" || h.kind==="permission"){
+    next=R(l,
+      "Check that you're signed into the correct account and that the account has access. If this is a work/school service, permissions may need to be granted by the owner/admin.",
+      "Проверь, что ты вошёл в правильный аккаунт и у него есть доступ. Для рабочего/учебного сервиса права иногда должен выдать владелец или администратор.",
+      "Tarkista, että olet kirjautunut oikealle tilille ja että sillä on käyttöoikeus. Työ-/oppilaitospalvelussa omistajan tai ylläpitäjän voi olla tarpeen myöntää oikeudet.");
+  } else if(h.kind==="rate"){
+    next=R(l,
+      "Stop retrying for a while and try again later. Repeated refreshes can keep the temporary limit active.",
+      "Не повторяй запрос много раз подряд; подожди и попробуй позже. Постоянные обновления страницы могут продлевать ограничение.",
+      "Älä yritä jatkuvasti uudelleen; odota hetki ja kokeile myöhemmin. Toistuvat päivitykset voivat pitää rajoituksen aktiivisena.");
+  } else {
+    next=R(l,
+      "Tell me which website/app showed this and what you were trying to do when it appeared.",
+      "Напиши, какой сайт/программа показали эту ошибку и что ты пытался сделать в этот момент.",
+      "Kerro mikä sivusto/ohjelma näytti virheen ja mitä yritit tehdä sen ilmestyessä.");
+  }
+
+  return R(l,
+    `HTTP ${h.code} — ${h.name}. ${h.en}\n\n${next}`,
+    `HTTP ${h.code} — ${h.name}. ${h.ru}\n\n${next}`,
+    `HTTP ${h.code} — ${h.name}. ${h.fi}\n\n${next}`
+  );
+}
+
+/* ---------- browser/network error knowledge ---------- */
+
+const BROWSER_ERRORS = [
+  {
+    id:"ERR_NAME_NOT_RESOLVED",
+    re:/\bERR_NAME_NOT_RESOLVED\b/i,
+    en:"The browser could not resolve the website name to an IP address. This often points to DNS, a mistyped address, or a domain problem.",
+    ru:"Браузер не смог преобразовать имя сайта в IP-адрес. Частые причины — DNS, ошибка в адресе или проблема самого домена.",
+    fi:"Selain ei pystynyt muuttamaan sivuston nimeä IP-osoitteeksi. Yleisiä syitä ovat DNS, kirjoitusvirhe osoitteessa tai verkkotunnuksen ongelma.",
+    ask:"dns"
+  },
+  {
+    id:"DNS_PROBE_FINISHED_NXDOMAIN",
+    re:/\bDNS_PROBE_FINISHED_NXDOMAIN\b/i,
+    en:"DNS says that the requested domain name does not resolve.",
+    ru:"DNS не смог найти указанный домен.",
+    fi:"DNS ei löytänyt pyydettyä verkkotunnusta.",
+    ask:"dns"
+  },
+  {
+    id:"ERR_INTERNET_DISCONNECTED",
+    re:/\bERR_INTERNET_DISCONNECTED\b/i,
+    en:"The device currently has no usable Internet connection.",
+    ru:"На устройстве сейчас нет рабочего подключения к интернету.",
+    fi:"Laitteella ei tällä hetkellä ole toimivaa Internet-yhteyttä.",
+    ask:"internet"
+  },
+  {
+    id:"ERR_CONNECTION_TIMED_OUT",
+    re:/\b(ERR_CONNECTION_TIMED_OUT|ERR_TIMED_OUT)\b/i,
+    en:"The browser waited for the website but did not get a response in time.",
+    ru:"Браузер ждал ответ от сайта, но не получил его вовремя.",
+    fi:"Selain odotti sivuston vastausta, mutta sitä ei saatu ajoissa.",
+    ask:"timeout"
+  },
+  {
+    id:"ERR_CONNECTION_RESET",
+    re:/\bERR_CONNECTION_RESET\b/i,
+    en:"The connection to the page was interrupted/reset before loading finished.",
+    ru:"Соединение со страницей было прервано/сброшено до завершения загрузки.",
+    fi:"Yhteys sivuun katkesi tai nollautui ennen latauksen valmistumista.",
+    ask:"connection"
+  },
+  {
+    id:"ERR_CONNECTION_REFUSED",
+    re:/\bERR_CONNECTION_REFUSED\b/i,
+    en:"The destination actively refused the connection. The service may be down, blocked, or not listening on that address/port.",
+    ru:"Удалённая сторона отказалась принимать соединение. Сервис может быть выключен, заблокирован или не работать по этому адресу/порту.",
+    fi:"Kohde kieltäytyi yhteydestä. Palvelu voi olla pois käytöstä, estetty tai kuunnella eri osoitteessa/portissa.",
+    ask:"site"
+  },
+  {
+    id:"ERR_SSL_PROTOCOL_ERROR",
+    re:/\bERR_SSL_PROTOCOL_ERROR\b/i,
+    en:"The secure HTTPS/TLS connection could not be established correctly.",
+    ru:"Не удалось корректно установить защищённое HTTPS/TLS-соединение.",
+    fi:"Suojattua HTTPS/TLS-yhteyttä ei voitu muodostaa oikein.",
+    ask:"ssl"
+  },
+  {
+    id:"ERR_CERT_DATE_INVALID",
+    re:/\bERR_CERT_DATE_INVALID\b/i,
+    en:"The website certificate appears expired/not yet valid, or your device date/time may be wrong.",
+    ru:"Сертификат сайта выглядит просроченным/ещё не действующим, либо на устройстве установлены неправильные дата и время.",
+    fi:"Sivuston varmenne näyttää vanhentuneelta/ei vielä voimassa olevalta, tai laitteen päivämäärä/aika voi olla väärä.",
+    ask:"cert"
+  },
+  {
+    id:"AW_SNAP",
+    re:/\b(aw,\s*snap|aw snap)\b/i,
+    en:"Chrome failed while loading/rendering the page or tab.",
+    ru:"Chrome не смог нормально загрузить или обработать страницу/вкладку.",
+    fi:"Chrome ei pystynyt lataamaan tai käsittelemään sivua/välilehteä normaalisti.",
+    ask:"tabcrash"
+  },
+  {
+    id:"SITE_CANT_BE_REACHED",
+    re:/(this site can'?t be reached|site can'?t be reached)/i,
+    en:"Chrome could not establish a usable connection to the site.",
+    ru:"Chrome не смог установить рабочее соединение с сайтом.",
+    fi:"Chrome ei saanut toimivaa yhteyttä sivustoon.",
+    ask:"connection"
+  }
+];
+
+function findBrowserError(text){
+  return BROWSER_ERRORS.find(x=>x.re.test(String(text||""))) || null;
+}
+
+function browserAdvice(e,l){
+  const steps={
+    dns:R(l,
+      "First check whether other websites open. Then verify the address. If only names fail, try restarting the router/PC and, if needed, flush DNS with `ipconfig /flushdns` in Command Prompt.",
+      "Сначала проверь, открываются ли другие сайты, и проверь сам адрес. Если проблема похожа именно на DNS, перезапусти роутер/ПК и при необходимости выполни `ipconfig /flushdns` в Командной строке.",
+      "Tarkista ensin avautuvatko muut sivustot ja onko osoite oikein. Jos ongelma näyttää DNS-ongelmalta, käynnistä reititin/PC uudelleen ja tarvittaessa suorita komentokehotteessa `ipconfig /flushdns`."),
+    internet:R(l,
+      "Check the Wi‑Fi/Ethernet icon and test another website. If every device is offline, check the router/ISP. If only this PC is affected, tell me whether Wi‑Fi still shows connected.",
+      "Проверь значок Wi‑Fi/Ethernet и попробуй другой сайт. Если интернета нет на всех устройствах — проверяем роутер/провайдера. Если только на этом ПК — напиши, показывает ли Wi‑Fi «Подключено».",
+      "Tarkista Wi‑Fi/Ethernet-kuvake ja kokeile toista sivustoa. Jos kaikki laitteet ovat offline, tarkista reititin/palveluntarjoaja. Jos vain tämä PC kärsii, kerro näkyykö Wi‑Fi edelleen yhdistettynä."),
+    timeout:R(l,
+      "Try another website. If only one site times out, it may be overloaded/down. If many sites time out, we should check your Internet connection, VPN/proxy and router.",
+      "Попробуй другой сайт. Если тайм-аут только на одном — он может быть перегружен/недоступен. Если на многих — проверим интернет, VPN/прокси и роутер.",
+      "Kokeile toista sivustoa. Jos vain yksi sivu aikakatkaistaan, se voi olla ruuhkainen/poissa käytöstä. Jos moni sivu aikakatkaistaan, tarkistetaan Internet, VPN/proxy ja reititin."),
+    connection:R(l,
+      "Tell me whether other websites work and whether you're using a VPN/proxy. Then we can separate a site problem from a connection/security-software problem.",
+      "Напиши, работают ли другие сайты и используешь ли VPN/прокси. Так мы отделим проблему сайта от соединения или защитного ПО.",
+      "Kerro toimivatko muut sivustot ja käytätkö VPN:ää/proxya. Näin erotamme sivustovian yhteys- tai tietoturvaongelmasta."),
+    site:R(l,
+      "Check whether the same site opens on your phone using mobile data. If it fails there too, the service itself may be unavailable.",
+      "Проверь этот же сайт на телефоне через мобильный интернет. Если и там не открывается, возможно, сам сервис недоступен.",
+      "Kokeile samaa sivustoa puhelimella mobiilidatalla. Jos se ei avaudu sielläkään, itse palvelu voi olla poissa käytöstä."),
+    ssl:R(l,
+      "Check your PC date/time first. Then try another browser. Do not bypass certificate warnings for banking, payment, email or other sensitive sites.",
+      "Сначала проверь дату и время на ПК, затем попробуй другой браузер. Не обходи предупреждения сертификата на банковских, платёжных, почтовых и других важных сайтах.",
+      "Tarkista ensin PC:n päivämäärä/aika ja kokeile sitten toista selainta. Älä ohita varmennevaroituksia pankki-, maksu-, sähköposti- tai muilla arkaluonteisilla sivustoilla."),
+    cert:R(l,
+      "Check Windows date/time and time zone. If they are correct and only one website shows this, the site's certificate may be the problem.",
+      "Проверь дату, время и часовой пояс Windows. Если они правильные и ошибка только на одном сайте, проблема может быть в сертификате самого сайта.",
+      "Tarkista Windowsin päivämäärä, aika ja aikavyöhyke. Jos ne ovat oikein ja vain yksi sivusto näyttää virheen, ongelma voi olla sivuston varmenteessa."),
+    tabcrash:R(l,
+      "Reload the tab once. If it repeats, close heavy tabs/extensions, restart Chrome, and check whether memory usage is very high.",
+      "Перезагрузи вкладку один раз. Если повторяется — закрой тяжёлые вкладки/расширения, перезапусти Chrome и проверь, не слишком ли высокая загрузка памяти.",
+      "Lataa välilehti kerran uudelleen. Jos ongelma toistuu, sulje raskaita välilehtiä/laajennuksia, käynnistä Chrome uudelleen ja tarkista onko muistinkäyttö hyvin korkea.")
+  };
+
+  return R(l,
+    `${e.id}: ${e.en}\n\n${steps[e.ask]||steps.connection}`,
+    `${e.id}: ${e.ru}\n\n${steps[e.ask]||steps.connection}`,
+    `${e.id}: ${e.fi}\n\n${steps[e.ask]||steps.connection}`
+  );
+}
+
+/* ---------- Windows / BSOD knowledge ---------- */
+
+const STOP_CODES = [
+  ["PAGE_FAULT_IN_NONPAGED_AREA",
+   "Windows tried to access memory that should have been available. Possible causes include a driver, RAM problem, storage/page-file issue, or security software.",
+   "Windows попыталась обратиться к области памяти, которая должна была быть доступна. Возможны проблемы драйвера, RAM, накопителя/page file или защитного ПО.",
+   "Windows yritti käyttää muistialuetta, jonka olisi pitänyt olla käytettävissä. Mahdollisia syitä ovat ajuri, RAM, tallennus/sivutustiedosto tai tietoturvaohjelmisto."],
+  ["MEMORY_MANAGEMENT",
+   "Windows detected a serious memory-management problem. RAM is one possibility, but drivers/storage/software can also cause it.",
+   "Windows обнаружила серьёзную ошибку управления памятью. RAM — одна из возможных причин, но виноваты также могут быть драйверы, накопитель или ПО.",
+   "Windows havaitsi vakavan muistinhallintaongelman. RAM on yksi mahdollinen syy, mutta myös ajurit, tallennus tai ohjelmisto voivat aiheuttaa sen."],
+  ["DRIVER_IRQL_NOT_LESS_OR_EQUAL",
+   "A driver likely accessed memory incorrectly at a high interrupt level.",
+   "Вероятно, драйвер некорректно обратился к памяти на высоком уровне прерываний.",
+   "Ajuri todennäköisesti käytti muistia virheellisesti korkealla keskeytystasolla."],
+  ["CRITICAL_PROCESS_DIED",
+   "A critical Windows process stopped unexpectedly.",
+   "Критически важный процесс Windows неожиданно завершился.",
+   "Kriittinen Windows-prosessi pysähtyi odottamatta."],
+  ["INACCESSIBLE_BOOT_DEVICE",
+   "Windows lost access to the system/boot drive during startup.",
+   "Windows потеряла доступ к системному/загрузочному диску во время запуска.",
+   "Windows menetti pääsyn järjestelmä-/käynnistysasemaan käynnistyksen aikana."],
+  ["SYSTEM_SERVICE_EXCEPTION",
+   "A system service or driver triggered an exception in Windows.",
+   "Системная служба или драйвер вызвали исключение в Windows.",
+   "Järjestelmäpalvelu tai ajuri aiheutti poikkeuksen Windowsissa."],
+  ["DPC_WATCHDOG_VIOLATION",
+   "A driver or storage-related operation took too long at a low system level.",
+   "Драйвер или операция с накопителем слишком долго выполнялась на низком системном уровне.",
+   "Ajuri tai tallennukseen liittyvä toiminto kesti liian kauan matalalla järjestelmätasolla."],
+  ["WHEA_UNCORRECTABLE_ERROR",
+   "Windows received a serious hardware error report. CPU, RAM, motherboard, power or other hardware can be involved.",
+   "Windows получила сообщение о серьёзной аппаратной ошибке. Возможны CPU, RAM, материнская плата, питание или другое железо.",
+   "Windows sai vakavan laitteistovirheilmoituksen. Syynä voi olla CPU, RAM, emolevy, virransyöttö tai muu laitteisto."]
+];
+
+function findStopCode(text){
+  const t=String(text||"").toUpperCase();
+  for(const row of STOP_CODES){
+    if(t.includes(row[0])) return {id:row[0],en:row[1],ru:row[2],fi:row[3]};
+  }
+  const generic=t.match(/\bSTOP\s*CODE\s*[:\-]?\s*([A-Z0-9_]+)/);
+  return generic ? {id:generic[1],generic:true} : null;
+}
+
+function bsodAnswer(sc,l){
+  const meaning=sc.generic
+    ? R(l,
+      "This is a Windows stop/BSOD code. The exact code is useful diagnostic evidence.",
+      "Это код остановки Windows/BSOD. Точный код — важная диагностическая информация.",
+      "Tämä on Windowsin STOP/BSOD-koodi. Tarkka koodi on hyödyllinen vianmääritystieto.")
+    : R(l,sc.en,sc.ru,sc.fi);
+
+  return R(l,
+`STOP CODE: ${sc.id}\n${meaning}
+
+If this happened only once, restart and watch whether it returns. If it repeats, tell me:
+1. does the same stop code appear every time;
+2. what changed recently — Windows update, driver, program or new hardware;
+3. the “What failed:” filename if Windows shows one.
+
+Do not start replacing RAM or other hardware only from one stop code — we should confirm the pattern first.`,
+`STOP CODE: ${sc.id}\n${meaning}
+
+Если это произошло один раз — перезагрузи ПК и посмотри, повторится ли ошибка. Если повторяется, напиши:
+1. всегда ли появляется тот же STOP CODE;
+2. что менялось недавно — обновление Windows, драйвер, программа или новое оборудование;
+3. строку «What failed:», если Windows её показывает.
+
+Не нужно сразу менять RAM или другое железо только по одному коду — сначала подтвердим закономерность.`,
+`STOP CODE: ${sc.id}\n${meaning}
+
+Jos tämä tapahtui vain kerran, käynnistä PC uudelleen ja katso toistuuko virhe. Jos se toistuu, kerro:
+1. näkyykö aina sama STOP CODE;
+2. mikä muuttui äskettäin — Windows-päivitys, ajuri, ohjelma tai uusi laite;
+3. “What failed:” -tiedostonimi, jos Windows näyttää sen.
+
+Älä vaihda RAM-muistia tai muuta laitteistoa yhden koodin perusteella — varmistetaan ensin toistuva kuvio.`);
+}
+
+function findHexError(text){
+  const m=String(text||"").match(/\b0x[0-9a-fA-F]{6,16}\b/);
+  return m ? m[0] : null;
+}
+
+const WINDOWS_KNOWN = {
+  "0x80070005":{
+    en:"This code commonly means access was denied / a permissions problem. The exact fix depends on whether it appeared in Windows Update, Microsoft Store, Office activation, a file operation, or another app.",
+    ru:"Этот код часто означает отказ в доступе или проблему с разрешениями. Точное решение зависит от того, где он появился: Windows Update, Microsoft Store, активация Office, работа с файлами или другая программа.",
+    fi:"Tämä koodi tarkoittaa usein käyttöoikeus-/Access denied -ongelmaa. Tarkka ratkaisu riippuu siitä, näkyikö se Windows Updatessa, Microsoft Storessa, Officen aktivoinnissa, tiedostotoiminnossa vai muualla."
+  }
+};
+
+function hexAnswer(code,l){
+  const key=code.toLowerCase();
+  const known=WINDOWS_KNOWN[key];
+
+  if(known){
+    return R(l,
+      `${code}: ${known.en}\n\nWhere exactly did this code appear, and what were you trying to do? Please keep the full original error text if you can.`,
+      `${code}: ${known.ru}\n\nГде именно появился этот код и что ты пытался сделать? Если можешь, пришли полный исходный текст ошибки без перевода.`,
+      `${code}: ${known.fi}\n\nMissä tämä koodi näkyi ja mitä yritit tehdä? Lähetä mahdollisuuksien mukaan koko alkuperäinen virheteksti ilman käännöstä.`);
+  }
+
+  return R(l,
+`I recognize ${code} as a hexadecimal technical error code, but the number alone is not enough to identify the cause reliably because the same-looking code can appear in different Windows components/apps.
+
+Please send:
+1. the full error message exactly as shown;
+2. which app/Windows screen showed it;
+3. what you clicked or tried immediately before it appeared.`,
+`Я распознаю ${code} как шестнадцатеричный технический код ошибки, но одного номера недостаточно для надёжного диагноза: похожие коды встречаются в разных компонентах Windows и программах.
+
+Пришли:
+1. полный текст ошибки как он написан на экране;
+2. где она появилась — какая программа/раздел Windows;
+3. что ты нажал или пытался сделать прямо перед ошибкой.`,
+`Tunnistan koodin ${code} heksadesimaaliseksi tekniseksi virhekoodiksi, mutta pelkkä numero ei riitä luotettavaan diagnoosiin, koska samanlaisia koodeja esiintyy eri Windows-osissa ja ohjelmissa.
+
+Lähetä:
+1. koko virheteksti täsmälleen kuten se näkyy;
+2. missä ohjelmassa/Windows-näkymässä se näkyi;
+3. mitä painoit tai yritit juuri ennen virhettä.`);
+}
+
+/* ---------- generic technical error recognition ---------- */
+
+function genericErrorKind(text){
+  const t=clean(text);
+
+  if(/\b(something went wrong|something's gone wrong|something went wrong again)\b/i.test(t))
+    return "something_wrong";
+  if(/\b(internal error|internal server error)\b/i.test(t))
+    return "internal";
+  if(/\b(unexpected error|unexpected exception)\b/i.test(t))
+    return "unexpected";
+  if(/\b(access denied|permission denied|unauthorized)\b/i.test(t))
+    return "permission";
+  if(/\b(file not found|cannot find the file|the system cannot find the file)\b/i.test(t))
+    return "file_not_found";
+  if(/\b(out of memory|not enough memory|insufficient memory)\b/i.test(t))
+    return "memory";
+  if(/\b(no space left|not enough disk space|insufficient disk space|disk is full)\b/i.test(t))
+    return "disk_full";
+  if(/\b(connection failed|failed to connect|connection error)\b/i.test(t))
+    return "connection";
+  if(/\b(timeout|timed out|request timed out)\b/i.test(t))
+    return "timeout";
+  if(/\b(fatal error|fatal exception)\b/i.test(t))
+    return "fatal";
+  if(/\b(exception|traceback|stack trace)\b/i.test(t))
+    return "exception";
+
+  // Russian equivalents
+  if(/что\s*то\s+пошло\s+не\s+так|что-то пошло не так/i.test(t)) return "something_wrong";
+  if(/внутренняя ошибка/i.test(t)) return "internal";
+  if(/непредвиденная ошибка|неожиданная ошибка/i.test(t)) return "unexpected";
+  if(/доступ запрещен|доступ запрещён|нет прав|отказано в доступе/i.test(t)) return "permission";
+  if(/файл не найден|не удается найти файл|не удаётся найти файл/i.test(t)) return "file_not_found";
+  if(/недостаточно памяти|не хватает памяти/i.test(t)) return "memory";
+  if(/недостаточно места|диск заполнен|нет места на диске/i.test(t)) return "disk_full";
+  if(/не удалось подключиться|ошибка подключения/i.test(t)) return "connection";
+  if(/тайм.?аут|время ожидания истекло/i.test(t)) return "timeout";
+
+  return null;
+}
+
+function genericErrorAnswer(kind,l){
+  const intros={
+    something_wrong:R(l,
+      "“Something went wrong” means the operation failed, but the message is too generic to reveal the cause by itself.",
+      "«Something went wrong / Что-то пошло не так» означает, что операция не выполнилась, но сама эта фраза слишком общая и не показывает причину.",
+      "“Something went wrong” tarkoittaa, että toiminto epäonnistui, mutta viesti yksin ei kerro tarkkaa syytä."),
+    internal:R(l,
+      "An internal error means the program/service failed inside its own processing. We need the app/site context to know whether the problem is local or server-side.",
+      "Internal error означает внутренний сбой программы или сервиса. Нужно понять, где именно он появился, чтобы отделить проблему ПК от проблемы сервера/приложения.",
+      "Internal error tarkoittaa ohjelman/palvelun sisäistä virhettä. Tarvitsemme sovelluksen/sivuston kontekstin erottaaksemme paikallisen ja palvelinpuolen ongelman."),
+    unexpected:R(l,
+      "An unexpected error means the program hit a condition it did not handle normally.",
+      "Unexpected error означает, что программа столкнулась с ситуацией, которую не смогла нормально обработать.",
+      "Unexpected error tarkoittaa, että ohjelma kohtasi tilanteen, jota se ei käsitellyt normaalisti."),
+    permission:R(l,
+      "This looks like a permissions/access problem.",
+      "Похоже на проблему прав доступа.",
+      "Tämä näyttää käyttöoikeusongelmalta."),
+    file_not_found:R(l,
+      "The program cannot find a file/path it expected.",
+      "Программа не может найти ожидаемый файл или путь.",
+      "Ohjelma ei löydä odottamaansa tiedostoa tai polkua."),
+    memory:R(l,
+      "The program/system says there is not enough usable memory. This can mean high RAM use, an app limit, or sometimes virtual-memory/page-file pressure.",
+      "Система/программа сообщает о нехватке доступной памяти. Причиной может быть высокая загрузка RAM, ограничение программы или давление на виртуальную память/page file.",
+      "Järjestelmä/ohjelma ilmoittaa, ettei käytettävissä ole tarpeeksi muistia. Syynä voi olla korkea RAM-käyttö, ohjelman rajoitus tai virtuaalimuistin paine."),
+    disk_full:R(l,
+      "The system does not have enough free storage for the requested operation.",
+      "Для операции не хватает свободного места на накопителе.",
+      "Tallennustilaa ei ole tarpeeksi pyydettyyn toimintoon."),
+    connection:R(l,
+      "The app could not establish a connection.",
+      "Программа не смогла установить соединение.",
+      "Ohjelma ei pystynyt muodostamaan yhteyttä."),
+    timeout:R(l,
+      "The operation waited too long for a response and timed out.",
+      "Операция слишком долго ждала ответ и завершилась по тайм-ауту.",
+      "Toiminto odotti vastausta liian kauan ja aikakatkaistiin."),
+    fatal:R(l,
+      "A fatal error means the program decided it could not continue safely.",
+      "Fatal error означает, что программа решила, что не может безопасно продолжить работу.",
+      "Fatal error tarkoittaa, että ohjelma ei voinut jatkaa turvallisesti."),
+    exception:R(l,
+      "This is a software exception/error report. The first error line, exception type/code and the app name are the most useful parts for diagnosis.",
+      "Это отчёт об исключении/ошибке программы. Для диагностики особенно полезны первая строка ошибки, тип/код исключения и название программы.",
+      "Tämä on ohjelmiston poikkeus-/virheraportti. Ensimmäinen virherivi, poikkeuksen tyyppi/koodi ja ohjelman nimi ovat tärkeimmät tiedot.")
+  };
+
+  return `${intros[kind]||intros.unexpected}\n\n` + R(l,
+    "Tell me where you saw it (website/app/Windows), what you were trying to do, and paste the full error text/code if there is one. You do not need to translate an English error — send it exactly as shown.",
+    "Напиши, где это появилось (сайт/программа/Windows), что ты пытался сделать, и пришли полный текст/код ошибки, если он есть. Английскую ошибку переводить не нужно — отправляй её точно как на экране.",
+    "Kerro missä se näkyi (sivusto/ohjelma/Windows), mitä yritit tehdä, ja lähetä koko virheteksti/koodi jos sellainen on. Englanninkielistä virhettä ei tarvitse kääntää — lähetä se täsmälleen sellaisena kuin se näkyy."
+  );
+}
+
+function looksLikePastedTechnicalError(text){
+  const t=String(text||"").trim();
+  if(!t) return false;
+
+  return (
+    /\b(error|failed|failure|exception|fatal|warning|denied|not found|cannot|can't|unable|invalid|timeout|timed out)\b/i.test(t) ||
+    /\bERR_[A-Z0-9_]+\b/.test(t) ||
+    /\bDNS_[A-Z0-9_]+\b/.test(t) ||
+    /\b0x[0-9a-fA-F]{6,16}\b/.test(t) ||
+    /\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+){2,}\b/.test(t) ||
+    /(?:[A-Za-z]:\\|\/usr\/|\/home\/|\/var\/|\/etc\/)/.test(t) ||
+    /\b\d{3}\b/.test(t) && /\b(error|http|server|page)\b/i.test(t)
+  );
+}
+
+function unknownTechnicalAnswer(text,l){
+  // Store raw technical evidence without forcing a translation.
+  S.lastTechnicalEvidence=String(text||"").slice(0,2000);
+  S.lastQuestion="technical_error_context";
+
+  return R(l,
+`I can see this is technical error information, so I won't treat it as ordinary conversation even if I don't have that exact message in my built-in list.
+
+Please tell me:
+1. which program, game, website or Windows screen showed it;
+2. what you were trying to do immediately before it appeared;
+3. whether it happens every time or only sometimes.
+
+Keep the original error text/code exactly as shown — don't translate it.`,
+`Я вижу, что это техническая ошибка, поэтому не буду воспринимать её как обычную неизвестную фразу, даже если точного текста нет в моей встроенной базе.
+
+Напиши:
+1. какая программа, игра, сайт или раздел Windows показали ошибку;
+2. что ты пытался сделать прямо перед её появлением;
+3. появляется ли она каждый раз или только иногда.
+
+Исходный текст/код ошибки оставляй как есть — переводить его не нужно.`,
+`Näen, että tämä on teknistä virhetietoa, joten en käsittele sitä tavallisena tuntemattomana lauseena, vaikka tarkkaa viestiä ei olisi sisäisessä tietokannassani.
+
+Kerro:
+1. mikä ohjelma, peli, sivusto tai Windows-näkymä näytti virheen;
+2. mitä yritit tehdä juuri ennen sitä;
+3. tapahtuuko se joka kerta vai vain joskus.
+
+Pidä alkuperäinen virheteksti/koodi sellaisenaan — sitä ei tarvitse kääntää.`);
+}
+
+/* ---------- disk space / Optimize Drives knowledge ---------- */
+
+function diskIntent(text){
+  const n=normalizeSlang(text);
+  const t=clean(n);
+
+  const disk=/\b(disk|drive|storage|space|hdd|ssd|диск|место|накопител|levy|tila|tallennus)\b/i.test(t);
+  if(!disk) return null;
+
+  const free=/\b(free|increase|more|make space|clear space|low space|full|освобод|увелич|больше места|заканчивается место|заполнен|vapauta|lisää tilaa|tila loppu)\b/i.test(t);
+  const defrag=/\b(defrag|defragment|defragmentation|optimize drive|дефраг|дефрагмент|оптимизац|eheytä|optimoi levy)\b/i.test(t);
+  const speed=/\b(speed|faster|slow|performance|ускор|быстр|медлен|nopeut|hidas|suorituskyky)\b/i.test(t);
+
+  if(defrag) return "defrag";
+  if(free) return "free_space";
+  if(speed && /\bhdd\b/i.test(t)) return "hdd_speed";
+  return null;
+}
+
+function diskAnswer(intent,l){
+  if(intent==="free_space"){
+    S.rootProblem="disk_space";
+    S.issue="disk_space";
+    S.lastQuestion="disk_cleanup_result";
+
+    return R(l,
+`If your goal is to get MORE FREE SPACE, defragmentation is not the right tool — it reorganizes/optimizes data but does not meaningfully increase free capacity.
+
+Try this in Windows:
+1. Start → Settings → System → Storage.
+2. Open “Cleanup recommendations” or “Temporary files”.
+3. Review what Windows suggests before deleting anything.
+4. You can turn on Storage Sense to automatically remove unnecessary temporary files.
+5. Check large/unused files and uninstall apps you no longer need.
+
+If you tell me how much free space is left on C: and its total size, I can help decide what to clean safely.`,
+`Если цель — получить БОЛЬШЕ СВОБОДНОГО МЕСТА, дефрагментация не подходит: она реорганизует/оптимизирует данные, но практически не увеличивает свободный объём.
+
+В Windows сделай так:
+1. Пуск → Параметры → Система → Память.
+2. Открой «Рекомендации по очистке» или «Временные файлы».
+3. Перед удалением просмотри, что предлагает Windows.
+4. Можно включить «Контроль памяти / Storage Sense» для автоматической очистки ненужных временных файлов.
+5. Проверь большие/неиспользуемые файлы и удали программы, которыми не пользуешься.
+
+Напиши, сколько свободно на диске C: и какой у него общий объём — я помогу понять, что безопаснее чистить.`,
+`Jos tavoite on saada LISÄÄ VAPAATA TILAA, eheyttäminen ei ole oikea työkalu: se järjestää/optimoi dataa, mutta ei käytännössä lisää vapaata kapasiteettia.
+
+Windowsissa:
+1. Käynnistä → Asetukset → Järjestelmä → Tallennustila.
+2. Avaa Cleanup recommendations tai Temporary files.
+3. Tarkista ehdotukset ennen poistamista.
+4. Voit ottaa Storage Sensen käyttöön turhien väliaikaistiedostojen automaattiseen poistoon.
+5. Tarkista suuret/käyttämättömät tiedostot ja poista tarpeettomat sovellukset.
+
+Kerro paljonko C:-asemalla on vapaata ja sen kokonaiskoko, niin autan valitsemaan turvallisen siivouksen.`);
+  }
+
+  // defrag / HDD performance
+  S.rootProblem="drive_optimization";
+  S.issue="drive_optimization";
+  S.lastQuestion="drive_type";
+
+  return R(l,
+`If your goal is performance rather than free space, Windows has “Defragment and Optimize Drives”.
+
+Open it:
+1. Press Start/Search.
+2. Type “defrag”.
+3. Open “Defragment and Optimize Drives”.
+4. Select the drive.
+5. For a hard disk drive (HDD), you can Analyze and then Optimize if needed.
+
+For an SSD, don't repeatedly force traditional defragmentation. Windows' Optimize Drives handles SSDs differently (including TRIM/optimization), and Windows normally optimizes drives automatically.
+
+If you don't know whether C: is HDD or SSD, tell me and I'll show you how to check.`,
+`Если цель — ускорить работу, а не освободить место, в Windows есть «Дефрагментация и оптимизация дисков».
+
+Как открыть:
+1. Нажми Пуск/Поиск.
+2. Напиши «дефрагментация» или "defrag".
+3. Открой «Дефрагментация и оптимизация дисков».
+4. Выбери нужный диск.
+5. Если это HDD, можно нажать «Анализировать», а затем «Оптимизировать», если требуется.
+
+Для SSD не нужно постоянно запускать обычную ручную дефрагментацию. Windows обрабатывает SSD в «Оптимизации дисков» иначе (в том числе выполняет TRIM/оптимизацию), и обычно сама оптимизирует накопители автоматически.
+
+Если не знаешь, C: — HDD или SSD, напиши — покажу, где это посмотреть.`,
+`Jos tavoite on suorituskyky eikä vapaa tila, Windowsissa on “Defragment and Optimize Drives”.
+
+Avaa se:
+1. Paina Käynnistä/Haku.
+2. Kirjoita “defrag”.
+3. Avaa “Defragment and Optimize Drives”.
+4. Valitse asema.
+5. HDD-levylle voit käyttää Analyze- ja tarvittaessa Optimize-toimintoa.
+
+SSD:tä ei pidä jatkuvasti pakottaa perinteiseen eheyttämiseen. Windows käsittelee SSD:t Optimize Drives -toiminnossa eri tavalla (mm. TRIM/optimointi), ja Windows optimoi asemia normaalisti automaattisesti.
+
+Jos et tiedä onko C: HDD vai SSD, kerro niin näytän miten se tarkistetaan.`);
+}
+
+/* ---------- route order ---------- */
+
+V.handle=function(text,l){
+  const language=selectedLang(text);
+  const raw=String(text||"");
+
+  // Keep language state stable for mixed-language pasted errors.
+  if(S.language && ["ru","en","fi"].includes(String(S.language).toLowerCase())){
+    // preserve existing
+  } else {
+    S.language=language;
+  }
+
+  // 1) Disk-space / optimization intent is a user question, so handle before
+  // generic code/error parsing.
+  const di=diskIntent(raw);
+  if(di){
+    return {type:"answer",text:diskAnswer(di,language)};
+  }
+
+  // 2) Specific HTTP codes.
+  const http=findHttp(raw);
+  if(http){
+    S.lastTechnicalEvidence=raw.slice(0,2000);
+    S.lastQuestion="http_error_context";
+    return {type:"answer",text:httpAdvice(http,language)};
+  }
+
+  // 3) Specific browser/network error names.
+  const be=findBrowserError(raw);
+  if(be){
+    S.lastTechnicalEvidence=raw.slice(0,2000);
+    S.lastQuestion="browser_error_context";
+    return {type:"answer",text:browserAdvice(be,language)};
+  }
+
+  // 4) BSOD/STOP code.
+  const sc=findStopCode(raw);
+  if(sc){
+    S.rootProblem="windows_stop_error";
+    S.issue="windows_stop_error";
+    S.lastTechnicalEvidence=raw.slice(0,2000);
+    S.lastQuestion="stop_code_followup";
+    return {type:"answer",text:bsodAnswer(sc,language)};
+  }
+
+  // 5) Hex Windows/app error code.
+  const hex=findHexError(raw);
+  if(hex){
+    S.lastTechnicalEvidence=raw.slice(0,2000);
+    S.lastQuestion="hex_error_context";
+    return {type:"answer",text:hexAnswer(hex,language)};
+  }
+
+  // 6) Generic "something went wrong" etc.
+  const ge=genericErrorKind(raw);
+  if(ge){
+    S.lastTechnicalEvidence=raw.slice(0,2000);
+    S.lastQuestion="generic_error_context";
+    return {type:"answer",text:genericErrorAnswer(ge,language)};
+  }
+
+  // 7) Slang-normalized version gets one chance through the existing engine.
+  // This teaches the old intent system many natural RU/EN forms without
+  // duplicating all old troubleshooting branches.
+  const normalized=normalizeSlang(raw);
+  if(normalized && normalized!==raw && normalized.toLowerCase()!==raw.toLowerCase()){
+    const result=old(normalized,l);
+    if(result && typeof result.text==="string"){
+      const low=result.text.toLowerCase();
+      const fallback =
+        low.includes("я пока не до конца поняла") ||
+        low.includes("i'm not fully sure what you mean") ||
+        low.includes("i am not fully sure what you mean") ||
+        low.includes("en ole vielä täysin varma");
+      if(!fallback) return result;
+    }
+  }
+
+  // 8) Unknown pasted technical error: targeted clarification, never ordinary fallback.
+  if(looksLikePastedTechnicalError(raw)){
+    return {type:"answer",text:unknownTechnicalAnswer(raw,language)};
+  }
+
+  return old(text,l);
+};
+
+window.ANITA_V15={
+  version:"15.0",
+  normalizeSlang,
+  findHttp,
+  findBrowserError,
+  findStopCode,
+  findHexError,
+  genericErrorKind,
+  diskIntent,
+  looksLikePastedTechnicalError
+};
+
+console.log("[ANITA v15] Knowledge + Error Understanding Core loaded");
+})();
