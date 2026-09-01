@@ -9448,3 +9448,180 @@ window.ANITA_V16_3={
 
 console.log("[ANITA v16.3] New Request Priority Router loaded");
 })();
+
+/* ================= ANITA v16.4 AUTO LANGUAGE + RU SOFTWARE ROUTER FIX =================
+   Goals:
+   1. In AUTO, CURRENT message language wins:
+      Cyrillic Russian -> RU, Finnish -> FI, Latin English -> EN.
+   2. Manual language selection still wins over AUTO.
+   3. "Программа не работает" is always a NEW software issue, never an old
+      yes/no/context reply.
+   4. Same intent routing across RU/EN/FI; only answer text changes.
+   ==================================================================================== */
+(function(){
+"use strict";
+
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+
+const V = window.ANITA_V12;
+const previousHandle = V.handle.bind(V);
+const S = V.state || {};
+
+function normalize(s){
+  return String(s||"")
+    .toLowerCase()
+    .replace(/ё/g,"е")
+    .replace(/[?!.,:;()[\]{}"“”]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function currentManualLanguage(){
+  // Tilda buttons use .langBtn[data-lang]. The active button is the most
+  // reliable UI source and avoids stale internal state.
+  const active = document.querySelector("#anitaDemoRoot .langBtn.active");
+  if(active){
+    const x = String(active.dataset.lang||"").toLowerCase();
+    if(["ru","en","fi"].includes(x)) return x;
+    if(x==="auto") return null;
+  }
+
+  try{
+    if(typeof languageMode !== "undefined"){
+      const x=String(languageMode||"").toLowerCase();
+      if(["ru","en","fi"].includes(x)) return x;
+      if(x==="auto") return null;
+    }
+  }catch(_){}
+
+  return null;
+}
+
+function detectCurrentMessageLanguage(text){
+  const raw=String(text||"");
+
+  // Cyrillic is a very strong RU signal.
+  if(/[а-яё]/i.test(raw)) return "ru";
+
+  // Finnish-specific letters / common Finnish IT words.
+  if(/[äöå]/i.test(raw) ||
+     /\b(?:tietokone|ohjelma|sovellus|ongelma|näyttö|netti|selain|tulostin|ei toimi|ei käynnisty|hidas|virhe)\b/i.test(raw))
+    return "fi";
+
+  if(/[a-z]/i.test(raw)) return "en";
+
+  return null;
+}
+
+function effectiveLanguage(text, supplied){
+  const manual=currentManualLanguage();
+  if(manual) return manual;
+
+  // AUTO: always prefer CURRENT message over remembered/default state.
+  return detectCurrentMessageLanguage(text) ||
+         (["ru","en","fi"].includes(String(supplied||"").toLowerCase()) ? String(supplied).toLowerCase() : null) ||
+         "en";
+}
+
+function resetStaleQuestionContext(){
+  // Reset transient conversational answer state only.
+  // Do NOT touch visitor/rating/learning storage.
+  S.lastQuestion=null;
+  S.lastInstruction=null;
+  S.awaitingResult=false;
+  S.awaitingGenericSymptom=false;
+  S.awaitingMenu=false;
+  S.activeMenu=null;
+  S.menu=null;
+  S.pendingChoice=null;
+  S.lastProcedureAction=null;
+  S.currentSymptom=null;
+  S.observationProcess=null;
+}
+
+function isSoftwareNotWorking(text){
+  const t=normalize(text);
+
+  return (
+    /^(?:программа|приложение|софт)\s+(?:не\s+работает|не\s+запускается)$/i.test(t) ||
+    /^(?:program|programme|app|application|software)\s+(?:(?:is\s+)?not\s+working|won't\s+start|wont\s+start)$/i.test(t) ||
+    /^(?:ohjelma|sovellus)\s+(?:ei\s+toimi|ei\s+käynnisty)$/i.test(t)
+  );
+}
+
+function softwareReply(l){
+  S.rootProblem="software_problem";
+  S.issue="software_problem";
+  S.currentSymptom="not_working";
+  S.lastQuestion="software_symptom_detail";
+  S.language=l;
+
+  if(l==="ru"){
+    return `Поняла — проблема с программой.
+
+Что именно происходит?
+1. Не запускается
+2. Запускается и сразу закрывается
+3. Зависает
+4. Работает медленно
+5. Показывает ошибку
+6. Что-то другое
+
+Если появляется ошибка, можешь скопировать её сюда как есть.`;
+  }
+
+  if(l==="fi"){
+    return `Selvä — ongelma liittyy ohjelmaan.
+
+Mitä tarkalleen tapahtuu?
+1. Ei käynnisty
+2. Käynnistyy ja sulkeutuu heti
+3. Jäätyy
+4. Toimii hitaasti
+5. Näyttää virheen
+6. Jotain muuta
+
+Jos virheilmoitus näkyy, voit liittää sen tähän sellaisenaan.`;
+  }
+
+  return `Got it — the problem is with a program.
+
+What exactly happens?
+1. It doesn't start
+2. It opens and immediately closes
+3. It freezes
+4. It runs slowly
+5. It shows an error
+6. Something else
+
+If there is an error message, paste it here exactly as shown.`;
+}
+
+V.handle=function(text,l){
+  const raw=String(text||"");
+  const effective=effectiveLanguage(raw,l);
+
+  // Keep state synchronized with the actual response language.
+  S.language=effective;
+
+  // Highest-priority full-intent route. This executes BEFORE legacy
+  // yes/no/menu/context handlers.
+  if(isSoftwareNotWorking(raw)){
+    resetStaleQuestionContext();
+    return {type:"answer", text:softwareReply(effective)};
+  }
+
+  // For every other request, pass the freshly detected language into the
+  // existing engine. This fixes AUTO replying in English to Russian input.
+  return previousHandle(raw,effective);
+};
+
+window.ANITA_V16_4={
+  version:"16.4",
+  detectCurrentMessageLanguage,
+  effectiveLanguage,
+  isSoftwareNotWorking
+};
+
+console.log("[ANITA v16.4] AUTO language + RU software router fix loaded");
+})();
