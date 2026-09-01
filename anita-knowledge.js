@@ -5421,3 +5421,222 @@ V.handle=function(text,l){
 window.ANITA_V12_7={version:"12.7"};
 console.log("[ANITA v12.7] Continuity + Escalation Engine loaded");
 })();
+
+/* ================= ANITA v12.8 SUCCESS FEEDBACK ENGINE =================
+   Purpose:
+   - Detect genuine SUCCESS after troubleshooting.
+   - Reply positively only when the result is clearly positive.
+   - Never confuse "didn't work", "still not working", etc. with success.
+   - Supports many natural EN / RU / FI success phrases.
+   - Keeps the current troubleshooting context, then marks the branch solved.
+   ======================================================================= */
+(function(){
+"use strict";
+
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+
+const V = window.ANITA_V12;
+const old = V.handle.bind(V);
+const S = V.state;
+
+S.successReplyIndex = S.successReplyIndex || 0;
+S.lastSolvedIssue = S.lastSolvedIssue || null;
+
+const clean = s => (s||"")
+  .toLowerCase()
+  .replace(/[’`]/g,"'")
+  .replace(/[?!.,:;()[\]{}"“”]/g," ")
+  .replace(/\s+/g," ")
+  .trim();
+
+function langOf(text){
+  if(/[а-яё]/i.test(text)) return "ru";
+  if(/[äöå]/i.test(text) || /\b(toimii|onnistui|hyvä|jes|mahtavaa|kiitos)\b/i.test(text)) return "fi";
+  return S.language || "en";
+}
+
+/* IMPORTANT:
+   Negative patterns are checked FIRST, because phrases like
+   "it worked for a second but now it doesn't"
+   contain the word "worked" but are NOT success.
+*/
+function isNegativeOutcome(text){
+  const t = clean(text);
+
+  const negatives = [
+    // EN
+    "didn't work","didnt work","doesn't work","doesnt work","not working",
+    "still not working","still doesn't work","still doesnt work",
+    "did not help","didn't help","didnt help","not fixed","still broken",
+    "same problem","nothing changed","worked for a second but",
+    "worked briefly but","it stopped working again","problem came back",
+
+    // RU
+    "не сработало","не работает","всё ещё не работает","все еще не работает",
+    "не помогло","ничего не изменилось","та же проблема","всё так же","все так же",
+    "заработало но снова","снова не работает","опять не работает","проблема вернулась",
+
+    // FI
+    "ei toimi","ei auttanut","ei vieläkään toimi","sama ongelma",
+    "mikään ei muuttunut","toimi hetken mutta","lakkasi taas toimimasta",
+    "ongelma palasi"
+  ];
+
+  return negatives.some(x => t.includes(clean(x)));
+}
+
+function isSuccessOutcome(text){
+  if(isNegativeOutcome(text)) return false;
+
+  const t = clean(text);
+
+  // Exact / common conversational success forms.
+  const exact = [
+    // EN
+    "it worked","it works","works now","working now","now it works",
+    "yes it worked","yes it works","yeah it worked","yeah it works",
+    "yep it worked","yep it works","that worked","this worked",
+    "fixed","fixed it","it's fixed","its fixed","problem solved",
+    "solved","all good","good now","everything works","everything works now",
+    "wow it worked","wow it works","nice it worked","great it worked",
+    "perfect it works","awesome it works","finally it works","finally fixed",
+    "that fixed it","this fixed it","it is working","back to normal",
+    "normal now","much better now","better now","pc is fast now",
+
+    // RU
+    "заработало","работает","теперь работает","да заработало","да работает",
+    "всё работает","все работает","починилось","исправилось","готово работает",
+    "проблема решена","решено","всё хорошо","все хорошо","теперь всё хорошо",
+    "теперь все хорошо","вау заработало","ого заработало","отлично работает",
+    "наконец заработало","стало нормально","теперь нормально","стало быстрее",
+    "компьютер стал быстрее","теперь быстро",
+
+    // FI
+    "toimii","se toimii","nyt toimii","kyllä toimii","joo toimii",
+    "onnistui","se onnistui","korjattu","ongelma ratkesi","ratkesi",
+    "kaikki toimii","nyt kaikki toimii","hyvä nyt","mahtavaa toimii",
+    "jes toimii","vihdoin toimii","nyt on kunnossa","palasi normaaliksi",
+    "nyt nopeampi"
+  ];
+
+  if(exact.includes(t)) return true;
+
+  // More flexible patterns.
+  const patterns = [
+    /\b(it|that|this|everything|pc|computer|chrome|browser) (now )?(works|worked|is working)\b/i,
+    /\b(now|finally) (it )?(works|worked|is working)\b/i,
+    /\b(fixed|solved|working) now\b/i,
+    /\b(that|this) fixed (it|the problem)\b/i,
+
+    /\b(теперь|наконец)? ?(это |всё |все )?(работает|заработало|починилось|исправилось)\b/i,
+    /\b(проблема )?(решена|решилась)\b/i,
+    /\b(стало|теперь) (быстрее|нормально)\b/i,
+
+    /\b(nyt|vihdoin)? ?(se |kaikki )?(toimii|onnistui|korjaantui)\b/i,
+    /\b(ongelma )?(ratkesi|korjaantui)\b/i,
+    /\b(nyt )?(nopeampi|kunnossa)\b/i
+  ];
+
+  return patterns.some(r => r.test(t));
+}
+
+const SUCCESS_REPLIES = {
+  en: [
+    "Great! Glad that worked 😊",
+    "Nice — that fixed it. Good job!",
+    "Perfect! The problem is solved.",
+    "Awesome — happy to help!",
+    "Good! That means we found the right cause.",
+    "Excellent — your PC should feel better now.",
+    "Great result! You handled that perfectly.",
+    "Nice one — that step did the trick.",
+    "Perfect, we're back in business 😊",
+    "Great! I'm glad we got it working.",
+    "Excellent. That confirms the troubleshooting worked.",
+    "Good job! The issue appears to be resolved."
+  ],
+  ru: [
+    "Отлично! Рад, что помогло 😊",
+    "Супер — значит мы нашли правильную причину.",
+    "Отлично, проблема решена!",
+    "Хорошая работа! Всё получилось.",
+    "Прекрасно — значит этот шаг действительно помог.",
+    "Супер! Теперь компьютер должен работать лучше.",
+    "Отличный результат 😊",
+    "Хорошо! Значит диагностика была правильной.",
+    "Отлично, снова всё работает.",
+    "Супер — рад был помочь!",
+    "Отлично! Можно считать эту проблему решённой.",
+    "Хорошая работа — похоже, всё исправлено."
+  ],
+  fi: [
+    "Hienoa! Mukava kuulla, että se auttoi 😊",
+    "Mahtavaa — löysimme oikean syyn.",
+    "Hyvä! Ongelma näyttää olevan ratkaistu.",
+    "Loistavaa työtä!",
+    "Hienoa — tuo vaihe todella auttoi.",
+    "Mahtavaa! Koneen pitäisi nyt toimia paremmin.",
+    "Erinomainen tulos 😊",
+    "Hyvä! Vianmääritys osui oikeaan.",
+    "Hienoa, nyt se toimii taas.",
+    "Mahtavaa — autoin mielelläni!",
+    "Hyvä! Voimme pitää tätä ongelmaa ratkaistuna.",
+    "Loistavaa — näyttää siltä, että vika korjaantui."
+  ]
+};
+
+function successReply(text){
+  const l = langOf(text);
+  const replies = SUCCESS_REPLIES[l] || SUCCESS_REPLIES.en;
+
+  // Rotate replies so ANITA does not say exactly the same thing every time.
+  const i = S.successReplyIndex % replies.length;
+  S.successReplyIndex = (S.successReplyIndex + 1) % replies.length;
+
+  const root = S.rootProblem || S.issue || S.currentSymptom || null;
+  S.lastSolvedIssue = root;
+
+  // Mark only after a genuinely positive user message.
+  S.issue = root;
+  S.step = "solved";
+  S.supportFailures = 0;
+  S.lastQuestion = null;
+  S.lastInstruction = null;
+
+  const base = replies[i];
+
+  const follow = {
+    en: "If the same problem returns later, tell me what changed and we can continue from there.",
+    ru: "Если эта же проблема позже вернётся, напиши, что изменилось, и мы продолжим диагностику оттуда.",
+    fi: "Jos sama ongelma palaa myöhemmin, kerro mikä muuttui, niin voimme jatkaa siitä."
+  }[l];
+
+  const msg = base + "\n\n" + follow;
+  S.lastAnswer = msg;
+  return {type:"answer",text:msg};
+}
+
+V.handle = function(text,l){
+  // Success detection has high priority, but only after there is/was
+  // an active troubleshooting context. A random "good" in a new chat
+  // must not be treated as "problem solved".
+  const hasContext =
+    !!(S.rootProblem || S.issue || S.currentSymptom ||
+       S.lastInstruction || S.lastQuestion ||
+       (S.facts && Object.keys(S.facts).length));
+
+  if(hasContext && isSuccessOutcome(text)){
+    return successReply(text);
+  }
+
+  return old(text,l);
+};
+
+window.ANITA_V12_8 = {
+  version:"12.8",
+  isSuccessOutcome,
+  isNegativeOutcome
+};
+
+console.log("[ANITA v12.8] Success Feedback Engine loaded");
+})();
