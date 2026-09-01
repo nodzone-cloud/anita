@@ -8418,3 +8418,175 @@ window.ANITA_V15={
 
 console.log("[ANITA v15] Knowledge + Error Understanding Core loaded");
 })();
+
+/* ================= ANITA v15.1 VAGUE PROBLEM ROUTER HOTFIX =================
+   Important routing fix.
+
+   v15 slang normalization can turn:
+       "Проблема с компом"
+   into:
+       "Проблема с computer"
+   before an older Russian-only vague-problem detector sees it.
+
+   This hotfix runs BEFORE the v15 handler and catches vague problem reports
+   from the ORIGINAL raw text, including Russian case endings/slang.
+
+   Also handles a bare "Проблема" by asking which device/program is affected.
+   =========================================================================== */
+(function(){
+"use strict";
+
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+
+const V = window.ANITA_V12;
+const old = V.handle.bind(V);
+const S = V.state;
+
+function clean(s){
+  return String(s||"")
+    .toLowerCase()
+    .replace(/ё/g,"е")
+    .replace(/[?!.,:;()[\]{}"“”]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function currentLang(text){
+  const vals=[
+    S.manualLanguage,S.selectedLanguage,S.language,S.lang,
+    window.ANITA_LANGUAGE,window.anitaLanguage
+  ];
+  for(const x of vals){
+    const v=String(x||"").toLowerCase();
+    if(v==="ru"||v.startsWith("ru")) return "ru";
+    if(v==="en"||v.startsWith("en")) return "en";
+    if(v==="fi"||v.startsWith("fi")) return "fi";
+  }
+  if(/[а-яё]/i.test(text||"")) return "ru";
+  if(/[äöå]/i.test(text||"")) return "fi";
+  return "en";
+}
+
+function hasRuComputer(text){
+  const t=clean(text);
+  // Match full Russian stems with ANY normal case ending:
+  // комп, компа, компу, компом, компе, компы...
+  // компьютер, компьютера, компьютером...
+  // ноут, ноута, ноутом...
+  return /(?:^|\s)(?:комп(?:ьютер)?[а-я]*|компик[а-я]*|пк|ноут(?:бук)?[а-я]*)(?=\s|$)/i.test(t);
+}
+
+function hasEnComputer(text){
+  return /\b(?:pc|computer|desktop|machine|rig|laptop|notebook|lappy)\b/i.test(clean(text));
+}
+
+function hasProblemWord(text){
+  const t=clean(text);
+  return (
+    /(?:^|\s)проблем[а-я]*(?=\s|$)/i.test(t) ||
+    /(?:^|\s)неполад[а-я]*(?=\s|$)/i.test(t) ||
+    /что\s*то\s+не\s+так/i.test(t) ||
+    /(?:^|\s)(?:problem|issue|trouble)(?=\s|$)/i.test(t) ||
+    /something\s+(?:is\s+)?wrong/i.test(t) ||
+    /(?:^|\s)(?:ongelma|vika)(?=\s|$)/i.test(t)
+  );
+}
+
+function hasConcreteSymptom(text){
+  const t=clean(text);
+  return (
+    /тормоз|медлен|лага|зависа|фриз|вылета|краш|не\s+включ|не\s+запуска|перезагружа|выключа|нет\s+изображ|черн[а-я]*\s+экран|нет\s+интернет|пропал[а-я]*\s+интернет|перегрева|греет|шумит|син[а-я]*\s+экран|ошибк/i.test(t) ||
+    /\b(?:slow|sluggish|laggy|lagging|freeze|freezing|frozen|crash|crashing|won't turn on|wont turn on|won't start|wont start|reboot|restarting|shuts down|black screen|no display|no internet|overheat|overheating|blue screen|error)\b/i.test(t) ||
+    /\b(?:hidas|lagaa|jäätyy|kaatuu|ei käynnisty|sammuu|musta näyttö|ei kuvaa|ei nettiä|ylikuumenee|virhe)\b/i.test(t)
+  );
+}
+
+function isBareProblem(text){
+  const t=clean(text);
+  return /^(?:проблема|проблемы|problem|issue|ongelma|vika)$/.test(t);
+}
+
+function askComputer(lang){
+  S.awaitingGenericSymptom=true;
+  S.genericProblemDevice="computer";
+  S.lastQuestion="generic_symptom";
+  S.lastInstruction="describe_symptom";
+
+  let msg;
+  if(lang==="ru"){
+    msg=`Поняла — проблема с компьютером.
+
+Что именно происходит?
+Например: он медленно работает, зависает, не включается, перезагружается, нет изображения, пропадает интернет или появляется ошибка?
+
+Опиши своими словами — можно использовать сленг и можно вставить текст ошибки как есть.`;
+  } else if(lang==="fi"){
+    msg=`Selvä — tietokoneessa on ongelma.
+
+Mitä tarkalleen tapahtuu?
+Onko se hidas, jäätyykö se, eikö se käynnisty, käynnistyykö uudelleen, puuttuuko kuva, katkeaako Internet vai näkyykö virheilmoitus?
+
+Voit kuvailla omin sanoin ja liittää virheilmoituksen sellaisenaan.`;
+  } else {
+    msg=`Got it — there's a problem with the computer.
+
+What exactly is happening?
+Is it slow, freezing, not turning on, restarting, showing no picture, losing Internet, or showing an error?
+
+Describe it in your own words; slang is fine, and you can paste the original error text as-is.`;
+  }
+
+  S.lastAnswer=msg;
+  return {type:"answer",text:msg};
+}
+
+function askObject(lang){
+  S.lastQuestion="generic_problem_object";
+
+  let msg;
+  if(lang==="ru"){
+    msg=`Поняла. С чем именно проблема — с компьютером, монитором, интернетом, принтером, браузером или программой?
+
+Можешь написать просто, например: «с компом», «интернет пропадает» или вставить текст ошибки.`;
+  } else if(lang==="fi"){
+    msg=`Selvä. Missä ongelma on — tietokoneessa, näytössä, Internetissä, tulostimessa, selaimessa vai ohjelmassa?
+
+Voit vastata omin sanoin tai liittää virhetekstin.`;
+  } else {
+    msg=`Got it. What has the problem — the computer, monitor, Internet, printer, browser, or an app?
+
+You can answer naturally, for example “my PC”, “Internet keeps dropping”, or paste the error text.`;
+  }
+
+  S.lastAnswer=msg;
+  return {type:"answer",text:msg};
+}
+
+V.handle=function(text,l){
+  const raw=String(text||"");
+  const lang=currentLang(raw);
+
+  // Catch the original phrase BEFORE v15 slang normalization.
+  if(hasProblemWord(raw) && (hasRuComputer(raw)||hasEnComputer(raw)) && !hasConcreteSymptom(raw)){
+    return askComputer(lang);
+  }
+
+  // "Проблема" alone is still meaningful: ask what is affected.
+  if(isBareProblem(raw)){
+    return askObject(lang);
+  }
+
+  return old(text,l);
+};
+
+window.ANITA_V15_1={
+  version:"15.1",
+  hasRuComputer,
+  hasEnComputer,
+  hasProblemWord,
+  hasConcreteSymptom,
+  isBareProblem
+};
+
+console.log("[ANITA v15.1] Vague Problem Router Hotfix loaded");
+})();
