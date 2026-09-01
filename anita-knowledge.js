@@ -9014,3 +9014,56 @@ console.log("[ANITA v16] Voice Input Core loaded",{
   locale:speechLocale()
 });
 })();
+
+/* ================= ANITA v16.1 AUTO LANGUAGE PRIORITY FIX =================
+   In AUTO mode, detect language from the CURRENT USER MESSAGE before using
+   remembered/default English. Manual RU/EN/FI selection still has priority.
+   ======================================================================== */
+(function(){
+"use strict";
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+
+const V=window.ANITA_V12;
+const old=V.handle.bind(V);
+const S=V.state;
+
+function manualLang(){
+  try{
+    if(typeof languageMode!=="undefined"){
+      const m=String(languageMode||"").toLowerCase();
+      if(["ru","en","fi"].includes(m)) return m;
+      if(m==="auto") return null;
+    }
+  }catch(_){}
+  const m=String(S.manualLanguage||S.selectedLanguage||"").toLowerCase();
+  return ["ru","en","fi"].includes(m) ? m : null;
+}
+
+function detectMessageLang(text){
+  const s=String(text||"");
+  if(/[а-яё]/i.test(s)) return "ru";
+  if(/[äöå]/i.test(s) || /\b(?:minulla|tietokone|ongelma|miksi|miten|ei|toimi|hidas)\b/i.test(s)) return "fi";
+  if(/[a-z]/i.test(s)) return "en";
+  return null;
+}
+
+V.handle=function(text,l){
+  const forced=manualLang();
+  const detected=detectMessageLang(text);
+  const effective=forced || detected || l || S.language || "en";
+
+  // In AUTO, the current message wins over stale/default state.
+  if(!forced && detected) S.language=detected;
+  if(forced) S.language=forced;
+
+  return old(text,effective);
+};
+
+window.ANITA_V16_1={
+  version:"16.1",
+  detectMessageLang,
+  manualLang
+};
+
+console.log("[ANITA v16.1] AUTO language priority fix loaded");
+})();
