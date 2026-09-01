@@ -3715,3 +3715,358 @@ window.anitaConversationState=function(){
 
 console.log("[ANITA v12] Multilingual Conversation Core loaded");
 })();
+
+/* ================= ANITA v12.1 NATURAL LANGUAGE FIX ================= */
+(function(){
+"use strict";
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+const V=window.ANITA_V12, old=V.handle.bind(V);
+const n=s=>(s||"").toLowerCase().replace(/[?!.,:;()[\]{}"“”]/g," ").replace(/\s+/g," ").trim();
+
+function lang(t){
+ if(/[а-яё]/i.test(t)) return "ru";
+ if(/[äöå]/i.test(t)||/\b(tietokone|kone|läppäri|toimii|hidas|hitaasti|lagaa)\b/i.test(t)) return "fi";
+ return "en";
+}
+function slow(t){
+ t=n(t);
+ return [
+ /\bit (?:work|works|working|run|runs|running|is|feels|seems) (?:very )?(?:slow|slowly|laggy|sluggish)\b/,
+ /\b(?:pc|computer|laptop|windows|machine) (?:is |works? |runs? |feels? |seems? )?(?:very )?(?:slow|slowly|laggy|sluggish)\b/,
+ /\b(?:works?|runs?) (?:very )?(?:slow|slowly)\b/,
+ /\b(?:компьютер|комп|пк|ноутбук|ноут|windows) (?:работает |стал |стала |очень )*(?:медленно|тормозит|лагает|тупит)\b/,
+ /\b(?:он|оно|это) (?:работает |очень )*(?:медленно|тормозит|лагает|тупит)\b/,
+ /\b(?:tietokone|kone|pc|läppäri|windows|se|tämä) (?:on |toimii |käy |tuntuu )*(?:todella |tosi |hyvin )?(?:hidas|hitaasti|lagaa)\b/
+ ].some(r=>r.test(t));
+}
+function startSlow(l){
+ const S=V.state;
+ S.issue="slow_pc"; S.step="slow_task_manager"; S.language=l; S.device="computer";
+ S.lastQuestion=null; S.lastInstruction="slow_task_manager"; S.completed=[]; S.failed=[]; S.facts={};
+ const m={
+ en:`Got it — your computer is working slowly. Let's find the cause instead of guessing.
+
+First check:
+1. Press Ctrl + Shift + Esc to open Task Manager.
+2. Look at CPU, Memory and Disk.
+3. Tell me which one is highest and approximately what percentage it shows.
+
+For example: “CPU 95%”, “Memory 82%”, or “Disk 100%”.`,
+ ru:`Понял — компьютер работает медленно. Давай выясним причину, а не будем гадать.
+
+Сначала проверь:
+1. Нажми Ctrl + Shift + Esc — откроется Диспетчер задач.
+2. Посмотри ЦП/CPU, Память и Диск.
+3. Напиши, что загружено сильнее всего и примерно на сколько процентов.
+
+Например: «CPU 95%», «Память 82%» или «Диск 100%».`,
+ fi:`Selvä — tietokone toimii hitaasti. Selvitetään syy sen sijaan, että arvaamme.
+
+Tarkista ensin:
+1. Paina Ctrl + Shift + Esc avataksesi Tehtävienhallinnan.
+2. Katso CPU, Memory ja Disk.
+3. Kerro mikä niistä on korkein ja suunnilleen kuinka monta prosenttia se näyttää.
+
+Esimerkiksi: “CPU 95 %”, “Memory 82 %” tai “Disk 100 %”.`
+ }[l];
+ S.lastAnswer=m;
+ return {type:"answer",text:m};
+}
+V.handle=function(text,l){
+ if(slow(text)) return startSlow(lang(text));
+ return old(text,l);
+};
+window.ANITA_V12_1={version:"12.1",slow};
+console.log("[ANITA v12.1] Natural language fix loaded");
+})();
+
+/* ================= ANITA v12.2 SEMANTIC PRIORITY FIX =================
+   Purpose:
+   - understand the symptom the user ACTUALLY said
+   - "slow" must never be reinterpreted as "glitching/weird"
+   - explicit symptom words outrank vague fallback categories
+   - natural imperfect EN/RU/FI is accepted
+   - deterministic semantic priority layer runs BEFORE older engines
+   ==================================================================== */
+(function(){
+"use strict";
+
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+
+const V = window.ANITA_V12;
+const previous = V.handle.bind(V);
+
+const norm = s => (s||"")
+  .toLowerCase()
+  .replace(/[’`]/g,"'")
+  .replace(/[?!.,:;()[\]{}"“”]/g," ")
+  .replace(/\s+/g," ")
+  .trim();
+
+const token = (t,w) => new RegExp("(^|\\s)"+w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"(?=\\s|$)","i").test(t);
+
+function langOf(text){
+  if(/[а-яё]/i.test(text)) return "ru";
+  if(/[äöå]/i.test(text) || /\b(tietokone|kone|läppäri|toimii|hidas|hitaasti|jäätyy|välkkyy)\b/i.test(text)) return "fi";
+  return "en";
+}
+
+/* Explicit semantic concepts.
+   IMPORTANT: these are mutually prioritized.
+   Specific symptom > vague symptom.
+*/
+function concepts(text){
+  const t = norm(text);
+
+  const c = {
+    slow:false,
+    freeze:false,
+    crash:false,
+    graphics:false,
+    error:false,
+    input:false,
+    shell:false,
+    weird:false,
+    internet:false,
+    browser:false,
+    pc:false,
+    windows:false
+  };
+
+  // Entity/context
+  c.pc = /\b(pc|computer|laptop|machine|desktop|компьютер|комп|пк|ноутбук|ноут|tietokone|kone|läppäri)\b/i.test(t)
+      || /\bit\b/i.test(t) || /\bон\b/i.test(t) || /\bse\b/i.test(t);
+  c.windows = /\bwindows\b/i.test(t) || /\bвиндовс\b/i.test(t);
+
+  // SLOW — broad natural grammar, but semantically precise.
+  c.slow =
+    /\bslow\b|\bslowly\b|\bsluggish\b|\blaggy\b|\blags?\b|\blagging\b/i.test(t) ||
+    /\bмедленн\w*\b|\bтормоз\w*\b|\bлага\w*\b|\bтуп\w*\b/i.test(t) ||
+    /\bhidas\b|\bhitaasti\b|\blagaa\b|\bhidastelee\b/i.test(t);
+
+  // Freeze / hang
+  c.freeze =
+    /\bfreeze\b|\bfreezes\b|\bfrozen\b|\bhanging\b|\bhangs\b|\bnot responding\b/i.test(t) ||
+    /\bзавис\w*\b|\bне отвечает\b/i.test(t) ||
+    /\bjääty\w*\b|\bei vastaa\b/i.test(t);
+
+  // Crash / close unexpectedly
+  c.crash =
+    /\bcrash\w*\b|\bcloses? by itself\b|\bkeeps closing\b/i.test(t) ||
+    /\bвылет\w*\b|\bзакрывается сам\w*\b/i.test(t) ||
+    /\bkaatu\w*\b|\bsulkeutuu itsestään\b/i.test(t);
+
+  // Graphics
+  c.graphics =
+    /\bflicker\w*\b|\bartifact\w*\b|\bblack screen\b|\bscreen flashes\b/i.test(t) ||
+    /\bмерца\w*\b|\bартефакт\w*\b|\bчерн\w* экран\b|\bчёрн\w* экран\b/i.test(t) ||
+    /\bvälk\w*\b|\bartifakt\w*\b|\bmusta ruutu\b/i.test(t);
+
+  // Errors
+  c.error =
+    /\berror\b|\berror message\b|\bpopup\b|\bpop up\b|\bcode 0x/i.test(t) ||
+    /\bошибк\w*\b|\bвсплыва\w*\b|\bкод 0x/i.test(t) ||
+    /\bvirhe\w*\b|\bponnahdus\w*\b/i.test(t);
+
+  // Mouse / keyboard
+  c.input =
+    /\bmouse\b|\bkeyboard\b|\bcursor\b/i.test(t) ||
+    /\bмыш\w*\b|\bклавиатур\w*\b|\bкурсор\b/i.test(t) ||
+    /\bhiiri\b|\bnäppäimist\w*\b|\bkohdistin\b/i.test(t);
+
+  // Explorer / taskbar / Start
+  c.shell =
+    /\bexplorer\b|\btaskbar\b|\bstart menu\b/i.test(t) ||
+    /\bпроводник\b|\bпанел\w* задач\b|\bменю пуск\b/i.test(t) ||
+    /\bresurssienhallinta\b|\btehtäväpalkki\b|\bkäynnistä valikko\b/i.test(t);
+
+  // Vague weird/glitch terms. LOWEST priority.
+  c.weird =
+    /\bweird\b|\bweirdly\b|\bglitch\b|\bglitches\b|\bglitching\b|\bacting strange\b|\bacting weird\b|\bbehaves abnormally\b/i.test(t) ||
+    /\bстранн\w*\b|\bглюч\w*\b|\bнеобычн\w*\b/i.test(t) ||
+    /\bouto\w*\b|\bglitch\w*\b|\btoimii oudosti\b/i.test(t);
+
+  c.internet =
+    /\binternet\b|\bwifi\b|\bwi fi\b|\bnetwork\b|\bинтернет\b|\bвайфай\b|\bсеть\b|\bnetti\b|\bverkko\b/i.test(t);
+
+  c.browser =
+    /\bbrowser\b|\bchrome\b|\bedge\b|\bfirefox\b|\bwebsite\b|\bpage\b|\bбраузер\b|\bсайт\b|\bстраниц\w*\b|\bselain\b|\bverkkosivu\b/i.test(t);
+
+  return c;
+}
+
+function resetFor(issue,l){
+  const S=V.state;
+  S.issue=issue;
+  S.branch=null;
+  S.language=l;
+  S.lastQuestion=null;
+  S.lastAnswer=null;
+  S.completed=[];
+  S.failed=[];
+  S.facts={};
+  return S;
+}
+
+function slowReply(l){
+  const S=resetFor("slow_pc",l);
+  S.step="slow_task_manager";
+  S.lastInstruction="slow_task_manager";
+
+  const text={
+    en:`Got it — your computer is running slowly.
+
+I won't treat “slow” as “glitching”, because those are different symptoms. Let's check what is actually causing the slowdown.
+
+1. Press Ctrl + Shift + Esc to open Task Manager.
+2. Look at CPU, Memory and Disk.
+3. Tell me which one is highest and roughly what percentage it shows.
+
+For example: “CPU 95%”, “Memory 82%”, or “Disk 100%”.`,
+    ru:`Понял — компьютер работает медленно.
+
+Я не буду трактовать «медленно» как «глючит», потому что это разные симптомы. Давай проверим, что именно вызывает торможение.
+
+1. Нажми Ctrl + Shift + Esc — откроется Диспетчер задач.
+2. Посмотри ЦП/CPU, Память и Диск.
+3. Напиши, что загружено сильнее всего и примерно на сколько процентов.
+
+Например: «CPU 95%», «Память 82%» или «Диск 100%».`,
+    fi:`Selvä — tietokone toimii hitaasti.
+
+En tulkitse “hidas” tarkoittamaan “glitching/outo”, koska ne ovat eri oireita. Selvitetään mikä hidastaa konetta.
+
+1. Paina Ctrl + Shift + Esc avataksesi Tehtävienhallinnan.
+2. Katso CPU, Memory ja Disk.
+3. Kerro mikä niistä on korkein ja suunnilleen kuinka monta prosenttia se näyttää.
+
+Esimerkiksi: “CPU 95 %”, “Memory 82 %” tai “Disk 100 %”.`
+  }[l];
+
+  S.lastAnswer=text;
+  return {type:"answer",text};
+}
+
+function freezeReply(l){
+  const S=resetFor("freeze",l);
+  S.step="freeze_scope";
+  const text={
+    en:"Understood — this sounds like freezing, not slowness. Does the whole computer freeze, or only one program?",
+    ru:"Понял — это похоже именно на зависание, а не на медленную работу. Зависает весь компьютер или только одна программа?",
+    fi:"Selvä — tämä kuulostaa jäätymiseltä, ei hitaudelta. Jäätyykö koko tietokone vai vain yksi ohjelma?"
+  }[l];
+  S.lastQuestion="freeze_scope"; S.lastAnswer=text;
+  return {type:"answer",text};
+}
+
+function crashReply(l){
+  const S=resetFor("crash",l);
+  S.step="crash_scope";
+  const text={
+    en:"Understood — the program is crashing/closing unexpectedly. Which program is it, and does it show an error before it closes?",
+    ru:"Понял — программа вылетает или неожиданно закрывается. Какая именно программа и появляется ли ошибка перед закрытием?",
+    fi:"Selvä — ohjelma kaatuu tai sulkeutuu odottamatta. Mikä ohjelma on kyseessä ja näkyykö virhe ennen sulkeutumista?"
+  }[l];
+  S.lastQuestion="crash_scope"; S.lastAnswer=text;
+  return {type:"answer",text};
+}
+
+function graphicsReply(l){
+  const S=resetFor("graphics",l);
+  S.step="graphics_scope";
+  const text={
+    en:"Understood — this is a display/graphics symptom. Is the screen flickering, showing artifacts, going black, or showing “No signal”?",
+    ru:"Понял — это симптом, связанный с экраном/графикой. Экран мерцает, показывает артефакты, становится чёрным или пишет «Нет сигнала»?",
+    fi:"Selvä — tämä liittyy näyttöön/grafiikkaan. Välkkyykö näyttö, näkyykö artefakteja, meneekö se mustaksi vai näkyykö “No signal”?"
+  }[l];
+  S.lastQuestion="graphics_scope"; S.lastAnswer=text;
+  return {type:"answer",text};
+}
+
+function weirdReply(l){
+  const S=resetFor("weird",l);
+  S.step="weird_scope";
+  const text={
+    en:`I understand that something is behaving strangely, but “weird/glitching” is too broad to diagnose safely.
+
+Which is closest?
+1. Screen/graphics problem
+2. Programs freeze
+3. Computer is slow
+4. Error messages/popups
+5. Mouse/keyboard problem
+6. Explorer/taskbar/Start menu problem
+7. Something else`,
+    ru:`Понял, что компьютер ведёт себя странно, но «глючит/странно» слишком общее описание для точной диагностики.
+
+Что ближе?
+1. Проблема с экраном/графикой
+2. Программы зависают
+3. Компьютер работает медленно
+4. Ошибки/всплывающие окна
+5. Мышь/клавиатура
+6. Проводник/панель задач/Пуск
+7. Другое`,
+    fi:`Ymmärrän, että jokin toimii oudosti, mutta “outo/glitching” on liian yleinen kuvaus tarkkaan vianmääritykseen.
+
+Mikä sopii parhaiten?
+1. Näyttö/grafiikka
+2. Ohjelmat jäätyvät
+3. Tietokone on hidas
+4. Virheilmoitukset/ponnahdusikkunat
+5. Hiiri/näppäimistö
+6. Resurssienhallinta/tehtäväpalkki/Käynnistä
+7. Jokin muu`
+  }[l];
+  S.lastQuestion="weird_scope"; S.lastAnswer=text;
+  return {type:"answer",text};
+}
+
+/* Priority classifier:
+   1 slow
+   2 freeze
+   3 crash
+   4 graphics
+   5 error/input/shell (leave existing specific engines a chance)
+   6 weird
+*/
+function semanticIntercept(text){
+  const c=concepts(text);
+  const l=langOf(text);
+
+  // SLOW wins even if the sentence also contains "weird":
+  // "my pc is weirdly slow" -> SLOW.
+  if(c.slow && (c.pc || c.windows || /\bit\b|\bono\b|\bон\b|\bse\b/i.test(norm(text))))
+    return slowReply(l);
+
+  if(c.freeze && (c.pc || c.windows))
+    return freezeReply(l);
+
+  if(c.crash)
+    return crashReply(l);
+
+  if(c.graphics)
+    return graphicsReply(l);
+
+  // Only classify as vague glitching when NO explicit symptom exists.
+  const explicit = c.slow || c.freeze || c.crash || c.graphics || c.error || c.input || c.shell;
+  if(c.weird && !explicit)
+    return weirdReply(l);
+
+  return null;
+}
+
+V.handle=function(text,l){
+  const hit=semanticIntercept(text);
+  if(hit) return hit;
+  return previous(text,l);
+};
+
+window.ANITA_V12_2={
+  version:"12.2",
+  concepts,
+  semanticIntercept
+};
+
+console.log("[ANITA v12.2] Semantic Priority Fix loaded");
+})();
