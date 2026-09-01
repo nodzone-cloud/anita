@@ -9067,3 +9067,153 @@ window.ANITA_V16_1={
 
 console.log("[ANITA v16.1] AUTO language priority fix loaded");
 })();
+
+/* ================= ANITA v16.2 STRICT RAM VS PROGRAM FIX =================
+   Fixes a fundamental substring bug:
+     "program" contains the letters "ram"
+   so weak legacy matching could incorrectly route "program" -> RAM.
+
+   New rule:
+   - RAM must be a real token/known synonym, never a substring inside another word.
+   - program / programs / programme / app / application / software are SOFTWARE.
+   - Russian программа / приложение / софт are SOFTWARE.
+   - Finnish ohjelma / sovellus are SOFTWARE.
+   - If user only says "program", ANITA asks what is wrong with the program.
+   ======================================================================== */
+(function(){
+"use strict";
+
+if(!window.ANITA_V12 || typeof window.ANITA_V12.handle!=="function") return;
+
+const V = window.ANITA_V12;
+const old = V.handle.bind(V);
+const S = V.state;
+
+function clean(s){
+  return String(s||"")
+    .toLowerCase()
+    .replace(/ё/g,"е")
+    .replace(/[?!.,:;()[\]{}"“”]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function lang(text){
+  const stateLang=String(S.language||"").toLowerCase();
+  if(stateLang==="ru"||stateLang==="en"||stateLang==="fi") return stateLang;
+  if(/[а-яё]/i.test(text||"")) return "ru";
+  if(/[äöå]/i.test(text||"")) return "fi";
+  return "en";
+}
+
+function isRamToken(text){
+  const t=clean(text);
+
+  // True RAM words/synonyms only.
+  return (
+    /(?:^|\s)(?:ram|memory|mem)(?=\s|$)/i.test(t) ||
+    /(?:^|\s)(?:озу|оперативка|оперативная\s+память)(?=\s|$)/i.test(t) ||
+    /(?:^|\s)(?:keskusmuisti|ram-muisti|muisti)(?=\s|$)/i.test(t)
+  );
+}
+
+function isSoftwareToken(text){
+  const t=clean(text);
+
+  return (
+    /(?:^|\s)(?:program|programs|programme|programmes|app|apps|application|applications|software)(?=\s|$)/i.test(t) ||
+    /(?:^|\s)(?:программа|программы|программу|программой|приложение|приложения|приложению|софт)(?=\s|$)/i.test(t) ||
+    /(?:^|\s)(?:ohjelma|ohjelmat|sovellus|sovellukset)(?=\s|$)/i.test(t)
+  );
+}
+
+function onlySoftwareWord(text){
+  const t=clean(text);
+  return /^(?:program|programs|programme|app|application|software|программа|программы|приложение|софт|ohjelma|sovellus)$/.test(t);
+}
+
+function softwareAnswer(l){
+  S.rootProblem="software_problem";
+  S.issue="software_problem";
+  S.currentSymptom=null;
+  S.lastQuestion="software_symptom";
+
+  if(l==="ru"){
+    return `Поняла — речь о программе, а не о RAM.
+
+Что именно происходит с программой?
+Например: она не запускается, зависает, закрывается сама, работает медленно, показывает ошибку или что-то другое?
+
+Если есть текст ошибки — можешь вставить его как есть.`;
+  }
+
+  if(l==="fi"){
+    return `Selvä — tarkoitat ohjelmaa, et RAM-muistia.
+
+Mitä ohjelmalle tarkalleen tapahtuu?
+Esimerkiksi: eikö se käynnisty, jäätyykö se, sulkeutuuko itsestään, onko se hidas vai näyttääkö se virheen?
+
+Jos virheilmoitus näkyy, voit liittää sen sellaisenaan.`;
+  }
+
+  return `Got it — you mean a program/software, not RAM.
+
+What exactly is happening with the program?
+For example: does it fail to start, freeze, close by itself, run slowly, show an error, or something else?
+
+If there is an error message, you can paste it exactly as shown.`;
+}
+
+V.handle=function(text,l){
+  const raw=String(text||"");
+  const language=lang(raw);
+
+  // Highest priority: explicit software words must NEVER become RAM.
+  if(isSoftwareToken(raw) && !isRamToken(raw)){
+    // If the message has a concrete symptom, give the old engine one chance
+    // after protecting it from the "ram" substring bug.
+    const t=clean(raw);
+    const hasSymptom =
+      /\b(?:freeze|freezing|crash|crashing|close|closing|slow|error|won't start|wont start|not working)\b/i.test(t) ||
+      /(?:зависа|вылета|закрыва|медлен|тормоз|ошиб|не\s+запуска|не\s+работа)/i.test(t) ||
+      /\b(?:jääty|kaatu|sulke|hidas|virhe|ei käynnisty|ei toimi)\b/i.test(t);
+
+    if(!hasSymptom || onlySoftwareWord(raw)){
+      return {type:"answer",text:softwareAnswer(language)};
+    }
+
+    // For a symptomatic software sentence, temporarily replace software words
+    // with APP so no legacy "ram" substring matcher can see "program".
+    const safe = raw
+      .replace(/\bprogrammes?\b/gi,"app")
+      .replace(/\bprograms?\b/gi,"app")
+      .replace(/\bapplications?\b/gi,"app")
+      .replace(/\bsoftware\b/gi,"app");
+
+    const result=old(safe,l);
+
+    // If legacy routing still returns a RAM definition, override it.
+    if(result && typeof result.text==="string"){
+      const low=result.text.toLowerCase();
+      const ramLike =
+        low.includes("ram is working memory") ||
+        low.includes("ram —") ||
+        low.includes("оперативн") ||
+        low.includes("keskusmuisti");
+      if(!ramLike) return result;
+    }
+
+    return {type:"answer",text:softwareAnswer(language)};
+  }
+
+  return old(text,l);
+};
+
+window.ANITA_V16_2={
+  version:"16.2",
+  isRamToken,
+  isSoftwareToken
+};
+
+console.log("[ANITA v16.2] Strict RAM vs Program fix loaded");
+})();
