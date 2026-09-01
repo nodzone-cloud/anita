@@ -9802,3 +9802,102 @@ window.ANITA_V16_5={
 
 console.log("[ANITA v16.5] MAIN pipeline language fix loaded");
 })();
+
+/* ================= ANITA v17 CONVERSATION MEMORY CORE =================
+   Strong working-memory layer above legacy ANITA.
+   - freeze/stuck is a concrete symptom, not generic glitching
+   - remembers last question and numbered menus
+   - short replies are interpreted in context first
+   - technical-error frequency/source are remembered
+   - clear new problems override stale context
+   RU / EN / FI
+   ===================================================================== */
+(function(){
+"use strict";
+if(!window.ANITA_V7 || typeof window.ANITA_V7.handle!=="function") return;
+
+const previous=window.ANITA_V7.handle.bind(window.ANITA_V7);
+const S=(window.ANITA_V12&&window.ANITA_V12.state)||{};
+const W={version:"17.0",issue:null,object:null,lastQuestion:null,expected:null,activeMenu:null,facts:{},history:[],lastUser:"",lastBot:""};
+
+function clean(s){return String(s||"").toLowerCase().replace(/ё/g,"е").replace(/[’`]/g,"'").replace(/[?!.,:;()[\]{}"“”]/g," ").replace(/\s+/g," ").trim();}
+function L(text,l){const x=String(l||"").toLowerCase();if(["ru","en","fi"].includes(x))return x;const r=String(text||"");if(/[а-яё]/i.test(r))return"ru";if(/[äöå]/i.test(r)||/\b(?:tietokone|kone|läppäri|ohjelma|virhe|näyttö|selain|jäätyy|hidas)\b/i.test(r))return"fi";return"en";}
+function R(l,en,ru,fi){return l==="ru"?ru:l==="fi"?fi:en;}
+function setQ(q,issue){W.lastQuestion=q;W.expected=q;try{S.lastQuestion=q;if(issue)S.issue=issue;}catch(_){}}
+function reply(text,q,issue){W.lastBot=text;W.history.push({role:"assistant",text});if(W.history.length>40)W.history.shift();if(q!==undefined)setQ(q,issue);if(issue)W.issue=issue;return{type:"answer",text};}
+function clearQ(){W.lastQuestion=null;W.expected=null;W.activeMenu=null;try{S.lastQuestion=null;}catch(_){}}
+function user(text){W.lastUser=String(text||"");W.history.push({role:"user",text:W.lastUser});if(W.history.length>40)W.history.shift();}
+
+function yes(t){return /^(?:yes|yeah|yep|yup|да|ага|угу|kyllä|joo|juu)$/.test(t);}
+function no(t){return /^(?:no|nope|nah|нет|неа|ei)$/.test(t);}
+function always(t){return /^(?:every time|always|all the time|each time|каждый раз|всегда|постоянно|joka kerta|aina)$/.test(t);}
+function sometimes(t){return /^(?:sometimes|occasionally|from time to time|not always|иногда|не всегда|joskus|toisinaan|ei aina)$/.test(t);}
+function other(t){return /^(?:7|other|something else|something different|somethinge else|somethin else|другое|что то другое|что-то другое|jotain muuta|muu)$/.test(t)||/^something[a-z]?\s+else$/.test(t);}
+function num(t,max){return new RegExp(`^[1-${max}]$`).test(t)?Number(t):null;}
+
+function freezeReport(text){const t=clean(text);const d=/\b(?:pc|computer|laptop|windows|machine)\b/.test(t)||/\b(?:пк|компьютер|комп|ноутбук|ноут|windows|виндовс)\b/.test(t)||/\b(?:pc|tietokone|kone|läppäri|windows)\b/.test(t);const f=/\b(?:got stuck|is stuck|stuck|froze|frozen|freezes|freezing|hangs|hung|not responding)\b/.test(t)||/\b(?:завис|зависает|зависла|зависло|не отвечает|перестал отвечать)\b/.test(t)||/\b(?:jumissa|jäätyi|jäätyy|jäätynyt|ei vastaa)\b/.test(t);return d&&f;}
+function newProblem(text){const t=clean(text);const d=/\b(?:pc|computer|laptop|windows|screen|monitor|mouse|keyboard|printer|browser|chrome|edge|firefox|program|app|game|wifi|internet)\b/.test(t)||/\b(?:пк|компьютер|комп|ноутбук|виндовс|экран|монитор|мышь|клавиатура|принтер|браузер|программа|приложение|игра|интернет)\b/.test(t)||/\b(?:tietokone|kone|läppäri|windows|näyttö|hiiri|näppäimistö|tulostin|selain|ohjelma|sovellus|peli|netti|wifi)\b/.test(t);const s=/\b(?:stuck|freeze|frozen|freezing|not responding|slow|crash|error|not working|no signal|black screen|restart)\b/.test(t)||/\b(?:завис|зависает|тормозит|медленно|вылетает|ошибка|не работает|черный экран|нет сигнала|перезагружается)\b/.test(t)||/\b(?:jumissa|jäätyy|hidas|kaatuu|virhe|ei toimi|musta näyttö|ei signaalia)\b/.test(t);return d&&s;}
+
+function startFreeze(l){W.issue="freeze";W.object=null;W.facts={};W.activeMenu="freeze_scope";return reply(R(l,
+`Got it — your PC is freezing or getting stuck. Let's narrow it down.\n\nWhat stops responding?\n1. The whole computer\n2. Only one program or game\n3. The screen/image freezes but sound may continue\n4. Mouse/keyboard stop responding\n5. Something else`,
+`Поняла — компьютер зависает или перестаёт отвечать. Давай уточним.\n\nЧто именно зависает?\n1. Весь компьютер\n2. Только одна программа или игра\n3. Картинка на экране зависает, но звук может продолжаться\n4. Перестаёт работать мышь/клавиатура\n5. Что-то другое`,
+`Selvä — tietokone jäätyy tai menee jumiin. Rajataan ongelmaa.\n\nMikä lakkaa vastaamasta?\n1. Koko tietokone\n2. Vain yksi ohjelma tai peli\n3. Kuva jäätyy, mutta ääni voi jatkua\n4. Hiiri/näppäimistö lakkaa toimimasta\n5. Jotain muuta`),"freeze_scope","freeze");}
+
+function freezeScope(text,l){const t=clean(text);let n=num(t,5);if(/^(?:whole pc|the whole pc|whole computer|the whole computer|весь пк|весь компьютер|koko pc|koko tietokone)$/.test(t))n=1;if(/^(?:one program|a program|one app|program|app|одна программа|программа|приложение|yksi ohjelma|ohjelma|sovellus)$/.test(t))n=2;if(other(t))n=5;
+ if(n===1){W.facts.scope="whole";W.activeMenu=null;return reply(R(l,"Okay — the whole computer freezes. Can you still move the mouse or open Ctrl + Shift + Esc, or does absolutely nothing respond?","Хорошо — зависает весь компьютер. Можешь ли ты двигать мышью или открыть Ctrl + Shift + Esc, или вообще ничего не реагирует?","Selvä — koko tietokone jäätyy. Voitko vielä liikuttaa hiirtä tai avata Ctrl + Shift + Esc, vai eikö mikään reagoi?"),"freeze_whole_response","freeze");}
+ if(n===2){W.facts.scope="program";W.activeMenu=null;return reply(R(l,"Okay — only one program or game freezes. What is its name?","Хорошо — зависает только одна программа или игра. Как она называется?","Selvä — vain yksi ohjelma tai peli jäätyy. Mikä sen nimi on?"),"freeze_program_name","freeze");}
+ if(n===3){W.facts.scope="screen";W.activeMenu=null;return reply(R(l,"Understood — the picture freezes. Does sound continue in the background?","Поняла — зависает именно изображение. Продолжает ли работать звук?","Selvä — kuva jäätyy. Jatkuuko ääni taustalla?"),"freeze_sound","freeze");}
+ if(n===4){W.facts.scope="input";W.activeMenu=null;return reply(R(l,"Understood — the mouse or keyboard stops responding. Is it both devices, or only one?","Поняла — перестаёт отвечать мышь или клавиатура. Не работают оба устройства или только одно?","Selvä — hiiri tai näppäimistö lakkaa vastaamasta. Molemmat vai vain toinen?"),"freeze_input","freeze");}
+ if(n===5){W.activeMenu=null;return reply(R(l,"Okay — none of those match. Describe what gets stuck in your own words. We are still troubleshooting the same freezing problem.","Хорошо — ни один вариант не подходит. Опиши своими словами, что именно зависает. Мы всё ещё разбираем ту же проблему с зависанием.","Selvä — mikään vaihtoehdoista ei sovi. Kuvaile omin sanoin mikä menee jumiin. Selvitämme edelleen samaa jäätymisongelmaa."),"freeze_other","freeze");}
+ return reply(R(l,"Choose 1–5, or describe what exactly gets stuck.","Выбери 1–5 или просто опиши, что именно зависает.","Valitse 1–5 tai kuvaile mikä tarkalleen menee jumiin."),"freeze_scope","freeze");}
+
+function freezeFollow(text,l){const t=clean(text);
+ if(W.lastQuestion==="freeze_program_name"){W.object=String(text||"").trim();W.facts.program=W.object;return reply(R(l,`Got it — ${W.object} is the program that freezes. Does it freeze every time you use it, or only sometimes?`,`Поняла — зависает программа ${W.object}. Она зависает каждый раз или только иногда?`,`Selvä — ${W.object} jäätyy. Jäätyykö se joka kerta vai vain joskus?`),"freeze_frequency","freeze");}
+ if(W.lastQuestion==="freeze_frequency"&&(always(t)||sometimes(t))){W.facts.frequency=always(t)?"always":"sometimes";return reply(R(l,always(t)?`Got it — ${W.object||"the program"} freezes every time. Does it freeze immediately after launch, or only after a while?`:`Okay — ${W.object||"the program"} freezes only sometimes. What are you doing immediately before it freezes?`,always(t)?`Поняла — ${W.object||"программа"} зависает каждый раз. Это происходит сразу после запуска или спустя некоторое время?`:`Хорошо — ${W.object||"программа"} зависает только иногда. Что ты делаешь непосредственно перед зависанием?`,always(t)?`Selvä — ${W.object||"ohjelma"} jäätyy joka kerta. Heti käynnistyessä vai vasta jonkin ajan kuluttua?`:`Selvä — ${W.object||"ohjelma"} jäätyy vain joskus. Mitä teet juuri ennen jäätymistä?`),always(t)?"freeze_timing":"freeze_trigger","freeze");}
+ if(W.lastQuestion==="freeze_other"){
+   if(other(t)) return reply(R(l,"Yes — I understand that it is something else. Please describe what you actually see or what stops responding; for example, ‘the picture freezes’, ‘the game stops’, or ‘I get an error’.","Да — я поняла, что это что-то другое. Теперь опиши, что именно ты видишь или что перестаёт отвечать; например: «зависает картинка», «останавливается игра» или «появляется ошибка».","Kyllä — ymmärsin, että kyse on jostain muusta. Kuvaile nyt mitä näet tai mikä lakkaa vastaamasta; esimerkiksi ‘kuva jäätyy’, ‘peli pysähtyy’ tai ‘näen virheen’."),"freeze_other","freeze");
+   if(/\b(?:error|message|code|ошибка|сообщение|код|virhe|virheilmoitus|koodi)\b/.test(t)){W.facts.hasError=true;return reply(R(l,"Okay — an error is part of the same freezing problem. Paste the exact error text or code as shown.","Хорошо — ошибка относится к той же проблеме с зависанием. Скопируй точный текст или код ошибки как он показан.","Selvä — virhe liittyy samaan jäätymisongelmaan. Liitä tarkka virheteksti tai koodi."),"freeze_error_text","freeze");}
+   W.facts.other=String(text||"").trim();return reply(R(l,"Got it — I’ll keep that as part of the same freezing problem. Does this happen every time, or only sometimes?","Поняла — я сохраняю это как часть той же проблемы с зависанием. Это происходит каждый раз или только иногда?","Selvä — säilytän tämän osana samaa jäätymisongelmaa. Tapahtuuko tämä joka kerta vai vain joskus?"),"freeze_other_frequency","freeze");}
+ if(W.lastQuestion==="freeze_other_frequency"&&(always(t)||sometimes(t))){W.facts.frequency=always(t)?"always":"sometimes";return reply(R(l,always(t)?"Got it — it happens every time. What are you doing immediately before the PC gets stuck?":"Got it — it happens sometimes. What are you doing immediately before it gets stuck?",always(t)?"Поняла — это происходит каждый раз. Что ты делаешь непосредственно перед тем, как компьютер зависает?":"Поняла — это происходит иногда. Что ты делаешь непосредственно перед зависанием?",always(t)?"Selvä — tämä tapahtuu joka kerta. Mitä teet juuri ennen kuin kone menee jumiin?":"Selvä — tämä tapahtuu joskus. Mitä teet juuri ennen jäätymistä?"),"freeze_before","freeze");}
+ if(W.lastQuestion==="freeze_whole_response"){
+   if(no(t)||/^(?:nothing|absolutely nothing|ничего|вообще ничего|ei mikään)$/.test(t))return reply(R(l,"That sounds like a full system freeze. Does the PC recover by itself after waiting, or do you have to restart/hold the power button?","Это похоже на полное зависание системы. Компьютер сам оживает или приходится перезагружать/удерживать кнопку питания?","Tämä näyttää koko järjestelmän jäätymiseltä. Palautuuko kone itsestään vai pitääkö se käynnistää uudelleen?"),"freeze_recovery","freeze");
+   if(yes(t)||/\b(?:mouse|task manager|ctrl|мыш|диспетчер|hiiri|tehtävienhallinta)\b/.test(t))return reply(R(l,"Good — Windows still responds partly. Open Task Manager with Ctrl + Shift + Esc and tell me which is highest: CPU, Memory or Disk, plus the percentage.","Хорошо — Windows всё ещё частично отвечает. Открой Диспетчер задач Ctrl + Shift + Esc и напиши, что выше: CPU, Память или Диск, и процент.","Hyvä — Windows reagoi vielä osittain. Avaa Tehtävienhallinta Ctrl + Shift + Esc ja kerro korkein: CPU, Memory vai Disk sekä prosentti."),"freeze_resource","freeze");
+ }
+ return null;}
+
+function errorQ(q){return ["technical_error_context","generic_error_context","http_error_context","browser_error_context","hex_error_context","stop_code_followup","generic_error_context_v17"].includes(String(q||""))||String(q||"").startsWith("error_");}
+function errorFollow(text,l){const t=clean(text),q=W.lastQuestion||S.lastQuestion;if(!errorQ(q))return null;
+ if(always(t)||sometimes(t)){W.facts.errorFrequency=always(t)?"always":"sometimes";return reply(R(l,always(t)?"Got it — the error appears every time. Which program, game, website, or Windows screen shows it?":"Got it — the error appears only sometimes. Which program, game, website, or Windows screen shows it?",always(t)?"Поняла — ошибка появляется каждый раз. В какой программе, игре, на каком сайте или экране Windows она появляется?":"Поняла — ошибка появляется только иногда. В какой программе, игре, на каком сайте или экране Windows она появляется?",always(t)?"Selvä — virhe tulee joka kerta. Missä ohjelmassa, pelissä, sivustossa tai Windows-näkymässä se näkyy?":"Selvä — virhe tulee vain joskus. Missä ohjelmassa, pelissä, sivustossa tai Windows-näkymässä se näkyy?"),"error_source","technical_error");}
+ if(W.lastQuestion==="error_source"){W.facts.errorSource=String(text||"").trim();return reply(R(l,`Got it — it appears in ${W.facts.errorSource}. What is the exact error text or code? Paste it exactly as shown.`,`Поняла — ошибка появляется в ${W.facts.errorSource}. Какой точный текст или код ошибки? Скопируй его как есть.`,`Selvä — virhe näkyy kohteessa ${W.facts.errorSource}. Mikä on tarkka virheteksti tai koodi? Liitä se sellaisenaan.`),"error_exact_text","technical_error");}
+ return null;}
+
+function infer(result){if(!result||typeof result.text!=="string")return;W.lastBot=result.text;if(S.lastQuestion)W.lastQuestion=S.lastQuestion;const b=clean(result.text);
+ if((b.includes("screen graphics")||b.includes("screen graphics flicker"))&&b.includes("programs freeze")&&b.includes("something else"))W.activeMenu="weird7";
+ if(b.includes("whether it happens every time or only sometimes")||b.includes("does it happen every time or only sometimes")||b.includes("каждый раз или только иногда")||b.includes("joka kerta vai vain joskus")){if(!W.lastQuestion)W.lastQuestion="technical_error_context";}
+ W.history.push({role:"assistant",text:result.text});if(W.history.length>40)W.history.shift();}
+
+function weirdMenu(text,l){if(W.activeMenu!=="weird7")return null;const t=clean(text);let n=num(t,7);if(other(t))n=7;if(!n)return null;W.activeMenu=null;
+ if(n===2){W.issue="freeze";return reply(R(l,"Understood — programs freeze. Does only one program freeze, or does the whole computer stop responding?","Поняла — программы зависают. Зависает одна программа или весь компьютер?","Selvä — ohjelmat jäätyvät. Jäätyykö yksi ohjelma vai koko tietokone?"),"freeze_scope","freeze");}
+ if(n===7)return reply(R(l,"Okay — none of those match. Describe exactly what you see in your own words. I’ll keep the current PC/Windows problem context.","Хорошо — ни один вариант не подходит. Опиши своими словами, что именно происходит. Я сохраню контекст текущей проблемы ПК/Windows.","Selvä — mikään vaihtoehdoista ei sovi. Kuvaile omin sanoin mitä tapahtuu. Säilytän nykyisen PC/Windows-ongelman kontekstin."),"weird_other","windows");
+ return null;}
+
+function weirdOther(text,l){const t=clean(text);if(W.lastQuestion!=="weird_other")return null;
+ if(other(t))return reply(R(l,"Yes — I understand it is something else. Please describe the actual symptom in your own words; for example what freezes, disappears, flickers, slows down, or shows an error.","Да — я поняла, что это что-то другое. Опиши сам симптом своими словами: что зависает, пропадает, мерцает, тормозит или показывает ошибку.","Kyllä — ymmärsin, että kyse on jostain muusta. Kuvaile varsinainen oire omin sanoin: mikä jäätyy, katoaa, välkkyy, hidastuu tai näyttää virheen."),"weird_other","windows");
+ if(/\b(?:error|ошибка|virhe)\b/.test(t))return reply(R(l,"Got it — the symptom is an error. Paste the exact error message or code; I’ll keep it attached to this same PC problem.","Поняла — симптом связан с ошибкой. Скопируй точный текст или код ошибки; я сохраню его в контексте этой же проблемы ПК.","Selvä — oire on virhe. Liitä tarkka virheteksti tai koodi; pidän sen saman PC-ongelman yhteydessä."),"error_exact_text","technical_error");
+ W.facts.otherSymptom=String(text||"").trim();return reply(R(l,"Got it. Does that happen every time, or only sometimes?","Поняла. Это происходит каждый раз или только иногда?","Selvä. Tapahtuuko se joka kerta vai vain joskus?"),"weird_frequency","windows");}
+
+window.ANITA_V7.handle=function(text,l){const language=L(text,l),t=clean(text);user(text);try{S.language=language;}catch(_){}
+ if(freezeReport(text)){clearQ();return startFreeze(language);}
+ if(newProblem(text)){clearQ();}
+ else{
+   const wm=weirdMenu(text,language);if(wm)return wm;
+   if(W.lastQuestion==="weird_other"){const wo=weirdOther(text,language);if(wo)return wo;}
+   if(W.lastQuestion==="weird_frequency"&&(always(t)||sometimes(t)))return reply(R(language,always(t)?"Got it — it happens every time. What are you doing immediately before it happens?":"Got it — it happens only sometimes. What are you doing immediately before it happens?",always(t)?"Поняла — это происходит каждый раз. Что ты делаешь непосредственно перед этим?":"Поняла — это происходит только иногда. Что ты делаешь непосредственно перед этим?",always(t)?"Selvä — tämä tapahtuu joka kerta. Mitä teet juuri ennen sitä?":"Selvä — tämä tapahtuu vain joskus. Mitä teet juuri ennen sitä?"),"weird_before","windows");
+   if(W.issue==="freeze"||String(W.lastQuestion||"").startsWith("freeze_")){if(W.lastQuestion==="freeze_scope")return freezeScope(text,language);const fr=freezeFollow(text,language);if(fr)return fr;}
+   const er=errorFollow(text,language);if(er)return er;
+ }
+ const result=previous(text,language);infer(result);return result;};
+
+window.ANITA_V17={version:"17.0",state:W,reset:function(){W.issue=null;W.object=null;W.lastQuestion=null;W.expected=null;W.activeMenu=null;W.facts={};W.history=[];W.lastUser="";W.lastBot="";try{S.lastQuestion=null;}catch(_){}},getState:function(){return JSON.parse(JSON.stringify(W));}};
+console.log("[ANITA v17] Conversation Memory Core loaded");
+})();
