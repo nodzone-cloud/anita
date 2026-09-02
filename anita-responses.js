@@ -192,15 +192,6 @@ function follow(text,lang){
     ),"mouse_connection_type","connection_type",mem.lastMatch||{category:"mouse",issue:"not_working",id:null});
   }
 
-  if(mem.lastQuestion==="mouse_connection_type"){
-    M().fact("mouseConnection",t);
-    return ask(L(lang,
-      "Now check one thing: unplug/reconnect it (or turn Bluetooth/wireless off and on), then tell me whether the cursor starts moving again.",
-      "Теперь проверь одно: переподключи мышь (или выключи/включи Bluetooth/беспроводное соединение) и напиши, начал ли курсор снова двигаться.",
-      "Tarkista yksi asia: irrota ja liitä hiiri uudelleen (tai kytke Bluetooth/langaton yhteys pois ja päälle) ja kerro alkaako osoitin taas liikkua."
-    ),"mouse_reconnect_result","result",mem.lastMatch||{category:"mouse",issue:"not_working",id:null});
-  }
-
   if(mem.lastQuestion==="software_name"){
     M().state.currentObject=t;
     M().fact("softwareName",t);
@@ -221,8 +212,17 @@ function follow(text,lang){
     const wireless=/^(wireless|wireless usb|usb receiver|receiver|dongle|беспроводная|с приемником|с приёмником|ресивер|vastaanotin|langaton|langaton usb)$/.test(low);
 
     if(usb || bt || wireless){
-      const kind=usb?"usb":bt?"bluetooth":"wireless_receiver";
+      const kind=usb?"usb":bt?"bluetooth":"wireless_unspecified";
       M().fact("mouseConnection",kind);
+
+      if(kind==="wireless_unspecified"){
+        return ask(L(lang,
+          "Okay — wireless. Does it connect through Bluetooth, or does it use a small USB receiver/dongle plugged into the computer?",
+          "Хорошо — беспроводная. Она подключается через Bluetooth или через маленький USB-приёмник/донгл, вставленный в компьютер?",
+          "Hyvä — langaton. Yhdistyykö se Bluetoothilla vai käyttääkö se tietokoneeseen liitettyä pientä USB-vastaanotinta?"
+        ),"mouse_wireless_kind","connection_type",mem.lastMatch||{category:"mouse",issue:"not_working",id:null});
+      }
+
       if(kind==="usb"){
         return ask(L(lang,
           "Okay — USB mouse. Unplug it and connect it to a different USB port, preferably directly on the PC rather than through a hub. Does the cursor start moving?",
@@ -245,9 +245,52 @@ function follow(text,lang){
     }
   }
 
+  // Resolve "wireless" without guessing whether it means Bluetooth or a USB receiver.
+  if(mem.lastQuestion==="mouse_wireless_kind"){
+    const bt2=/^(bluetooth|bt|блютуз|bluetooth мышь|bluetooth-мышь|bluetooth hiiri)$/.test(low);
+    const recv2=/^(usb|usb receiver|receiver|dongle|usb dongle|приемник|приёмник|usb приемник|usb приёмник|донгл|vastaanotin|usb vastaanotin)$/.test(low);
+    if(bt2){
+      M().fact("mouseConnection","bluetooth");
+      return ask(L(lang,
+        "Okay — Bluetooth mouse. Turn Bluetooth off and back on, reconnect the mouse, and tell me whether the cursor starts moving again.",
+        "Хорошо — Bluetooth-мышь. Выключи и снова включи Bluetooth, переподключи мышь и скажи, начал ли курсор снова двигаться.",
+        "Hyvä — Bluetooth-hiiri. Kytke Bluetooth pois ja takaisin päälle, yhdistä hiiri uudelleen ja kerro alkaako osoitin liikkua."
+      ),"mouse_bt_reconnect","result",mem.lastMatch||{category:"mouse",issue:"not_working",id:null});
+    }
+    if(recv2){
+      M().fact("mouseConnection","wireless_receiver");
+      return ask(L(lang,
+        "Okay — wireless mouse with a USB receiver. Move the receiver to another USB port, preferably directly on the PC. Does the cursor start moving?",
+        "Хорошо — беспроводная мышь с USB-приёмником. Переставь приёмник в другой USB-порт, лучше напрямую в компьютер. Курсор начал двигаться?",
+        "Hyvä — langaton hiiri USB-vastaanottimella. Siirrä vastaanotin toiseen USB-porttiin, mieluiten suoraan tietokoneeseen. Alkaako osoitin liikkua?"
+      ),"mouse_receiver_port_test","result",mem.lastMatch||{category:"mouse",issue:"not_working",id:null});
+    }
+  }
+
+  // Yes/no/result understanding. Do not require an exact one-word answer.
+  // Examples accepted: "no", "no it didn't", "no itr didnt", "still no",
+  // "yes now it works", "yeah it started working".
+  function compactAnswer(v){
+    return String(v||"").toLowerCase()
+      .replace(/[’']/g,"")
+      .replace(/\bitr\b/g,"it")       // common typo: "no itr didnt"
+      .replace(/\bdidnt\b/g,"did not")
+      .replace(/\bdoesnt\b/g,"does not")
+      .replace(/\bcant\b/g,"cannot")
+      .replace(/[^a-zа-яёäöå\s]/gi," ")
+      .replace(/\s+/g," ").trim();
+  }
+  const ans=compactAnswer(low);
+
+  const yes =
+    /^(yes|yeah|yep|yup|да|ага|kyllä|joo)\b/.test(ans) ||
+    /\b(it works|works now|working now|started working|cursor moves|заработал|заработала|работает теперь|курсор двигается|toimii nyt|osoitin liikkuu)\b/.test(ans);
+
+  const no =
+    /^(no|nope|nah|нет|неа|ei)\b/.test(ans) ||
+    /\b(still not|still does not|did not|does not work|not working|cursor does not move|не заработал|не заработала|все еще не|всё ещё не|не работает|курсор не двигается|ei toimi|ei vielakaan|ei vieläkään)\b/.test(ans);
+
   // Yes/no results for mouse troubleshooting must stay in the mouse branch.
-  const yes=/^(yes|yeah|yep|works|working|it works|да|ага|заработала|работает|kyllä|joo|toimii)$/.test(low);
-  const no=/^(no|nope|still no|still doesn't work|doesn't work|doesnt work|not working|нет|не работает|все еще нет|всё ещё нет|ei|ei toimi|ei vieläkään)$/.test(low);
 
   if(["mouse_usb_port_test","mouse_bt_reconnect","mouse_receiver_port_test","mouse_reconnect_result"].includes(mem.lastQuestion)){
     if(yes){
@@ -322,6 +365,6 @@ function follow(text,lang){
   return null;
 }
 
-window.ANITA_RESPONSES={version:"18.2",first,follow};
-console.log("[ANITA v18.2] Response module loaded");
+window.ANITA_RESPONSES={version:"18.3",first,follow};
+console.log("[ANITA v18.3] Response module loaded");
 })();

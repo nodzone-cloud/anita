@@ -1,4 +1,4 @@
-/* ANITA v18.2 - Context Priority Router
+/* ANITA v18.3 - Context Priority Router
    Main fix:
    A short answer to ANITA's last question has priority over global keyword routing.
    Example:
@@ -10,11 +10,11 @@
 "use strict";
 
 if(!window.ANITA_MEMORY || !window.ANITA_INTENTS || !window.ANITA_RESPONSES){
-  console.error("[ANITA v18.2] Missing memory/intents/responses module");
+  console.error("[ANITA v18.3] Missing memory/intents/responses module");
   return;
 }
 if(!window.ANITA_V7 || typeof window.ANITA_V7.handle!=="function"){
-  console.error("[ANITA v18.2] Legacy ANITA_V7 not found");
+  console.error("[ANITA v18.3] Legacy ANITA_V7 not found");
   return;
 }
 
@@ -60,26 +60,34 @@ function detectCategory(text){
 }
 
 function expectedAnswerMatches(text, expected, lastQuestion){
-  const t=I.normalize(text);
+  let t=I.normalize(text)
+    .replace(/\bitr\b/g,"it")        // typo tolerance: "no itr didnt"
+    .replace(/\bdidnt\b/g,"did not")
+    .replace(/\bdoesnt\b/g,"does not")
+    .replace(/\bcant\b/g,"cannot")
+    .trim();
 
-  // Clarification requests always refer to the active conversation.
+  // Clarification always belongs to the active question.
   if(/^(what|what do you mean|huh|sorry what|что|в смысле|не понял|не поняла|mitä|mitä tarkoitat)$/.test(t))
     return true;
 
-  if(expected==="connection_type" || lastQuestion==="mouse_connection_type"){
-    return /^(usb|wired|wired usb|cable|bluetooth|bt|wireless|wireless usb|usb receiver|receiver|dongle|проводная|проводная usb|блютуз|bluetooth мышь|беспроводная|с приемником|с приёмником|ресивер|langallinen|langallinen usb|bluetooth hiiri|langaton|vastaanotin|langaton usb)$/.test(t);
+  if(expected==="connection_type" || lastQuestion==="mouse_connection_type" || lastQuestion==="mouse_wireless_kind"){
+    return /^(usb|wired|wired usb|cable|bluetooth|bt|wireless|wireless usb|usb receiver|receiver|dongle|usb dongle|проводная|проводная usb|блютуз|bluetooth мышь|беспроводная|с приемником|с приёмником|приемник|приёмник|ресивер|донгл|langallinen|langallinen usb|bluetooth hiiri|langaton|vastaanotin|usb vastaanotin|langaton usb)$/.test(t);
   }
 
-  if(expected==="yes_no"){
-    return /^(yes|yeah|yep|no|nope|да|ага|нет|kyllä|joo|ei)$/.test(t);
+  if(expected==="yes_no" || expected==="result"){
+    // Result answers are conversational, not exact commands.
+    // "no it didn't", "no itr didnt", "still no", etc. all count.
+    return /^(yes|yeah|yep|yup|no|nope|nah|да|ага|нет|неа|kyllä|joo|ei)\b/.test(t) ||
+      /\b(did not|does not|still not|still no|not working|works now|working now|started working|не работает|не заработ|все еще|всё ещё|toimii nyt|ei toimi)\b/.test(t);
   }
 
   if(expected==="scope"){
-    return /^(only there|there only|only in the game|only in game|only in the app|everywhere|all the time|outside too|только там|только в игре|везде|и вне игры|vain siellä|vain pelissä|kaikkialla|muuallakin)$/.test(t);
+    return /^(only there|there only|only in the game|only in game|only in the app|everywhere|all the time|outside too|completely|nowhere|только там|только в игре|везде|полностью|вообще нигде|и вне игры|vain siellä|vain pelissä|kaikkialla|kokonaan|ei missään|muuallakin)$/.test(t);
   }
 
-  // Most very short answers are likely contextual when ANITA explicitly asked for one.
-  return tokenCount(t)<=4;
+  // Short replies are usually contextual while ANITA is explicitly waiting.
+  return tokenCount(t)<=5;
 }
 
 function detectIssue(text,category){
@@ -127,7 +135,7 @@ function route(text,l){
         ?"Я поняла ответ, но для этого шага мне нужно уточнить немного больше. Можешь ответить чуть подробнее?"
         :lang==="fi"
         ?"Ymmärsin vastauksen, mutta tarvitsen tähän vaiheeseen hieman enemmän tietoa. Voitko vastata vähän tarkemmin?"
-        :"I understood the reply, but I need a little more detail for this step. Can you answer a bit more specifically?"};
+        :"I’m keeping your answer attached to my last question, but I couldn’t interpret the result clearly. Please answer whether it worked or still did not work."};
     }
   }
 
@@ -178,7 +186,7 @@ function route(text,l){
 
 window.ANITA_V7.handle=route;
 window.ANITA_V18={
-  version:"18.2",
+  version:"18.3",
   route,
   state:M.state,
   reset:M.resetConversation,
@@ -186,5 +194,5 @@ window.ANITA_V18={
   detectCategory
 };
 
-console.log("[ANITA v18.2] Context Priority Router loaded");
+console.log("[ANITA v18.3] Context Priority Router loaded");
 })();
