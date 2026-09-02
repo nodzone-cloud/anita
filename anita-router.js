@@ -1,13 +1,13 @@
-/* ANITA v20.0 - Language-Locked Universal Context Router
+/* ANITA v21.0 - Language-Locked Universal Context Router
    Rule: active question -> interpret reply -> continue SAME issue before global re-routing.
    A new full problem can still override old context when it clearly names another device/category.
 */
 (function(){
 "use strict";
-if(!window.ANITA_MEMORY||!window.ANITA_INTENTS||!window.ANITA_RESPONSES){console.error("[ANITA v20.0] Missing module");return;}
-if(!window.ANITA_V7||typeof window.ANITA_V7.handle!=="function"){console.error("[ANITA v20.0] Legacy ANITA_V7 missing");return;}
+if(!window.ANITA_MEMORY||!window.ANITA_INTENTS||!window.ANITA_RESPONSES){console.error("[ANITA v21.0] Missing module");return;}
+if(!window.ANITA_V7||typeof window.ANITA_V7.handle!=="function"){console.error("[ANITA v21.0] Legacy ANITA_V7 missing");return;}
 const legacy=window.ANITA_V7.handle.bind(window.ANITA_V7), M=window.ANITA_MEMORY, I=window.ANITA_INTENTS, R=window.ANITA_RESPONSES;
-const K=window.ANITA_SUPPORT_KNOWLEDGE, D=window.ANITA_DIAGNOSTICS, C=window.ANITA_CONTEXT;
+const K=window.ANITA_SUPPORT_KNOWLEDGE, D=window.ANITA_DIAGNOSTICS, C=window.ANITA_CONTEXT, E=window.ANITA_ENTITIES;
 function explicitTextLanguage(text){
  const s=String(text||"").trim();
  if(/[а-яё]/i.test(s)) return "ru";
@@ -84,6 +84,16 @@ function detectIssue(text,cat){const t=norm(text);if(/\b(not detected|does not d
 function synth(text,lang,cat){return{id:null,ru:text,en:text,fi:text,lang,category:cat,issue:detectIssue(text,cat),confidence:.94,match:"device-guard"};}
 function route(text,l){
  const lang=language(text,l); M.state.language=lang; M.push("user",text);
+
+ if(E && E.update) E.update(text,lang);
+ if(E && E.shouldHandle && E.shouldHandle()){
+   const eq=E.nextQuestion(lang);
+   if(eq){
+     M.push("bot",eq);
+     return {text:eq,handled:true,done:false,multiEntity:true,incident:E.snapshot?E.snapshot():null};
+   }
+ }
+
  if(C && C.update) C.update(text,lang);
  const shortContextReply = String(text||"").trim().split(/\s+/).length <= 7;
  const hasActiveContextQuestion = !!(
@@ -135,6 +145,6 @@ function route(text,l){
  return legacy(text,lang);
 }
 window.ANITA_V7.handle=route;
-window.ANITA_V19={version:"19.2",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
-console.log("[ANITA v20.0] Language-Locked Universal Context Router loaded");
+window.ANITA_V19={version:"21.0",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
+console.log("[ANITA v21.0] Language-Locked Universal Context Router loaded");
 })();

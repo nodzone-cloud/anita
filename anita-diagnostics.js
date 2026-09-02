@@ -168,6 +168,6 @@ function follow(text,lang){
   `Tallensin tämän tuloksen diagnostiseksi tiedoksi: “${text}”. Ennen seuraavan haaran valintaa: poistuiko alkuperäinen ongelma tämän tarkistuksen jälkeen vai jatkuuko se edelleen?`
  ),false);
 }
-window.ANITA_DIAGNOSTICS={version:"20.2",state:S,start,follow,reset,current};
+window.ANITA_DIAGNOSTICS={version:"21.0",state:S,start,follow,reset,current};
 console.log("[ANITA v20] Diagnostic conversation engine loaded");
 })();

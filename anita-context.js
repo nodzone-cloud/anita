@@ -259,7 +259,7 @@ function reset(){
 }
 
 window.ANITA_CONTEXT={
-  version:"20.2",
+  version:"21.0",
   state,
   update,
   snapshot,
@@ -269,5 +269,5 @@ window.ANITA_CONTEXT={
   reset
 };
 
-console.log("[ANITA v20.2] Semantic Context Engine loaded");
+console.log("[ANITA v21.0] Semantic Context Engine loaded");
 })();
