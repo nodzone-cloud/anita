@@ -233,6 +233,6 @@ function follow(text,lang){
   return null;
 }
 
-window.ANITA_RESPONSES={version:"18.0",first,follow};
-console.log("[ANITA v18] Response module loaded");
+window.ANITA_RESPONSES={version:"18.1",first,follow};
+console.log("[ANITA v18.1] Response module loaded");
 })();
