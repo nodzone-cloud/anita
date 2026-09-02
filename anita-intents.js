@@ -66,6 +66,6 @@ function find(text){
   return bestScore>=0.38 ? best : null;
 }
 
-window.ANITA_INTENTS={version:"19.0",CASES,normalize,tokens,find};
-console.log("[ANITA v19] Intent module loaded:",CASES.length,"cases");
+window.ANITA_INTENTS={version:"19.1",CASES,normalize,tokens,find};
+console.log("[ANITA v19.1] Intent module loaded:",CASES.length,"cases");
 })();

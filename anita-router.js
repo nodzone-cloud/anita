@@ -1,13 +1,59 @@
-/* ANITA v19 - Universal Context Router
+/* ANITA v19.1 - Language-Locked Universal Context Router
    Rule: active question -> interpret reply -> continue SAME issue before global re-routing.
    A new full problem can still override old context when it clearly names another device/category.
 */
 (function(){
 "use strict";
-if(!window.ANITA_MEMORY||!window.ANITA_INTENTS||!window.ANITA_RESPONSES){console.error("[ANITA v19] Missing module");return;}
-if(!window.ANITA_V7||typeof window.ANITA_V7.handle!=="function"){console.error("[ANITA v19] Legacy ANITA_V7 missing");return;}
+if(!window.ANITA_MEMORY||!window.ANITA_INTENTS||!window.ANITA_RESPONSES){console.error("[ANITA v19.1] Missing module");return;}
+if(!window.ANITA_V7||typeof window.ANITA_V7.handle!=="function"){console.error("[ANITA v19.1] Legacy ANITA_V7 missing");return;}
 const legacy=window.ANITA_V7.handle.bind(window.ANITA_V7), M=window.ANITA_MEMORY, I=window.ANITA_INTENTS, R=window.ANITA_RESPONSES;
-function language(text,l){const x=String(l||"").toLowerCase();if(["ru","en","fi"].includes(x))return x;const s=String(text||"");if(/[а-яё]/i.test(s))return"ru";if(/[äöå]/i.test(s))return"fi";return"en";}
+function explicitTextLanguage(text){
+ const s=String(text||"").trim();
+ if(/[а-яё]/i.test(s)) return "ru";
+ if(/[äöå]/i.test(s)) return "fi";
+
+ const n=" "+I.normalize(s)+" ";
+ const fiWords=["miksi","miten","tietokone","näyttö","ongelma","kaikkialla","langaton","vastaanotin","toimi","toimii","vain","ei"];
+ const enWords=["why","how","computer","monitor","problem","everywhere","wireless","receiver","working","only","yes","no"];
+
+ let fi=0,en=0;
+ fiWords.forEach(w=>{if(n.includes(" "+w+" "))fi++;});
+ enWords.forEach(w=>{if(n.includes(" "+w+" "))en++;});
+
+ if(fi>=2 && fi>en) return "fi";
+ if(en>=2 && en>fi) return "en";
+ return null;
+}
+
+function activeManualLanguage(){
+ try{
+   const active=document.querySelector("#anitaDemoRoot .langBtn.active");
+   const x=String(active?.dataset?.lang||"").toLowerCase();
+   if(["ru","en","fi"].includes(x)) return x;
+ }catch(_){}
+ return null;
+}
+
+function language(text,l){
+ const manual=activeManualLanguage();
+ if(manual) return manual;
+
+ const supplied=String(l||"").toLowerCase();
+ const explicit=explicitTextLanguage(text);
+
+ // While ANITA is waiting for an answer, keep the conversation language
+ // unless the user clearly writes a full reply in another language.
+ // This prevents: English conversation -> "USB receiver" -> Finnish.
+ if(M.state.lastQuestion && M.state.language){
+   const words=I.normalize(text).split(/\s+/).filter(Boolean).length;
+   if(!explicit || words<=3) return M.state.language;
+   return explicit;
+ }
+
+ if(explicit) return explicit;
+ if(["ru","en","fi"].includes(supplied)) return supplied;
+ return M.state.language || "en";
+}
 function norm(t){return I.normalize(t);}
 function tokenCount(t){return norm(t).split(/\s+/).filter(Boolean).length;}
 function detectCategory(text){
@@ -51,6 +97,6 @@ function route(text,l){
  return legacy(text,lang);
 }
 window.ANITA_V7.handle=route;
-window.ANITA_V19={version:"19.0",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
-console.log("[ANITA v19] Universal Context Router loaded");
+window.ANITA_V19={version:"19.1",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
+console.log("[ANITA v19.1] Language-Locked Universal Context Router loaded");
 })();

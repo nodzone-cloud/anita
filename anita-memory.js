@@ -2,7 +2,7 @@
 (function(){
 "use strict";
 const state = {
-  version:"19.0",
+  version:"19.1",
   language:"en",
   currentIssue:null,
   currentCategory:null,
@@ -35,5 +35,5 @@ window.ANITA_MEMORY = {
   resetConversation,
   snapshot(){ return JSON.parse(JSON.stringify(state)); }
 };
-console.log("[ANITA v19] Memory module loaded");
+console.log("[ANITA v19.1] Memory module loaded");
 })();

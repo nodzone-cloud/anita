@@ -129,7 +129,47 @@ const failWords={ru:["не помогло","не помогает","не сра�
 
 function normalize(t){return t.toLowerCase().replace(/ё/g,"е").replace(/[.,!?;:()[\]{}"'`]/g," ").replace(/\s+/g," ").trim()}
 function tokenize(t){return normalize(t).split(" ").filter(w=>w.length>2)}
-function detectLanguage(t){if((t.match(/[а-яё]/gi)||[]).length>2)return"ru";let s=normalize(t),fi=["miksi","miten","tietokone","näyttö","toimi","minulla","ongelma","verkko","sähköposti","tulostin","kannettava","yhteys","haluan","tarvitsen","ei","prosessori","suoritin","emolevy","virtalähde","näytönohjain"],en=["why","how","computer","monitor","working","problem","network","email","printer","laptop","connection","want","need","not","processor","motherboard","power supply","graphics card"],a=0,b=0;fi.forEach(w=>{if(s.includes(w))a++});en.forEach(w=>{if(s.includes(w))b++});a+=(t.match(/[äö]/gi)||[]).length*2;return a>b?"fi":"en"}
+function detectLanguage(t){
+  const raw=String(t||"");
+  if((raw.match(/[а-яё]/gi)||[]).length>1) return "ru";
+
+  const s=normalize(raw);
+  const tokens=(" "+s+" ");
+
+  const fi=[
+    "miksi","miten","tietokone","näyttö","toimi","toimii","minulla","ongelma",
+    "verkko","sähköposti","tulostin","kannettava","yhteys","haluan","tarvitsen",
+    "ei","prosessori","suoritin","emolevy","virtalähde","näytönohjain",
+    "kaikkialla","vain","langaton","vastaanotin"
+  ];
+  const en=[
+    "why","how","computer","monitor","working","problem","network","email",
+    "printer","laptop","connection","want","need","not","processor","motherboard",
+    "power supply","graphics card","everywhere","only","wireless","receiver"
+  ];
+
+  let a=0,b=0;
+
+  // IMPORTANT: whole words/phrases only.
+  // Old code used s.includes("ei"), so "receiver" accidentally matched Finnish "ei".
+  fi.forEach(w=>{
+    const p=" "+normalize(w)+" ";
+    if(tokens.includes(p)) a++;
+  });
+  en.forEach(w=>{
+    const p=" "+normalize(w)+" ";
+    if(tokens.includes(p)) b++;
+  });
+
+  a+=(raw.match(/[äöå]/gi)||[]).length*2;
+
+  if(a>b) return "fi";
+  if(b>a) return "en";
+
+  // Ambiguous short Latin technical replies are NOT automatically Finnish.
+  // They will be kept in the active conversation language by v19.1 router.
+  return "en";
+}
 function scoreItem(i,q,l){let t=normalize(q),u=tokenize(q),s=0;i.p[l].forEach(p=>{let n=normalize(p);if(t===n)s+=15;else if(t.includes(n)&&n.length>8)s+=8;else{let x=tokenize(n),m=x.filter(z=>u.some(v=>v.includes(z)||z.includes(v))).length;if(x.length&&m/x.length>=.6)s+=4*m/x.length}});i.k[l].forEach(k=>{k=normalize(k);if(t.includes(k))s+=k.length>6?3.2:2});return s}
 let excludedCategories=new Set();
 function findBest(q,l){let b=null,bs=0,ss=0;knowledge.forEach(i=>{if(excludedCategories.has(i.id))return;let s=scoreItem(i,q,l);if(s>bs){ss=bs;bs=s;b=i}else if(s>ss)ss=s});return{item:b,score:bs,difference:bs-ss}}

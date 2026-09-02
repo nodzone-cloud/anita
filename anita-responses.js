@@ -282,6 +282,6 @@ function follow(text,lang){
   return genericResultNext(lang,match);
 }
 
-window.ANITA_RESPONSES={version:"19.0",first,follow,parseReply};
-console.log("[ANITA v19] Universal response engine loaded");
+window.ANITA_RESPONSES={version:"19.1",first,follow,parseReply};
+console.log("[ANITA v19.1] Universal response engine loaded");
 })();
