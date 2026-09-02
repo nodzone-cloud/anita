@@ -1,11 +1,11 @@
-/* ANITA v21.0 - Language-Locked Universal Context Router
+/* ANITA v23.0 - Language-Locked Universal Context Router
    Rule: active question -> interpret reply -> continue SAME issue before global re-routing.
    A new full problem can still override old context when it clearly names another device/category.
 */
 (function(){
 "use strict";
-if(!window.ANITA_MEMORY||!window.ANITA_INTENTS||!window.ANITA_RESPONSES){console.error("[ANITA v21.0] Missing module");return;}
-if(!window.ANITA_V7||typeof window.ANITA_V7.handle!=="function"){console.error("[ANITA v21.0] Legacy ANITA_V7 missing");return;}
+if(!window.ANITA_MEMORY||!window.ANITA_INTENTS||!window.ANITA_RESPONSES){console.error("[ANITA v23.0] Missing module");return;}
+if(!window.ANITA_V7||typeof window.ANITA_V7.handle!=="function"){console.error("[ANITA v23.0] Legacy ANITA_V7 missing");return;}
 const legacy=window.ANITA_V7.handle.bind(window.ANITA_V7), M=window.ANITA_MEMORY, I=window.ANITA_INTENTS, R=window.ANITA_RESPONSES;
 const K=window.ANITA_SUPPORT_KNOWLEDGE, D=window.ANITA_DIAGNOSTICS, C=window.ANITA_CONTEXT, E=window.ANITA_ENTITIES;
 function explicitTextLanguage(text){
@@ -56,6 +56,19 @@ function language(text,l){
  return M.state.language || "en";
 }
 function norm(t){return I.normalize(t);}
+function powerOffIntent(text,l){
+ const t=String(text||"").toLowerCase().replace(/ё/g,"е");
+ const hit=/(?:\b(?:computer|pc)\b.{0,30}\b(?:turned|shut|powered)\s+off\b)|(?:\b(?:компьютер|комп|пк)\b.{0,30}(?:выключил|отключил|вырубил|погас))|(?:\btietokone\b.{0,30}(?:sammui|meni pois päältä))/i.test(t);
+ if(!hit)return null;
+ try{M.setQuestion&&M.setQuestion("power_off_state","powerstate")}catch(_){}
+ M.state.currentCategory="windows";
+ return {text:l==="ru"
+   ?"Поняла — компьютер внезапно выключился. Уточню, что произошло дальше: он включился снова сам, остаётся выключенным или выключается так повторно?"
+   :l==="fi"
+   ?"Ymmärsin — tietokone sammui yllättäen. Mitä tapahtui sen jälkeen: käynnistyikö se uudelleen itsestään, pysyykö se sammuksissa vai sammuuko se toistuvasti?"
+   :"Got it — the computer suddenly shut down. What happened next: did it turn back on by itself, does it stay powered off, or does it keep shutting down?",
+   handled:true,done:false,powerOff:true};
+}
 function tokenCount(t){return norm(t).split(/\s+/).filter(Boolean).length;}
 function detectCategory(text){
  const t=" "+norm(text)+" ", tests=[
@@ -85,7 +98,10 @@ function synth(text,lang,cat){return{id:null,ru:text,en:text,fi:text,lang,catego
 function route(text,l){
  const lang=language(text,l); M.state.language=lang; M.push("user",text);
 
+ const power=powerOffIntent(text,lang); if(power){M.push("bot",power.text);return power;}
+
  if(E && E.update) E.update(text,lang);
+ if(window.ANITA_PC_PROFILE && window.ANITA_PC_PROFILE.applyToIncident) window.ANITA_PC_PROFILE.applyToIncident();
  if(E && E.shouldHandle && E.shouldHandle()){
    const eq=E.nextQuestion(lang);
    if(eq){
@@ -145,6 +161,6 @@ function route(text,l){
  return legacy(text,lang);
 }
 window.ANITA_V7.handle=route;
-window.ANITA_V19={version:"21.0",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
-console.log("[ANITA v21.0] Language-Locked Universal Context Router loaded");
+window.ANITA_V19={version:"23.0",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
+console.log("[ANITA v23.0] Language-Locked Universal Context Router loaded");
 })();
