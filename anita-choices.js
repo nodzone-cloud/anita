@@ -1,4 +1,4 @@
-/* ANITA v23.0 — SEMANTIC QUICK CHOICE UI
+/* ANITA v25.0 — SEMANTIC QUICK CHOICE UI
    Adds buttons whenever ANITA asks a finite-choice question.
    Free text and voice input always remain available.
 */
@@ -84,6 +84,9 @@ function semanticKey(text){
   if(/каждый раз.*или.*иногда|every time.*or.*sometimes|joka kerta.*vai.*joskus/i.test(s))return"frequency";
   if(/включил.*снова сам|оста[её]тся выключ|выключается.*повтор|turned back on.*stays.*off|keeps shutting|käynnistyi.*pysyy samm|sammuu toist/i.test(s))return"powerstate";
 
+  // Recognition / identity questions should offer Yes / No / Not sure.
+  if(/do you recognize|do you know this (?:app|program|process)|ты узна[её]шь|тебе знаком|tunnistatko/i.test(s))return"yesno";
+
   // Clear binary diagnostic questions.
   if(/[?？]\s*$/.test(String(text||"").trim())){
     if(/^(заработ|работает ли|работают ли|получилось|появилось ли|исчезла ли|видит ли|определяется ли|включился ли|does |did |is |are |can |has |have |toimiiko|onnistuiko|näkyykö|tunnistaako)/i.test(String(text||"").trim()))return"yesno";
@@ -159,5 +162,5 @@ window.ANITA_CHOICES={
   version:"23.0",sets:SETS,inferChoices,semanticKey,stateKey,submit,renderCustom,
   option:C
 };
-console.log("[ANITA v23.0] Semantic Quick Choice UI loaded");
+console.log("[ANITA v25.0] Semantic Quick Choice UI loaded");
 })();

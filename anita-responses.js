@@ -38,6 +38,34 @@ function answer(text,clear=false){
   return {type:"answer",text};
 }
 
+function malwareAssessment(name){
+  try{return window.ANITA_MALWARE_KNOWLEDGE?.assess?.(String(name||""));}catch(_){return null;}
+}
+function processNameFrom(text){
+  let t=String(text||"").trim();
+  t=t.replace(/\b(?:cpu|processor)\b\s*(?:is|at|uses?|using)?\s*\d{1,3}\s*%?/ig," ")
+     .replace(/\b\d{1,3}\s*%\s*(?:cpu)?\b/ig," ")
+     .replace(/\b(?:100|[1-9]?\d)\s*%/g," ")
+     .replace(/\b(?:is|using|uses|takes|taking|at)\s+(?:a\s+lot|alot|lots?|high|much)\s+(?:of\s+)?cpu\b/ig," ")
+     .replace(/\s+/g," ").trim();
+  return t.replace(/^[,:;\-\s]+|[,:;\-\s]+$/g,"");
+}
+function pctFrom(text){
+  const m=String(text||"").match(/\b(100|[1-9]?\d)\s*%/);
+  return m?Number(m[1]):null;
+}
+function processIdentityPrompt(lang,name,mal){
+  const nm=name||L(lang,"that process","этот процесс","tuo prosessi");
+  if(mal){
+    const type=window.ANITA_MALWARE_KNOWLEDGE?.typeLabel?.(mal.entry.type,lang)||mal.entry.type;
+    return L(lang,
+      `The name "${nm}" resembles a known ${type} name, but the name alone does NOT prove infection. Do you recognize this app/process?`,
+      `Название «${nm}» похоже на имя известной угрозы типа ${type}, но одно имя НЕ доказывает заражение. Ты узнаёшь эту программу/процесс?`,
+      `Nimi "${nm}" muistuttaa tunnettua uhkanimeä (${type}), mutta pelkkä nimi EI todista tartuntaa. Tunnistatko tämän ohjelman/prosessin?`);
+  }
+  return L(lang,`Do you recognize the app/process "${nm}"?`,`Ты узнаёшь программу/процесс «${nm}»?`,`Tunnistatko ohjelman/prosessin "${nm}"?`);
+}
+
 function clean(v){
   return String(v||"").toLowerCase().trim()
     .replace(/[’']/g,"")
@@ -58,9 +86,15 @@ function parseReply(text,expected){
 
   const neg=/^(no|nope|nah|нет|неа|ei)\b/.test(t)||/\b(did not|does not|still not|still no|not working|no change|nothing happened|не работает|не заработ|ничего|без изменений|ei toimi|ei muuttunut)\b/.test(t);
   const pos=/^(yes|yeah|yep|yup|да|ага|kyllä|joo)\b/.test(t)||/\b(works now|working now|started working|it works|fixed|заработ|работает теперь|toimii nyt|alkoi toimia)\b/.test(t);
-  if(["yes_no","yes_no_detail","result"].includes(expected)){
+  if(["yes_no","yes_no_detail","result","capability_yes_no"].includes(expected)){
     if(neg) return {...out,value:"no",confidence:.98};
     if(pos) return {...out,value:"yes",confidence:.98};
+    if(/\b(not sure|dont know|do not know|не знаю|не уверен|не уверена|en tiedä|en ole varma)\b/.test(t))
+      return {...out,value:"unknown",confidence:.95};
+  }
+  if(expected==="taskmgr_process"){
+    const percent=pctFrom(t), name=processNameFrom(t);
+    if(name) return {...out,value:"process",name,percent,confidence:.9};
   }
 
   if(expected==="scope"){
@@ -137,6 +171,18 @@ function first(match,lang){
     return ask(L(lang,"Got it — this is a drive/storage problem. Is the drive visible in Windows Disk Management?","Поняла — проблема с диском/накопителем. Видно ли его в «Управлении дисками» Windows?","Selvä — kyse on levy-/tallennusongelmasta. Näkyykö levy Windowsin Levynhallinnassa?"),"disk_management_visible","yes_no",match);
   }
   if(c==="gpu") return ask(L(lang,"Got it — this is a GPU problem. Did it start after installing/updating something, or did it appear suddenly?","Поняла — проблема с видеокартой. Она началась после установки/обновления или появилась внезапно?","Selvä — kyse on näytönohjaimesta. Alkoiko ongelma asennuksen/päivityksen jälkeen vai yhtäkkiä?"),"gpu_change","context",match);
+  if(c==="windows" && (issue==="poor_system_performance"||issue==="high_cpu_process"||issue==="slow")){
+    if(issue==="high_cpu_process") return ask(L(lang,
+      "Okay — one program/process is using a lot of CPU. What is the exact process/app name, and roughly what CPU percentage does it show?",
+      "Хорошо — одна программа/процесс сильно загружает CPU. Как точно называется процесс/программа и примерно какой процент CPU он показывает?",
+      "Selvä — yksi ohjelma/prosessi käyttää paljon CPU:ta. Mikä on tarkka nimi ja noin kuinka monta prosenttia CPU:ta se käyttää?"),
+      "taskmgr_cpu_top","taskmgr_process",match);
+    return ask(L(lang,
+      "Got it — Windows is running slowly. First open Task Manager with Ctrl+Shift+Esc. Can you open it?",
+      "Поняла — Windows работает медленно. Сначала открой Диспетчер задач через Ctrl+Shift+Esc. Он открывается?",
+      "Selvä — Windows toimii hitaasti. Avaa ensin Tehtävienhallinta painamalla Ctrl+Shift+Esc. Aukeaako se?"),
+      "task_manager_opens","capability_yes_no",match);
+  }
   if(c==="windows") return ask(L(lang,"Got it — this is a Windows system/startup problem. How far does the PC get: BIOS/manufacturer logo, Windows logo, login screen, or desktop?","Поняла — проблема с Windows. До какого этапа доходит компьютер: BIOS/логотип производителя, логотип Windows, экран входа или рабочий стол?","Selvä — kyse on Windowsista. Mihin asti kone pääsee: BIOS/valmistajan logo, Windows-logo, kirjautumisruutu vai työpöytä?"),"windows_stage","boot_stage",match);
   if(c==="software") return ask(L(lang,"Got it — this is a program/application problem. What is the program's name?","Поняла — проблема с программой/приложением. Как называется программа?","Selvä — kyse on ohjelmasta/sovelluksesta. Mikä ohjelman nimi on?"),"software_name","text",match);
   return ask(L(lang,"Got it. Is the problem constant, or does it happen only sometimes/in a specific situation?","Поняла. Проблема постоянная или появляется только иногда/в определённой ситуации?","Selvä. Onko ongelma jatkuva vai tapahtuuko se vain joskus/tietyssä tilanteessa?"),"generic_frequency","context",match);
@@ -404,12 +450,172 @@ function follow(text,lang){
   const c=match.category;
   M().fact("lastReply",p.value||p.clean); M().fact("lastReplyQuestion",q);
 
+  /* v25: capability checks are not success checks. */
+  if(q==="task_manager_opens"){
+    if(p.value==="yes"){
+      M().fact("taskManagerOpened",true);
+      return ask(L(lang,
+        "Good. Opening Task Manager only confirms that we can continue diagnostics — it does not mean the slow-PC problem is fixed. In the Processes tab, click the CPU column so the highest usage is at the top. Tell me the exact process/app name at the top and its CPU percentage.",
+        "Хорошо. Открытие Диспетчера задач только подтверждает, что мы можем продолжить диагностику — это не значит, что проблема уже исправлена. Во вкладке «Процессы» нажми на столбец CPU, чтобы самая высокая загрузка была сверху. Напиши точное имя процесса/программы сверху и процент CPU.",
+        "Hyvä. Tehtävienhallinnan avautuminen tarkoittaa vain, että voimme jatkaa diagnostiikkaa — se ei tarkoita, että hitaus olisi korjattu. Avaa Prosessit ja järjestä CPU-sarake suurimmasta pienimpään. Kerro ylimmän prosessin/ohjelman tarkka nimi ja CPU-prosentti."),
+        "taskmgr_cpu_top","taskmgr_process",match);
+    }
+    if(p.value==="no"){
+      return ask(L(lang,
+        "Okay. Try right-clicking Start and choosing Task Manager. Does it open that way?",
+        "Хорошо. Нажми правой кнопкой по «Пуск» и выбери «Диспетчер задач». Так он открывается?",
+        "Selvä. Napsauta Käynnistä-painiketta hiiren oikealla ja valitse Tehtävienhallinta. Aukeaako se näin?"),
+        "task_manager_alt_open","capability_yes_no",match);
+    }
+  }
+  if(q==="task_manager_alt_open"){
+    if(p.value==="yes") return ask(L(lang,
+      "Good. In Processes, click CPU to sort highest first. Tell me the exact process/app name at the top and its CPU percentage.",
+      "Хорошо. В «Процессах» нажми CPU для сортировки по убыванию. Напиши точное имя процесса/программы сверху и процент CPU.",
+      "Hyvä. Järjestä Prosessit CPU:n mukaan suurimmasta pienimpään ja kerro ylimmän prosessin nimi sekä CPU-prosentti."),
+      "taskmgr_cpu_top","taskmgr_process",match);
+    if(p.value==="no") return answer(L(lang,
+      "Task Manager is not opening, so I would not treat this as a successful step. Restart Windows once if you have not already, then try again. If Task Manager still will not open, tell me that and we will use another route.",
+      "Диспетчер задач не открывается, значит этот шаг не выполнен. Если ещё не перезагружал Windows — перезагрузи один раз и попробуй снова. Если Диспетчер задач всё равно не открывается, скажи мне — пойдём другим путём.",
+      "Tehtävienhallinta ei aukea, joten vaihe ei onnistunut. Käynnistä Windows kerran uudelleen, jos et ole vielä tehnyt sitä, ja kokeile uudelleen. Jos se ei vieläkään aukea, kerro siitä ja käytämme toista tapaa."),false);
+  }
+  if(q==="taskmgr_cpu_top"){
+    const raw=String(text||"").trim();
+    const genericCpu=/^(?:1|one|a)\s+(?:programm?|process|app|application)\b.{0,50}\b(?:using|uses?|taking|takes?|eating|eats?)\b.{0,30}\bcpu\b|^(?:1|одна|один)\s+(?:программ|процесс|приложен)\w*.{0,50}\b(?:грузит|использует|жр[её]т)\w*.{0,30}\bcpu\b|^yksi\s+(?:ohjelma|prosessi)\b.{0,50}\bkäyttää\b.{0,30}\bcpu\b/i.test(raw);
+    const name=processNameFrom(text), percent=(p.percent!==undefined?p.percent:pctFrom(text));
+    if(genericCpu || !name || /^(?:(?:one|1|a)\s+)?(?:process|programm?|app|application|процесс|программа|приложение|ohjelma|prosessi)$/i.test(name)){
+      return ask(L(lang,
+        "Please tell me the exact name shown in Task Manager, for example \"Chrome\" or \"Antimalware Service Executable\", and if possible the CPU percentage.",
+        "Напиши точное имя из Диспетчера задач, например «Chrome» или «Antimalware Service Executable», и по возможности процент CPU.",
+        "Kerro Tehtävienhallinnassa näkyvä tarkka nimi, esimerkiksi \"Chrome\" tai \"Antimalware Service Executable\", ja mielellään CPU-prosentti."),
+        "taskmgr_cpu_top","taskmgr_process",match);
+    }
+    M().fact("highCpuProcess",name); if(percent!==null)M().fact("highCpuPercent",percent);
+    const mal=malwareAssessment(name);
+    if(mal)M().fact("malwareNameCandidate",{name:mal.entry.name,matched:name,confidence:mal.confidence,status:mal.status,type:mal.entry.type});
+    return ask(processIdentityPrompt(lang,name,mal),"process_recognized","yes_no",match);
+  }
+  if(q==="process_recognized"){
+    const name=M().state.facts.highCpuProcess||L(lang,"that process","этот процесс","tuo prosessi");
+    const mal=M().state.facts.malwareNameCandidate;
+    if(p.value==="yes"){
+      if(mal){
+        return ask(L(lang,
+          `Even if you recognize "${name}", its name also resembles a known malware name, so let's verify it rather than assume either way. In Task Manager right-click it → Open file location. What folder/path opens?`,
+          `Даже если ты узнаёшь «${name}», его имя также похоже на известное имя вредоносной программы, поэтому лучше проверить, а не делать вывод по названию. В Диспетчере задач нажми по нему правой кнопкой → «Открыть расположение файла». Какой путь/папка открывается?`,
+          `Vaikka tunnistat "${name}", nimi muistuttaa myös tunnettua haittaohjelman nimeä, joten tarkistetaan se. Napsauta prosessia hiiren oikealla → Avaa tiedoston sijainti. Mikä polku/kansio avautuu?`),
+          "process_file_location","detail",match);
+      }
+      return ask(L(lang,
+        `If "${name}" is a normal app you opened yourself, save your work and close that app normally first — do not force-end it yet. After closing it, wait about 20 seconds. Does the CPU usage drop and does the PC feel faster?`,
+        `Если «${name}» — обычная программа, которую ты сам открыл, сохрани работу и сначала закрой её обычным способом — пока не принудительно. Подожди около 20 секунд. Упала ли загрузка CPU и стал ли компьютер быстрее?`,
+        `Jos "${name}" on tavallinen itse avaamasi ohjelma, tallenna työsi ja sulje ohjelma normaalisti — älä pakota lopetusta vielä. Odota noin 20 sekuntia. Laskeeko CPU-kuorma ja tuntuuko kone nopeammalta?`),
+        "known_process_closed_result","result",match);
+    }
+    if(p.value==="no"||p.value==="unknown"||p.value==="text"){
+      return ask(L(lang,
+        `Do not delete or force-close "${name}" yet. First let's identify it safely. In Task Manager, right-click it → Open file location. What folder/path opens?`,
+        `Пока не удаляй и не завершай принудительно «${name}». Сначала безопасно определим, что это. В Диспетчере задач нажми по нему правой кнопкой → «Открыть расположение файла». Какой путь/папка открывается?`,
+        `Älä poista tai pakota "${name}"-prosessia vielä. Selvitetään ensin turvallisesti mikä se on. Napsauta Tehtävienhallinnassa hiiren oikealla → Avaa tiedoston sijainti. Mikä polku/kansio avautuu?`),
+        "process_file_location","detail",match);
+    }
+  }
+  if(q==="known_process_closed_result"){
+    if(p.value==="yes"){
+      return ask(L(lang,
+        "Good — closing that app reduced the load and the PC became faster, so that app was at least contributing to the slowdown. Is the computer now running normally enough for you?",
+        "Хорошо — после закрытия программы нагрузка упала и ПК стал быстрее, значит эта программа как минимум участвовала в замедлении. Сейчас компьютер работает достаточно нормально?",
+        "Hyvä — ohjelman sulkeminen laski kuormaa ja kone nopeutui, joten ohjelma vaikutti ainakin osittain hitauteen. Toimiiko tietokone nyt riittävän normaalisti?"),
+        "performance_final_check","result",match);
+    }
+    if(p.value==="no"){
+      return ask(L(lang,
+        "Okay — CPU was not the whole cause. In Task Manager click the Memory column. Tell me the overall Memory percentage and the process/app using the most memory.",
+        "Хорошо — CPU был не единственной причиной. В Диспетчере задач нажми столбец «Память». Напиши общий процент использования памяти и процесс/программу, которая использует больше всего.",
+        "Selvä — CPU ei ollut koko syy. Napsauta Tehtävienhallinnassa Muisti-saraketta. Kerro muistin kokonaisprosentti ja eniten muistia käyttävä prosessi/ohjelma."),
+        "taskmgr_memory_top","detail",match);
+    }
+  }
+  if(q==="taskmgr_memory_top"){
+    const mp=pctFrom(text); if(mp!==null)M().fact("memoryPercent",mp);
+    M().fact("memoryObservation",String(text||"").trim());
+    return ask(L(lang,
+      (mp!==null&&mp>=85?`Memory is around ${mp}%, which is high enough to contribute to slowness. `:"")+"Now click the Disk column. Tell me the overall Disk percentage and the process/app using the most disk activity.",
+      (mp!==null&&mp>=85?`Память используется примерно на ${mp}%, это уже может заметно замедлять систему. `:"")+"Теперь нажми столбец «Диск». Напиши общий процент загрузки диска и процесс/программу с самой высокой активностью диска.",
+      (mp!==null&&mp>=85?`Muistin käyttö on noin ${mp} %, mikä voi hidastaa konetta. `:"")+"Napsauta nyt Levy-saraketta. Kerro levyn kokonaisprosentti ja eniten levyä käyttävä prosessi/ohjelma."),
+      "taskmgr_disk_top","detail",match);
+  }
+  if(q==="taskmgr_disk_top"){
+    const dp=pctFrom(text); if(dp!==null)M().fact("diskPercent",dp);
+    M().fact("diskObservation",String(text||"").trim());
+    return ask(L(lang,
+      (dp!==null&&dp>=90?`Disk usage is around ${dp}%, which can directly make Windows feel very slow. `:"")+"At this point we have checked CPU, Memory and Disk. Is the PC still noticeably slow?",
+      (dp!==null&&dp>=90?`Диск загружен примерно на ${dp}%, и это само по себе может сильно замедлять Windows. `:"")+"Теперь мы проверили CPU, память и диск. Компьютер всё ещё заметно тормозит?",
+      (dp!==null&&dp>=90?`Levyn käyttö on noin ${dp} %, mikä voi suoraan hidastaa Windowsia paljon. `:"")+"Nyt CPU, muisti ja levy on tarkistettu. Onko tietokone edelleen selvästi hidas?"),
+      "performance_still_slow","result",match);
+  }
+  if(q==="performance_final_check"){
+    if(p.value==="yes") return answer(L(lang,
+      "Good — the slowdown has improved enough to close this diagnostic path. If it returns, note which Task Manager resource and process rise first.",
+      "Хорошо — замедление достаточно уменьшилось, чтобы завершить эту диагностику. Если проблема вернётся, обрати внимание, какой ресурс и процесс в Диспетчере задач растут первыми.",
+      "Hyvä — hitaus on helpottanut riittävästi. Jos ongelma palaa, katso mikä Tehtävienhallinnan resurssi ja prosessi nousevat ensin."),true);
+    if(p.value==="no") return answer(L(lang,
+      "Okay — it is still slow even after checking the obvious CPU/Memory/Disk load. The next useful checks are free space, Startup apps, Windows Update and a Windows Security scan. We should continue with those rather than randomly ending processes.",
+      "Хорошо — ПК всё ещё медленный даже после проверки очевидной нагрузки CPU/памяти/диска. Дальше полезно проверить свободное место, автозагрузку, Windows Update и выполнить проверку Windows Security, а не завершать случайные процессы.",
+      "Selvä — kone on edelleen hidas CPU-/muisti-/levytarkistuksen jälkeen. Seuraavaksi kannattaa tarkistaa vapaa tila, käynnistyssovellukset, Windows Update ja Windows Security -tarkistus eikä lopettaa satunnaisia prosesseja."),true);
+  }
+
+  if(q==="performance_still_slow"){
+    if(p.value==="yes") return answer(L(lang,
+      "Okay — it is still slow even after checking the obvious CPU/Memory/Disk load. The next useful checks are free space, Startup apps, Windows Update and a Windows Security scan. We should continue with those rather than randomly ending processes.",
+      "Хорошо — ПК всё ещё медленный даже после проверки очевидной нагрузки CPU/памяти/диска. Дальше полезно проверить свободное место, автозагрузку, Windows Update и выполнить проверку Windows Security, а не завершать случайные процессы.",
+      "Selvä — kone on edelleen hidas CPU-/muisti-/levytarkistuksen jälkeen. Seuraavaksi kannattaa tarkistaa vapaa tila, käynnistyssovellukset, Windows Update ja Windows Security -tarkistus eikä lopettaa satunnaisia prosesseja."),true);
+    if(p.value==="no") return answer(L(lang,
+      "Good — the PC is no longer noticeably slow. If the slowdown returns, note which Task Manager resource and process rise first.",
+      "Хорошо — компьютер больше не тормозит заметно. Если проблема вернётся, обрати внимание, какой ресурс и процесс в Диспетчере задач растут первыми.",
+      "Hyvä — tietokone ei ole enää selvästi hidas. Jos hitaus palaa, katso mikä Tehtävienhallinnan resurssi ja prosessi nousevat ensin."),true);
+  }
+
+  if(q==="process_file_location"){
+    M().fact("processFileLocation",String(text||"").trim());
+    return ask(L(lang,
+      "Now right-click the file → Properties. Look for Publisher/Company name and, if present, Digital Signatures. What publisher/company is shown?",
+      "Теперь нажми по файлу правой кнопкой → «Свойства». Посмотри «Издатель/Компания» и, если есть, «Цифровые подписи». Какой издатель/компания указаны?",
+      "Napsauta tiedostoa hiiren oikealla → Ominaisuudet. Tarkista Julkaisija/Yritys ja mahdolliset Digitaaliset allekirjoitukset. Mikä julkaisija/yritys näkyy?"),
+      "process_publisher","detail",match);
+  }
+  if(q==="process_publisher"){
+    M().fact("processPublisher",String(text||"").trim());
+    return ask(L(lang,
+      "Good. Next run a Windows Security scan. If the file's context menu has “Scan with Microsoft Defender”, use it; otherwise open Windows Security → Virus & threat protection → Quick scan. Does Windows Security report a threat?",
+      "Хорошо. Теперь запусти проверку Windows Security. Если в контекстном меню файла есть «Проверить с помощью Microsoft Defender» — используй её; иначе открой Безопасность Windows → Защита от вирусов и угроз → Быстрая проверка. Windows Security сообщает об угрозе?",
+      "Hyvä. Suorita seuraavaksi Windows Security -tarkistus. Jos tiedoston valikossa on “Scan with Microsoft Defender”, käytä sitä; muuten Windows Security → Virus & threat protection → Quick scan. Ilmoittaako Windows Security uhasta?"),
+      "security_scan_threat","yes_no",match);
+  }
+  if(q==="security_scan_threat"){
+    if(p.value==="yes"){
+      return answer(L(lang,
+        "That is much stronger evidence than the process name alone. Follow Windows Security's quarantine/remove recommendation. If it asks for a restart, note the threat/process name first because the current ANITA conversation may be lost after reboot. After remediation, check whether CPU usage and PC speed return to normal.",
+        "Это уже гораздо более сильное доказательство, чем одно название процесса. Выполни рекомендацию Windows Security по карантину/удалению. Если потребуется перезагрузка, сначала запиши название угрозы/процесса, потому что текущий разговор с ANITA после перезапуска может потеряться. После очистки проверь, нормализовались ли CPU и скорость ПК.",
+        "Tämä on paljon vahvempi todiste kuin pelkkä prosessin nimi. Noudata Windows Securityn karanteeni-/poistosuositusta. Jos uudelleenkäynnistys vaaditaan, kirjoita uhkan/prosessin nimi muistiin, koska nykyinen ANITA-keskustelu voi kadota. Tarkista sen jälkeen CPU-kuorma ja koneen nopeus."),true);
+    }
+    if(p.value==="no"){
+      return ask(L(lang,
+        "No threat was reported, so I would not call it malware based on the name alone. Go back to Task Manager and tell me whether that process is still using unusually high CPU.",
+        "Угроза не обнаружена, поэтому по одному названию я не буду считать процесс вредоносным. Вернись в Диспетчер задач и скажи, продолжает ли этот процесс необычно сильно загружать CPU.",
+        "Uhkaa ei löytynyt, joten en pidä prosessia haittaohjelmana pelkän nimen perusteella. Palaa Tehtävienhallintaan ja kerro käyttääkö prosessi edelleen poikkeuksellisen paljon CPU:ta."),
+        "post_scan_cpu_high","yes_no",match);
+    }
+  }
+
   if(p.value==="clarify"){
     const clar={
       keyboard_scope:L(lang,"I mean: does the keyboard fail on the Windows desktop and in every program, or only inside one app/game?","Я имею в виду: клавиатура не работает на рабочем столе Windows и во всех программах или только в одном приложении/игре?","Tarkoitan: eikö näppäimistö toimi Windowsin työpöydällä ja kaikissa ohjelmissa vai vain yhdessä sovelluksessa/pelissä?"),
       mouse_scope:L(lang,"I mean: does the mouse fail on the Windows desktop too, or only inside one game/program?","Я имею в виду: мышь не работает и на рабочем столе Windows или только в одной игре/программе?","Tarkoitan: eikö hiiri toimi myös Windowsin työpöydällä vai vain yhdessä pelissä/ohjelmassa?"),
       wireless_kind:L(lang,"I’m asking whether the wireless device uses Bluetooth or a small USB receiver/dongle plugged into the PC.","Я спрашиваю, подключается ли беспроводное устройство через Bluetooth или через маленький USB-приёмник/донгл.","Kysyn käyttääkö langaton laite Bluetoothia vai pientä USB-vastaanotinta."),
-      windows_stage:L(lang,"I’m asking what you can see before Windows stops: manufacturer/BIOS screen, Windows logo, login screen, or desktop.","Я спрашиваю, что ты видишь до момента сбоя: экран производителя/BIOS, логотип Windows, экран входа или рабочий стол.","Kysyn mitä näet ennen kuin käynnistys pysähtyy: BIOS/valmistaja, Windows-logo, kirjautuminen vai työpöytä.")
+      windows_stage:L(lang,"I’m asking what you can see before Windows stops: manufacturer/BIOS screen, Windows logo, login screen, or desktop.","Я спрашиваю, что ты видишь до момента сбоя: экран производителя/BIOS, логотип Windows, экран входа или рабочий стол.","Kysyn mitä näet ennen kuin käynnistys pysähtyy: BIOS/valmistaja, Windows-logo, kirjautuminen vai työpöytä."),
+      task_manager_opens:L(lang,"I mean: can Task Manager itself open? Opening it does not fix the slow PC; it only gives us the next diagnostic tool.","Я спрашиваю: открывается ли сам Диспетчер задач? Его открытие не исправляет медленный ПК, а только даёт нам инструмент для дальнейшей диагностики.","Tarkoitan: aukeaako Tehtävienhallinta? Sen avaaminen ei korjaa hidasta konetta, vaan antaa meille diagnostiikkatyökalun."),
+      taskmgr_cpu_top:L(lang,"I mean: in Task Manager sort by CPU and tell me the process/app name at the top and its CPU percentage.","Я имею в виду: в Диспетчере задач отсортируй по CPU и напиши имя процесса/программы сверху и его процент CPU.","Tarkoitan: järjestä Tehtävienhallinta CPU:n mukaan ja kerro ylimmän prosessin/ohjelman nimi sekä CPU-prosentti.")
     };
     return answer(clar[q]||L(lang,"I mean my previous question. Answer with what you see or what happens, and I’ll continue from that result.","Я имею в виду предыдущий вопрос. Напиши, что ты видишь или что происходит, и я продолжу от этого результата.","Tarkoitan edellistä kysymystä. Kerro mitä näet tai tapahtuu, niin jatkan siitä."));
   }

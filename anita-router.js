@@ -1,13 +1,13 @@
-/* ANITA v23.0 - Language-Locked Universal Context Router
+/* ANITA v25.0 - Language-Locked Universal Context Router
    Rule: active question -> interpret reply -> continue SAME issue before global re-routing.
    A new full problem can still override old context when it clearly names another device/category.
 */
 (function(){
 "use strict";
-if(!window.ANITA_MEMORY||!window.ANITA_INTENTS||!window.ANITA_RESPONSES){console.error("[ANITA v24.0] Missing module");return;}
-if(!window.ANITA_V7||typeof window.ANITA_V7.handle!=="function"){console.error("[ANITA v24.0] Legacy ANITA_V7 missing");return;}
+if(!window.ANITA_MEMORY||!window.ANITA_INTENTS||!window.ANITA_RESPONSES){console.error("[ANITA v25.0] Missing module");return;}
+if(!window.ANITA_V7||typeof window.ANITA_V7.handle!=="function"){console.error("[ANITA v25.0] Legacy ANITA_V7 missing");return;}
 const legacy=window.ANITA_V7.handle.bind(window.ANITA_V7), M=window.ANITA_MEMORY, I=window.ANITA_INTENTS, R=window.ANITA_RESPONSES;
-const K=window.ANITA_SUPPORT_KNOWLEDGE, D=window.ANITA_DIAGNOSTICS, C=window.ANITA_CONTEXT, E=window.ANITA_ENTITIES, LP=window.ANITA_LANGUAGE_PARSER;
+const K=window.ANITA_SUPPORT_KNOWLEDGE, D=window.ANITA_DIAGNOSTICS, C=window.ANITA_CONTEXT, E=window.ANITA_ENTITIES, LP=window.ANITA_LANGUAGE_PARSER, MK=window.ANITA_MALWARE_KNOWLEDGE;
 function explicitTextLanguage(text){
  const s=String(text||"").trim();
  if(/[а-яё]/i.test(s)) return "ru";
@@ -142,6 +142,38 @@ function route(text,l){
  }
  // Otherwise active conversational state has absolute priority. R.follow() now understands all expected types.
  if(M.state.lastQuestion){ const f=R.follow(text,lang); if(f)return f; }
+
+ // v25: explicit "one process/app uses a lot of CPU" is diagnostic evidence, not a generic CPU definition.
+ const highCpuProcess=/\b(?:one|1|a)\s+(?:programm?|process|app|application)\b.{0,45}\b(?:uses?|using|takes?|taking|eats?|eating)\b.{0,20}\b(?:a\s+lot|alot|lots?|much|high)\b.{0,12}\bcpu\b|\b(?:одна|1)\s+(?:программ|процесс|приложен)\w*.{0,45}\b(?:грузит|использует|жр[её]т)\w*.{0,20}\bcpu\b|\byksi\s+(?:ohjelma|prosessi)\b.{0,45}\b(?:käyttää)\b.{0,20}\b(?:paljon|korkea)\b.{0,12}\bcpu\b/i.test(String(text||""));
+ if(highCpuProcess){
+   M.setIssue("windows","high_cpu_process","computer");
+   return R.first({id:null,category:"windows",issue:"high_cpu_process",confidence:.99,match:"v25-high-cpu-evidence"},lang);
+ }
+
+ // v25: semantic performance must outrank startup-word collisions such as "Windows started to work slow".
+ const semanticEarly=LP&&LP.performance?LP.performance(text):null;
+ if(semanticEarly&&semanticEarly.matched&&semanticEarly.confidence>=0.82){
+   M.setIssue("windows","poor_system_performance","computer");
+   M.fact("performanceTemporal",semanticEarly.temporal||"current");
+   M.fact("performanceOriginal",String(text||""));
+   return R.first({id:null,category:"windows",issue:"poor_system_performance",confidence:semanticEarly.confidence,match:"v25-semantic-performance"},lang);
+ }
+
+ // Strong antivirus/security alert + a known threat name is evidence; a bare name is not.
+ const malwareHit=MK&&MK.assess?MK.assess(text):null;
+ if(malwareHit&&malwareHit.status==="strong_security_evidence"){
+   M.setIssue("windows","security_threat","computer");
+   M.fact("securityThreatName",malwareHit.entry.name);
+   M.setQuestion("security_scan_threat","yes_no");
+   const typ=MK.typeLabel?MK.typeLabel(malwareHit.entry.type,lang):malwareHit.entry.type;
+   const msg=lang==="ru"
+     ?`Windows Security/антивирус сообщает об угрозе «${malwareHit.entry.name}» (${typ}). Это намного сильнее, чем просто совпадение имени процесса. Выполни предложенное антивирусом действие — карантин/удаление. Если он попросит перезагрузку, сначала запиши название угрозы: текущий разговор ANITA после перезапуска может потеряться. Антивирус действительно пометил её как угрозу?`
+     :lang==="fi"
+     ?`Windows Security/virustorjunta ilmoittaa uhasta "${malwareHit.entry.name}" (${typ}). Tämä on paljon vahvempaa näyttöä kuin pelkkä prosessinimen osuma. Noudata karanteeni-/poistosuositusta. Jos uudelleenkäynnistys vaaditaan, kirjoita uhkan nimi muistiin, koska nykyinen ANITA-keskustelu voi kadota. Merkitsikö virustorjunta sen todella uhaksi?`
+     :`Windows Security/antivirus is reporting "${malwareHit.entry.name}" (${typ}) as a threat. That is much stronger evidence than a process-name match alone. Follow its quarantine/remove action. If it asks for a restart, note the threat name first because the current ANITA conversation may be lost after reboot. Did the antivirus actually flag it as a threat?`;
+   M.push("bot",msg); return {text:msg,handled:true,done:false,malwareCandidate:true};
+ }
+
  // ANITA v20: 400 user-provided problems have priority over the older 200-example bank.
  const km=K && K.find ? K.find(text) : null;
  if(km && km.case && D){ return D.start(km,lang); }
@@ -150,16 +182,6 @@ function route(text,l){
  const m=I.find(text); if(m && (!cat||m.category===cat)){ return R.first(m,lang); }
  // Explicit category guard.
  if(cat) return R.first(synth(text,lang,cat),lang);
- // Semantic composition: different wording can express the same performance symptom.
- // Keep original words distinct (low != slow); only the composed meaning is normalized.
- const semantic=LP&&LP.performance?LP.performance(text):null;
- if(semantic&&semantic.matched&&semantic.confidence>=0.82){
-   M.setIssue("windows","poor_system_performance","computer");
-   M.fact("performanceTemporal",semantic.temporal||"current");
-   M.fact("performanceOriginal",String(text||""));
-   return legacy(lang==="ru"?"компьютер работает медленно":lang==="fi"?"tietokone on hidas":"my pc is slow",lang);
- }
-
  // Legacy only when there is no active v19 question and no v19 category.
  if(C && C.shouldHandle && C.shouldHandle()){
    const cq=C.nextQuestion(lang);
@@ -171,6 +193,6 @@ function route(text,l){
  return legacy(text,lang);
 }
 window.ANITA_V7.handle=route;
-window.ANITA_V19={version:"24.0",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
-console.log("[ANITA v24.0] Language-Locked Universal Context Router loaded");
+window.ANITA_V19={version:"25.0",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
+console.log("[ANITA v25.0] Language-Locked Universal Context Router loaded");
 })();
