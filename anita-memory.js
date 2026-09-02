@@ -1,14 +1,15 @@
-/* ANITA v20 - Memory Module */
+/* ANITA v24.0 - Memory Module (structured pending question, backward compatible) */
 (function(){
 "use strict";
 const state = {
-  version:"21.0",
+  version:"24.0",
   language:"en",
   currentIssue:null,
   currentCategory:null,
   currentObject:null,
   lastQuestion:null,
   expected:null,
+  pendingQuestion:null,
   facts:{},
   history:[],
   lastMatch:null
@@ -19,13 +20,16 @@ function push(role,text,meta){
 }
 function resetConversation(){
   state.currentIssue=null; state.currentCategory=null; state.currentObject=null;
-  state.lastQuestion=null; state.expected=null; state.facts={}; state.lastMatch=null;
+  state.lastQuestion=null; state.expected=null; state.pendingQuestion=null; state.facts={}; state.lastMatch=null;
   state.history=[];
 }
 window.ANITA_MEMORY = {
   state,
   push,
-  setQuestion(q,expected){ state.lastQuestion=q||null; state.expected=expected||null; },
+  setQuestion(q,expected,meta){
+    state.lastQuestion=q||null; state.expected=expected||null;
+    state.pendingQuestion=q?{id:q,expected:expected||null,topic:meta?.topic||state.currentIssue||state.currentCategory||null,step:meta?.step||null,askedAt:Date.now(),resolved:false,answer:null}:null;
+  },
   setIssue(category,issue,obj){
     state.currentCategory=category||state.currentCategory;
     state.currentIssue=issue||state.currentIssue;
@@ -35,5 +39,5 @@ window.ANITA_MEMORY = {
   resetConversation,
   snapshot(){ return JSON.parse(JSON.stringify(state)); }
 };
-console.log("[ANITA v21.0] Memory module loaded");
+console.log("[ANITA v24.0] Memory module loaded");
 })();

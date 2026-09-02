@@ -6,7 +6,7 @@
 "use strict";
 
 const state={
-  version:"23.0",
+  version:"24.0",
   turns:[],
   maxTurns:10,
   lastUser:"",
@@ -130,7 +130,7 @@ function hasConcreteNewProblem(text){
 }
 
 if(!window.ANITA_V7||typeof window.ANITA_V7.handle!=="function"){
-  console.error("[ANITA v23.0] Dialog Memory: router missing");
+  console.error("[ANITA v24.0] Dialog Memory: router missing");
   return;
 }
 const previous=window.ANITA_V7.handle.bind(window.ANITA_V7);
@@ -179,12 +179,12 @@ if(chat){
 }
 
 window.ANITA_DIALOG_MEMORY={
-  version:"23.0",state,push,noteUser,noteAssistant,detectClarification,
+  version:"24.0",state,push,noteUser,noteAssistant,detectClarification,
   explain:topicExplain,
   getRecent:function(){return state.turns.slice();},
   getLastProblem:function(){return state.currentProblem;},
   getLastAssistant:function(){return state.lastAssistant;},
   reset:function(){state.turns=[];state.lastUser="";state.lastAssistant="";state.currentProblem=null;state.pausedProblems=[];state.lastClarification=null;}
 };
-console.log("[ANITA v23.0] Dialog Memory & Clarification Engine loaded");
+console.log("[ANITA v24.0] Dialog Memory & Clarification Engine loaded");
 })();

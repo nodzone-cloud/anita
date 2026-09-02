@@ -4,10 +4,10 @@
 */
 (function(){
 "use strict";
-if(!window.ANITA_MEMORY||!window.ANITA_INTENTS||!window.ANITA_RESPONSES){console.error("[ANITA v23.0] Missing module");return;}
-if(!window.ANITA_V7||typeof window.ANITA_V7.handle!=="function"){console.error("[ANITA v23.0] Legacy ANITA_V7 missing");return;}
+if(!window.ANITA_MEMORY||!window.ANITA_INTENTS||!window.ANITA_RESPONSES){console.error("[ANITA v24.0] Missing module");return;}
+if(!window.ANITA_V7||typeof window.ANITA_V7.handle!=="function"){console.error("[ANITA v24.0] Legacy ANITA_V7 missing");return;}
 const legacy=window.ANITA_V7.handle.bind(window.ANITA_V7), M=window.ANITA_MEMORY, I=window.ANITA_INTENTS, R=window.ANITA_RESPONSES;
-const K=window.ANITA_SUPPORT_KNOWLEDGE, D=window.ANITA_DIAGNOSTICS, C=window.ANITA_CONTEXT, E=window.ANITA_ENTITIES;
+const K=window.ANITA_SUPPORT_KNOWLEDGE, D=window.ANITA_DIAGNOSTICS, C=window.ANITA_CONTEXT, E=window.ANITA_ENTITIES, LP=window.ANITA_LANGUAGE_PARSER;
 function explicitTextLanguage(text){
  const s=String(text||"").trim();
  if(/[а-яё]/i.test(s)) return "ru";
@@ -150,6 +150,16 @@ function route(text,l){
  const m=I.find(text); if(m && (!cat||m.category===cat)){ return R.first(m,lang); }
  // Explicit category guard.
  if(cat) return R.first(synth(text,lang,cat),lang);
+ // Semantic composition: different wording can express the same performance symptom.
+ // Keep original words distinct (low != slow); only the composed meaning is normalized.
+ const semantic=LP&&LP.performance?LP.performance(text):null;
+ if(semantic&&semantic.matched&&semantic.confidence>=0.82){
+   M.setIssue("windows","poor_system_performance","computer");
+   M.fact("performanceTemporal",semantic.temporal||"current");
+   M.fact("performanceOriginal",String(text||""));
+   return legacy(lang==="ru"?"компьютер работает медленно":lang==="fi"?"tietokone on hidas":"my pc is slow",lang);
+ }
+
  // Legacy only when there is no active v19 question and no v19 category.
  if(C && C.shouldHandle && C.shouldHandle()){
    const cq=C.nextQuestion(lang);
@@ -161,6 +171,6 @@ function route(text,l){
  return legacy(text,lang);
 }
 window.ANITA_V7.handle=route;
-window.ANITA_V19={version:"23.0",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
-console.log("[ANITA v23.0] Language-Locked Universal Context Router loaded");
+window.ANITA_V19={version:"24.0",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
+console.log("[ANITA v24.0] Language-Locked Universal Context Router loaded");
 })();
