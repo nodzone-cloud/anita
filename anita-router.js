@@ -1,12 +1,13 @@
-/* ANITA v19.1 - Language-Locked Universal Context Router
+/* ANITA v20.0 - Language-Locked Universal Context Router
    Rule: active question -> interpret reply -> continue SAME issue before global re-routing.
    A new full problem can still override old context when it clearly names another device/category.
 */
 (function(){
 "use strict";
-if(!window.ANITA_MEMORY||!window.ANITA_INTENTS||!window.ANITA_RESPONSES){console.error("[ANITA v19.1] Missing module");return;}
-if(!window.ANITA_V7||typeof window.ANITA_V7.handle!=="function"){console.error("[ANITA v19.1] Legacy ANITA_V7 missing");return;}
+if(!window.ANITA_MEMORY||!window.ANITA_INTENTS||!window.ANITA_RESPONSES){console.error("[ANITA v20.0] Missing module");return;}
+if(!window.ANITA_V7||typeof window.ANITA_V7.handle!=="function"){console.error("[ANITA v20.0] Legacy ANITA_V7 missing");return;}
 const legacy=window.ANITA_V7.handle.bind(window.ANITA_V7), M=window.ANITA_MEMORY, I=window.ANITA_INTENTS, R=window.ANITA_RESPONSES;
+const K=window.ANITA_SUPPORT_KNOWLEDGE, D=window.ANITA_DIAGNOSTICS;
 function explicitTextLanguage(text){
  const s=String(text||"").trim();
  if(/[а-яё]/i.test(s)) return "ru";
@@ -83,13 +84,30 @@ function detectIssue(text,cat){const t=norm(text);if(/\b(not detected|does not d
 function synth(text,lang,cat){return{id:null,ru:text,en:text,fi:text,lang,category:cat,issue:detectIssue(text,cat),confidence:.94,match:"device-guard"};}
 function route(text,l){
  const lang=language(text,l); M.state.language=lang; M.push("user",text); const cat=detectCategory(text);
+
+ // ANITA v20: if a 400-case diagnostic conversation is active, interpret the user's
+ // result as evidence before any global intent matcher can steal the message.
+ if(D && D.state && D.state.active){
+   // A clearly new full problem can still interrupt the old diagnostic path.
+   const kmNew=K && K.find ? K.find(text) : null;
+   if(!(kmNew && tokenCount(text)>=4 && kmNew.confidence>=0.78 && kmNew.case.id!==D.state.caseId)){
+     const df=D.follow(text,lang); if(df)return df;
+   } else {
+     D.reset();
+   }
+ }
+
  // New explicit problem about another device overrides the old question.
  if(M.state.lastQuestion&&cat&&M.state.currentCategory&&cat!==M.state.currentCategory&&strongNewProblem(text,cat)){
    M.setQuestion(null,null); return R.first(I.find(text)||synth(text,lang,cat),lang);
  }
  // Otherwise active conversational state has absolute priority. R.follow() now understands all expected types.
  if(M.state.lastQuestion){ const f=R.follow(text,lang); if(f)return f; }
- // Exact/fuzzy training bank.
+ // ANITA v20: 400 user-provided problems have priority over the older 200-example bank.
+ const km=K && K.find ? K.find(text) : null;
+ if(km && km.case && D){ return D.start(km,lang); }
+
+ // Exact/fuzzy older training bank.
  const m=I.find(text); if(m && (!cat||m.category===cat)){ return R.first(m,lang); }
  // Explicit category guard.
  if(cat) return R.first(synth(text,lang,cat),lang);
@@ -97,6 +115,6 @@ function route(text,l){
  return legacy(text,lang);
 }
 window.ANITA_V7.handle=route;
-window.ANITA_V19={version:"19.1",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
-console.log("[ANITA v19.1] Language-Locked Universal Context Router loaded");
+window.ANITA_V19={version:"19.2",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
+console.log("[ANITA v20.0] Language-Locked Universal Context Router loaded");
 })();

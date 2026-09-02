@@ -165,6 +165,239 @@ function genericResultNext(lang,match){
   return ask(L(lang,"The first check did not solve it. Tell me exactly what changed, if anything, after the step.","Первый шаг не помог. Напиши, изменилось ли хоть что-нибудь после него.","Ensimmäinen vaihe ei ratkaissut ongelmaa. Kerro muuttuiko jokin sen jälkeen."),"generic_after_test","detail",match);
 }
 
+/* ============================================================
+   ANITA v19.2 — DIAGNOSTIC EVIDENCE CORE
+   ------------------------------------------------------------
+   Cross-testing is not just a yes/no answer.
+
+   It distinguishes:
+   A) original device on another computer
+   B) another known-good device on THIS computer
+   C) another device on another computer (not diagnostic)
+   D) incomplete/ambiguous result
+
+   This is intentionally generic so it can be reused by mouse,
+   keyboard, printer, scanner, controller and other peripherals.
+   ============================================================ */
+
+function normalizeEvidenceText(text){
+  return String(text||"").toLowerCase()
+    .replace(/[’`]/g,"'")
+    .replace(/\bdoesn['’]?t\b|\bdoesnt\b/g,"does not")
+    .replace(/\bdidn['’]?t\b|\bdidnt\b/g,"did not")
+    .replace(/\bisn['’]?t\b|\bisnt\b/g,"is not")
+    .replace(/\baren['’]?t\b|\barent\b/g,"are not")
+    .replace(/\bwon['’]?t\b|\bwont\b/g,"will not")
+    .replace(/\bcant\b|\bcan['’]?t\b/g,"cannot")
+    .replace(/[.,!?;:()[\]{}]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function categoryTerms(category){
+  const map={
+    mouse:{
+      en:["mouse","mice"],
+      ru:["мышь","мышка","мыши","мышку"],
+      fi:["hiiri","hiiren"]
+    },
+    keyboard:{
+      en:["keyboard"],
+      ru:["клавиатура","клавиатуру","клава"],
+      fi:["näppäimistö","näppäimistön"]
+    },
+    printer:{
+      en:["printer"],
+      ru:["принтер","принтером"],
+      fi:["tulostin","tulostimen"]
+    },
+    scanner:{
+      en:["scanner"],
+      ru:["сканер"],
+      fi:["skanneri","skannerin"]
+    },
+    game_controller:{
+      en:["controller","gamepad"],
+      ru:["геймпад","контроллер"],
+      fi:["peliohjain","ohjain"]
+    },
+    usb_storage:{
+      en:["usb device","flash drive","usb drive","external drive"],
+      ru:["usb устройство","флешка","usb накопитель","внешний диск"],
+      fi:["usb-laite","muistitikku","ulkoinen levy"]
+    },
+    generic_device:{
+      en:["device"],
+      ru:["устройство"],
+      fi:["laite"]
+    },
+    dock_hub:{
+      en:["dock","hub","usb hub"],
+      ru:["док","хаб","usb хаб"],
+      fi:["telakka","usb-hubi","hubi"]
+    },
+    bluetooth:{
+      en:["device","bluetooth device"],
+      ru:["устройство","bluetooth устройство"],
+      fi:["laite","bluetooth-laite"]
+    }
+  };
+  return map[category] || map.generic_device;
+}
+
+function hasAnyPhrase(text, arr){
+  return arr.some(function(x){
+    return text.indexOf(x)>=0;
+  });
+}
+
+function parseCrossTestEvidence(text, category){
+  const t=normalizeEvidenceText(text);
+  const terms=categoryTerms(category);
+  const deviceTerms=[...terms.en,...terms.ru,...terms.fi];
+
+  const positive =
+    /\b(works|work|working|responds|detected|recognized|recognised|toimii|toimi|работает|заработал|заработала|определяется|видит)\b/.test(t) &&
+    !/\b(does not work|did not work|not working|still not|does not respond|not detected|not recognized|not recognised|ei toimi|не работает|не заработал|не заработала|не определяется|не видит)\b/.test(t);
+
+  const negative =
+    /\b(does not work|did not work|not working|still not|does not respond|not detected|not recognized|not recognised|ei toimi|ei vieläkään|не работает|не заработал|не заработала|всё ещё не|все еще не|не определяется|не видит)\b/.test(t);
+
+  const mentionsAnotherDevice =
+    /\b(another|other|different|known good|known-good|second|другая|другой|другое|другую|другим|заведомо рабоч|toinen|toista|muu)\b/.test(t) &&
+    hasAnyPhrase(t,deviceTerms);
+
+  const mentionsOriginalDevice =
+    /\b(my|this|the same|same|original|мой|моя|моё|эта|этот|тот же|оригиналь|tämä|sama|minun)\b/.test(t) &&
+    hasAnyPhrase(t,deviceTerms);
+
+  const anotherComputer =
+    /\b(another computer|other computer|different computer|another pc|other pc|second computer|другом компьютере|другой компьютер|другом пк|другой пк|toisessa tietokoneessa|toinen tietokone)\b/.test(t);
+
+  const thisComputer =
+    /\b(this computer|this pc|my computer|my pc|same computer|same pc|этом компьютере|этот компьютер|моем компьютере|моём компьютере|моем пк|моём пк|tässä tietokoneessa|tällä tietokoneella|samassa tietokoneessa)\b/.test(t);
+
+  // Common conversational ellipsis:
+  // "it doesn't work on another computer" means the original/current device.
+  const pronounOriginal =
+    /\b(it|itself|оно|она|он|se)\b/.test(t) && anotherComputer;
+
+  // Explicit combinations.
+  if((mentionsOriginalDevice || pronounOriginal) && anotherComputer && negative){
+    return {kind:"original_device_fails_elsewhere",confidence:.97,text:t};
+  }
+
+  if((mentionsOriginalDevice || pronounOriginal) && anotherComputer && positive){
+    return {kind:"original_device_works_elsewhere",confidence:.97,text:t};
+  }
+
+  if(mentionsAnotherDevice && thisComputer && positive){
+    return {kind:"other_device_works_here",confidence:.97,text:t};
+  }
+
+  if(mentionsAnotherDevice && thisComputer && negative){
+    return {kind:"other_device_fails_here",confidence:.97,text:t};
+  }
+
+  // Important case from the user's test:
+  // "On another computer, another keyboard works"
+  // This proves only that a different keyboard + different computer work together.
+  if(mentionsAnotherDevice && anotherComputer && positive){
+    return {kind:"other_device_works_elsewhere",confidence:.97,text:t};
+  }
+
+  if(mentionsAnotherDevice && anotherComputer && negative){
+    return {kind:"other_device_fails_elsewhere",confidence:.90,text:t};
+  }
+
+  // If the reply just says "it still doesn't work" while cross-test is active,
+  // preserve the diagnostic state and ask WHICH test was actually performed.
+  if(negative){
+    return {kind:"failed_unspecified",confidence:.82,text:t};
+  }
+  if(positive){
+    return {kind:"worked_unspecified",confidence:.82,text:t};
+  }
+
+  return {kind:"unknown",confidence:.35,text:t};
+}
+
+function crossTestNext(text,lang,match){
+  const c=match.category;
+  const e=parseCrossTestEvidence(text,c);
+  const obj=objectNames[c] || objectNames.generic_device;
+
+  M().fact("crossTestEvidence",e.kind);
+  M().fact("crossTestText",String(text||""));
+
+  if(e.kind==="original_device_fails_elsewhere"){
+    M().fact("diagnosticConclusion","device_likely_faulty");
+    return answer(L(lang,
+      `That is useful: the same ${obj.en} also fails on another computer. That makes the ${obj.en} itself (or its own cable/receiver) much more likely to be the problem, not Windows on the first PC. If it has a removable cable/receiver/batteries, test or replace those first; otherwise the device is likely faulty.`,
+      `Это полезный результат: та же ${obj.ru} не работает и на другом компьютере. Значит, гораздо вероятнее проблема в самом устройстве (или его кабеле/приёмнике), а не в Windows на первом ПК. Если кабель/приёмник/батарейки съёмные — сначала проверь или замени их; иначе само устройство, вероятно, неисправно.`,
+      `Tämä on hyödyllinen tulos: sama ${obj.fi} ei toimi toisessakaan tietokoneessa. Siksi vika on todennäköisemmin itse laitteessa (tai sen kaapelissa/vastaanottimessa) kuin ensimmäisen tietokoneen Windowsissa. Jos kaapeli/vastaanotin/paristot ovat vaihdettavia, testaa ne ensin; muuten laite on todennäköisesti viallinen.`
+    ),true);
+  }
+
+  if(e.kind==="original_device_works_elsewhere"){
+    M().fact("diagnosticConclusion","computer_side_likely");
+    return ask(L(lang,
+      `Good test: the same ${obj.en} works on another computer. That means the ${obj.en} itself is probably okay, so the problem is more likely on this PC — port, Bluetooth/receiver connection, driver, or Windows settings. On the problem PC, does another known-working ${obj.en} work?`,
+      `Хорошая проверка: та же ${obj.ru} работает на другом компьютере. Значит, само устройство, скорее всего, исправно, а проблема вероятнее на этом ПК — порт, Bluetooth/приёмник, драйвер или настройки Windows. На проблемном ПК другая заведомо рабочая ${obj.ru} работает?`,
+      `Hyvä testi: sama ${obj.fi} toimii toisessa tietokoneessa. Itse laite on siis todennäköisesti kunnossa, ja vika on todennäköisemmin tässä tietokoneessa — portissa, Bluetooth-/vastaanotinyhteydessä, ajurissa tai Windows-asetuksissa. Toimiiko tässä ongelmakoneessa toinen varmasti toimiva ${obj.fi}?`
+    ),"cross_test_confirm_computer","detail",match);
+  }
+
+  if(e.kind==="other_device_works_here"){
+    M().fact("diagnosticConclusion","original_device_likely_faulty");
+    return answer(L(lang,
+      `That is a strong clue: another ${obj.en} works on the problem computer. So the PC/port can work, and the original ${obj.en} is now the more likely cause. Test the original device on another computer once if possible; if it fails there too, the device is very likely faulty.`,
+      `Это сильная подсказка: другая ${obj.ru} работает на проблемном компьютере. Значит, ПК/порт в принципе работают, и теперь вероятнее проблема в исходном устройстве. Если возможно, один раз проверь исходное устройство на другом компьютере; если и там не работает — оно почти наверняка неисправно.`,
+      `Tämä on vahva vihje: toinen ${obj.fi} toimii ongelmakoneessa. Tietokone/portti siis pystyy toimimaan, joten alkuperäinen laite on nyt todennäköisempi syy. Testaa alkuperäinen laite toisessa tietokoneessa, jos mahdollista; jos se ei toimi sielläkään, laite on hyvin todennäköisesti viallinen.`
+    ),true);
+  }
+
+  if(e.kind==="other_device_fails_here"){
+    M().fact("diagnosticConclusion","computer_side_likely");
+    return ask(L(lang,
+      `That points toward this computer rather than one bad ${obj.en}, because another ${obj.en} also fails here. Next, open Device Manager and check whether the device appears or whether there is a yellow warning icon. What do you see?`,
+      `Это уже указывает скорее на этот компьютер, а не на одно неисправное устройство, потому что другая ${obj.ru} тоже здесь не работает. Следующий шаг: открой Диспетчер устройств и проверь, появляется ли устройство и есть ли жёлтый значок предупреждения. Что ты видишь?`,
+      `Tämä viittaa enemmän tähän tietokoneeseen kuin yhteen viallisten laitteeseen, koska toinenkin ${obj.fi} ei toimi tässä. Avaa seuraavaksi Laitehallinta ja tarkista näkyykö laite tai keltainen varoituskuvake. Mitä näet?`
+    ),"device_manager_cross_test","detail",match);
+  }
+
+  if(e.kind==="other_device_works_elsewhere"){
+    // This is exactly the subtle case that previously caused a loop.
+    return ask(L(lang,
+      `I understand: another ${obj.en} works on another computer. That tells us that the other keyboard/device and the other computer are okay, but it does NOT yet isolate the problem with your original ${obj.en}. We need one crossed test: either (1) try your original ${obj.en} on the other computer, or (2) try that working ${obj.en} on the problem computer. Which one can you do?`,
+      `Поняла: другая ${obj.ru} работает на другом компьютере. Это показывает, что другое устройство и другой компьютер исправны, но пока не отделяет причину проблемы с твоим исходным устройством. Нужна перекрёстная проверка: либо (1) подключить исходное устройство к другому компьютеру, либо (2) подключить рабочее устройство к проблемному компьютеру. Что из этого можешь проверить?`,
+      `Ymmärsin: toinen ${obj.fi} toimii toisessa tietokoneessa. Se kertoo, että toinen laite ja toinen tietokone toimivat, mutta se ei vielä erota alkuperäisen laitteen vian syytä. Tarvitsemme ristiintestin: joko (1) kokeile alkuperäistä laitetta toisessa tietokoneessa tai (2) kokeile toimivaa laitetta ongelmakoneessa. Kumman voit tehdä?`
+    ),"cross_test_result","detail",match);
+  }
+
+  if(e.kind==="failed_unspecified"){
+    return ask(L(lang,
+      `Got it — it still does not work. Which test did you do: did you try the original ${obj.en} on another computer, or did you try another ${obj.en} on this problem computer?`,
+      `Поняла — всё ещё не работает. Уточни, какую проверку ты сделал: исходное устройство пробовал на другом компьютере или другое устройство пробовал на этом проблемном компьютере?`,
+      `Selvä — se ei vieläkään toimi. Kumman testin teit: kokeilitko alkuperäistä laitetta toisessa tietokoneessa vai toista laitetta tässä ongelmakoneessa?`
+    ),"cross_test_result","detail",match);
+  }
+
+  if(e.kind==="worked_unspecified"){
+    return ask(L(lang,
+      `Good — something worked, but I need to know which crossed test it was. Did the original ${obj.en} work on another computer, or did another ${obj.en} work on this problem computer?`,
+      `Хорошо — что-то сработало, но нужно понять, какая именно перекрёстная проверка. Исходное устройство заработало на другом компьютере или другое устройство заработало на этом проблемном компьютере?`,
+      `Hyvä — jokin toimi, mutta tarvitsen tiedon kummasta ristiintestistä. Toimiko alkuperäinen laite toisessa tietokoneessa vai toinen laite tässä ongelmakoneessa?`
+    ),"cross_test_result","detail",match);
+  }
+
+  return ask(L(lang,
+    `I’m keeping this as the same diagnostic step. Tell me the result in this form: “my ${obj.en} works/doesn't work on another computer” OR “another ${obj.en} works/doesn't work on this computer.”`,
+    `Я держу это как тот же диагностический шаг. Напиши результат примерно так: «моё устройство работает/не работает на другом компьютере» ИЛИ «другое устройство работает/не работает на этом компьютере».`,
+    `Pidän tämän samana diagnostiikkavaiheena. Kerro tulos esimerkiksi: “oma laite toimii/ei toimi toisessa tietokoneessa” TAI “toinen laite toimii/ei toimi tässä tietokoneessa”.`
+  ),"cross_test_result","detail",match);
+}
+
 function follow(text,lang){
   const mem=M()?.state; if(!mem||!mem.lastQuestion) return null;
   const q=mem.lastQuestion, expected=mem.expected, p=parseReply(text,expected), match=matchOf();
@@ -179,6 +412,11 @@ function follow(text,lang){
       windows_stage:L(lang,"I’m asking what you can see before Windows stops: manufacturer/BIOS screen, Windows logo, login screen, or desktop.","Я спрашиваю, что ты видишь до момента сбоя: экран производителя/BIOS, логотип Windows, экран входа или рабочий стол.","Kysyn mitä näet ennen kuin käynnistys pysähtyy: BIOS/valmistaja, Windows-logo, kirjautuminen vai työpöytä.")
     };
     return answer(clar[q]||L(lang,"I mean my previous question. Answer with what you see or what happens, and I’ll continue from that result.","Я имею в виду предыдущий вопрос. Напиши, что ты видишь или что происходит, и я продолжу от этого результата.","Tarkoitan edellistä kysymystä. Kerro mitä näet tai tapahtuu, niin jatkan siitä."));
+  }
+
+  // v19.2: Cross-test evidence is a diagnostic branch, not a generic detail reply.
+  if(q==="cross_test_result" || q==="cross_test_confirm_computer"){
+    return crossTestNext(text,lang,match);
   }
 
   // Universal scope handling: used by mouse, keyboard, mic, webcam and future devices.
@@ -282,6 +520,6 @@ function follow(text,lang){
   return genericResultNext(lang,match);
 }
 
-window.ANITA_RESPONSES={version:"19.1",first,follow,parseReply};
-console.log("[ANITA v19.1] Universal response engine loaded");
+window.ANITA_RESPONSES={version:"19.2",first,follow,parseReply};
+console.log("[ANITA v19.2] Universal response engine loaded");
 })();

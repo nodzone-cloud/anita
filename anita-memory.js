@@ -1,8 +1,8 @@
-/* ANITA v19 - Memory Module */
+/* ANITA v20 - Memory Module */
 (function(){
 "use strict";
 const state = {
-  version:"19.1",
+  version:"20.0",
   language:"en",
   currentIssue:null,
   currentCategory:null,
@@ -35,5 +35,5 @@ window.ANITA_MEMORY = {
   resetConversation,
   snapshot(){ return JSON.parse(JSON.stringify(state)); }
 };
-console.log("[ANITA v19.1] Memory module loaded");
+console.log("[ANITA v20.2] Memory module loaded");
 })();
