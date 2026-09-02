@@ -2,7 +2,7 @@
 (function(){
 "use strict";
 const state = {
-  version:"20.1",
+  version:"20.2",
   language:"en",
   currentIssue:null,
   currentCategory:null,

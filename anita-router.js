@@ -85,6 +85,17 @@ function synth(text,lang,cat){return{id:null,ru:text,en:text,fi:text,lang,catego
 function route(text,l){
  const lang=language(text,l); M.state.language=lang; M.push("user",text);
  if(C && C.update) C.update(text,lang);
+ const shortContextReply = String(text||"").trim().split(/\s+/).length <= 7;
+ const hasActiveContextQuestion = !!(
+   C && C.state && C.state.active && C.state.lastQuestion
+ );
+ if(hasActiveContextQuestion && shortContextReply){
+   const cq=C.nextQuestion(lang);
+   if(cq){
+     M.push("bot",cq);
+     return {text:cq,handled:true,done:false};
+   }
+ }
  const cat=detectCategory(text);
 
  // ANITA v20: if a 400-case diagnostic conversation is active, interpret the user's
