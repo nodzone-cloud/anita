@@ -211,8 +211,97 @@ function follow(text,lang){
     ),"software_symptom","symptom",mem.lastMatch||{category:"software",issue:"software_issue",id:null});
   }
 
+  // Context-first handling for short answers to ANITA's own questions.
+  const low=t.toLowerCase().trim();
+
+  // User answered the mouse connection-type question.
+  if(mem.lastQuestion==="mouse_connection_type"){
+    const usb=/^(usb|wired|wired usb|cable|проводная|проводная usb|usb мышь|usb-мышь|usb hiiri|langallinen|langallinen usb)$/.test(low);
+    const bt=/^(bluetooth|bt|блютуз|bluetooth мышь|bluetooth-мышь|bluetooth hiiri)$/.test(low);
+    const wireless=/^(wireless|wireless usb|usb receiver|receiver|dongle|беспроводная|с приемником|с приёмником|ресивер|vastaanotin|langaton|langaton usb)$/.test(low);
+
+    if(usb || bt || wireless){
+      const kind=usb?"usb":bt?"bluetooth":"wireless_receiver";
+      M().fact("mouseConnection",kind);
+      if(kind==="usb"){
+        return ask(L(lang,
+          "Okay — USB mouse. Unplug it and connect it to a different USB port, preferably directly on the PC rather than through a hub. Does the cursor start moving?",
+          "Хорошо — USB-мышь. Отключи её и подключи в другой USB-порт, лучше напрямую к компьютеру, а не через хаб. Курсор начал двигаться?",
+          "Hyvä — USB-hiiri. Irrota se ja liitä toiseen USB-porttiin, mieluiten suoraan tietokoneeseen eikä hubin kautta. Alkaako osoitin liikkua?"
+        ),"mouse_usb_port_test","yes_no",mem.lastMatch||{category:"mouse",issue:"not_working",id:null});
+      }
+      if(kind==="bluetooth"){
+        return ask(L(lang,
+          "Okay — Bluetooth mouse. Turn Bluetooth off and back on, then reconnect the mouse. Does it start working again?",
+          "Хорошо — Bluetooth-мышь. Выключи и снова включи Bluetooth, затем переподключи мышь. Она снова заработала?",
+          "Hyvä — Bluetooth-hiiri. Kytke Bluetooth pois ja takaisin päälle ja yhdistä hiiri uudelleen. Alkaako se toimia?"
+        ),"mouse_bt_reconnect","yes_no",mem.lastMatch||{category:"mouse",issue:"not_working",id:null});
+      }
+      return ask(L(lang,
+        "Okay — wireless mouse with a USB receiver. Unplug the receiver and try another USB port. Does the mouse start working?",
+        "Хорошо — беспроводная мышь с USB-приёмником. Переставь приёмник в другой USB-порт. Мышь заработала?",
+        "Hyvä — langaton hiiri USB-vastaanottimella. Siirrä vastaanotin toiseen USB-porttiin. Alkaako hiiri toimia?"
+      ),"mouse_receiver_port_test","yes_no",mem.lastMatch||{category:"mouse",issue:"not_working",id:null});
+    }
+  }
+
+  // Yes/no results for mouse troubleshooting must stay in the mouse branch.
+  const yes=/^(yes|yeah|yep|works|working|it works|да|ага|заработала|работает|kyllä|joo|toimii)$/.test(low);
+  const no=/^(no|nope|still no|still doesn't work|doesn't work|doesnt work|not working|нет|не работает|все еще нет|всё ещё нет|ei|ei toimi|ei vieläkään)$/.test(low);
+
+  if(["mouse_usb_port_test","mouse_bt_reconnect","mouse_receiver_port_test","mouse_reconnect_result"].includes(mem.lastQuestion)){
+    if(yes){
+      M().fact("mouseTestResult","worked");
+      M().setQuestion(null,null);
+      return {type:"answer",text:L(lang,
+        "Great — that points to the previous port/connection rather than the mouse itself. If the problem returns, tell me and we'll continue from here.",
+        "Отлично — значит, проблема скорее была в предыдущем порте/соединении, а не в самой мыши. Если проблема вернётся, напиши — продолжим отсюда.",
+        "Hyvä — ongelma oli todennäköisemmin aiemmassa portissa/yhteydessä kuin itse hiiressä. Jos ongelma palaa, jatketaan tästä."
+      )};
+    }
+    if(no){
+      M().fact("mouseTestResult","failed");
+      return ask(L(lang,
+        "Okay — it still doesn't work. Next, try this mouse on another computer if possible, or try another mouse on this PC. Which of those can you test?",
+        "Хорошо — мышь всё ещё не работает. Следующий шаг: если возможно, проверь эту мышь на другом компьютере или подключи другую мышь к этому ПК. Что из этого ты можешь проверить?",
+        "Selvä — hiiri ei vieläkään toimi. Seuraavaksi kokeile tätä hiirtä toisessa tietokoneessa tai toista hiirtä tässä koneessa. Kumman voit testata?"
+      ),"mouse_cross_test","choice",mem.lastMatch||{category:"mouse",issue:"not_working",id:null});
+    }
+  }
+
+  // "What?" / "What do you mean?" should clarify ANITA's last question,
+  // not fall into a generic fallback.
+  if(/^(what|what\?|what do you mean|huh|sorry what|что|что\?|в смысле|не понял|не поняла|mitä|mitä\?|mitä tarkoitat)$/.test(low)){
+    const q=mem.lastQuestion;
+    if(q==="mouse_scope"){
+      return {type:"answer",text:L(lang,
+        "I mean: does the mouse stop working only inside that game/program, or does it also stop working on the Windows desktop?",
+        "Я имею в виду: мышь перестаёт работать только в этой игре/программе или также на рабочем столе Windows?",
+        "Tarkoitan: lakkaako hiiri toimimasta vain siinä pelissä/ohjelmassa vai myös Windowsin työpöydällä?"
+      )};
+    }
+    if(q==="mouse_connection_type"){
+      return {type:"answer",text:L(lang,
+        "I’m asking how the mouse connects: USB cable, Bluetooth, or wireless with a small USB receiver.",
+        "Я спрашиваю, как подключена мышь: USB-кабелем, через Bluetooth или беспроводно через маленький USB-приёмник.",
+        "Kysyn, miten hiiri yhdistyy: USB-kaapelilla, Bluetoothilla vai pienellä USB-vastaanottimella."
+      )};
+    }
+    if(q==="mouse_usb_port_test"){
+      return {type:"answer",text:L(lang,
+        "Try moving the mouse's USB plug to another USB port on the computer. Then tell me whether the cursor moves.",
+        "Переставь USB-штекер мыши в другой USB-порт компьютера и скажи, начал ли двигаться курсор.",
+        "Siirrä hiiren USB-liitin tietokoneen toiseen USB-porttiin ja kerro liikkuuko osoitin."
+      )};
+    }
+    return {type:"answer",text:L(lang,
+      "I mean the last question I asked. Tell me which part is unclear and I’ll say it more simply.",
+      "Я имею в виду мой последний вопрос. Скажи, какая часть непонятна, и я объясню проще.",
+      "Tarkoitan viimeistä kysymystäni. Kerro mikä kohta on epäselvä, niin selitän sen yksinkertaisemmin."
+    )};
+  }
+
   // Frequency replies remain attached to the current question.
-  const low=t.toLowerCase();
   if(/^(every time|always|каждый раз|всегда|joka kerta|aina)$/.test(low)){
     M().fact("frequency","always");
     return {type:"answer",text:L(lang,
@@ -233,6 +322,6 @@ function follow(text,lang){
   return null;
 }
 
-window.ANITA_RESPONSES={version:"18.1",first,follow};
-console.log("[ANITA v18.1] Response module loaded");
+window.ANITA_RESPONSES={version:"18.2",first,follow};
+console.log("[ANITA v18.2] Response module loaded");
 })();
