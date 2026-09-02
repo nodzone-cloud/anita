@@ -122,6 +122,9 @@ function advance(c,lang,prefix){
  return answer(stepPrompt(c,lang,S.step,prefix||""),false);
 }
 function follow(text,lang){
+ if(window.ANITA_CONTEXT && window.ANITA_CONTEXT.update){
+   window.ANITA_CONTEXT.update(text,lang||S.language||"en");
+ }
  if(!S.active)return null;
  const c=current(); if(!c){reset();return null;}
  lang=lang||S.language||"en"; S.language=lang;
@@ -165,6 +168,6 @@ function follow(text,lang){
   `Tallensin tämän tuloksen diagnostiseksi tiedoksi: “${text}”. Ennen seuraavan haaran valintaa: poistuiko alkuperäinen ongelma tämän tarkistuksen jälkeen vai jatkuuko se edelleen?`
  ),false);
 }
-window.ANITA_DIAGNOSTICS={version:"20.0",state:S,start,follow,reset,current};
+window.ANITA_DIAGNOSTICS={version:"20.1",state:S,start,follow,reset,current};
 console.log("[ANITA v20] Diagnostic conversation engine loaded");
 })();

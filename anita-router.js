@@ -7,7 +7,7 @@
 if(!window.ANITA_MEMORY||!window.ANITA_INTENTS||!window.ANITA_RESPONSES){console.error("[ANITA v20.0] Missing module");return;}
 if(!window.ANITA_V7||typeof window.ANITA_V7.handle!=="function"){console.error("[ANITA v20.0] Legacy ANITA_V7 missing");return;}
 const legacy=window.ANITA_V7.handle.bind(window.ANITA_V7), M=window.ANITA_MEMORY, I=window.ANITA_INTENTS, R=window.ANITA_RESPONSES;
-const K=window.ANITA_SUPPORT_KNOWLEDGE, D=window.ANITA_DIAGNOSTICS;
+const K=window.ANITA_SUPPORT_KNOWLEDGE, D=window.ANITA_DIAGNOSTICS, C=window.ANITA_CONTEXT;
 function explicitTextLanguage(text){
  const s=String(text||"").trim();
  if(/[а-яё]/i.test(s)) return "ru";
@@ -83,7 +83,9 @@ function strongNewProblem(text,cat){
 function detectIssue(text,cat){const t=norm(text);if(/\b(not detected|does not detect|cannot find|не видит|не определяется|ei tunnista|ei löydä)\b/.test(t))return"not_detected";if(/\b(disconnect|отключ|yhteys katke)\b/.test(t))return"disconnects";if(/\b(no picture|black screen|no signal|нет изображения|черный экран|чёрный экран|ei kuvaa|musta ruutu)\b/.test(t))return"no_picture";if(/\b(not work|does not work|stopped|не работает|перестал|ei toimi|lakkasi)\b/.test(t))return"not_working";return cat+"_issue";}
 function synth(text,lang,cat){return{id:null,ru:text,en:text,fi:text,lang,category:cat,issue:detectIssue(text,cat),confidence:.94,match:"device-guard"};}
 function route(text,l){
- const lang=language(text,l); M.state.language=lang; M.push("user",text); const cat=detectCategory(text);
+ const lang=language(text,l); M.state.language=lang; M.push("user",text);
+ if(C && C.update) C.update(text,lang);
+ const cat=detectCategory(text);
 
  // ANITA v20: if a 400-case diagnostic conversation is active, interpret the user's
  // result as evidence before any global intent matcher can steal the message.
@@ -112,6 +114,13 @@ function route(text,l){
  // Explicit category guard.
  if(cat) return R.first(synth(text,lang,cat),lang);
  // Legacy only when there is no active v19 question and no v19 category.
+ if(C && C.shouldHandle && C.shouldHandle()){
+   const cq=C.nextQuestion(lang);
+   if(cq){
+     M.push("bot",cq);
+     return {text:cq,handled:true,done:false};
+   }
+ }
  return legacy(text,lang);
 }
 window.ANITA_V7.handle=route;

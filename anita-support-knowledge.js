@@ -44,6 +44,6 @@ function find(text){
  return null;
 }
 function get(id){return CASES.find(c=>c.id===Number(id))||null;}
-window.ANITA_SUPPORT_KNOWLEDGE={version:"20.0",cases:CASES,normalize,tokens,similarity,find,get};
+window.ANITA_SUPPORT_KNOWLEDGE={version:"20.1",cases:CASES,normalize,tokens,similarity,find,get};
 console.log("[ANITA v20] Support knowledge loaded:",CASES.length,"cases");
 })();
