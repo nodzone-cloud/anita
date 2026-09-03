@@ -1,4 +1,4 @@
-/* ANITA v26.0 — PUBLIC COMMUNITY COUNTER + ONE-TAP HEART LIKE
+/* ANITA v26.0.1 — PUBLIC COMMUNITY COUNTER + ONE-TAP HEART LIKE
    Requires a shared backend endpoint. Configure:
    window.ANITA_COMMUNITY_ENDPOINT = "https://YOUR-WORKER.workers.dev";
 */
@@ -8,8 +8,12 @@
 const root=document.getElementById("anitaDemoRoot");
 if(!root) return;
 
-const BASE="https://nodzone-cloud.github.io/anita/";
-const HEART=BASE+"anita-like.png?v=26.0";
+const HEART = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <circle cx="50" cy="50" r="49" fill="#f25f82"/>
+  <path d="M50 76C42 68 23 55 23 38c0-10 7-17 17-17 6 0 10 3 14 8 4-5 9-8 15-8 10 0 18 7 18 17 0 17-20 31-37 38z" fill="#ffd6e1"/>
+  <path d="M54 29c4-5 9-8 15-8 10 0 18 7 18 17 0 17-20 31-37 38 11-11 23-25 23-39 0-5-1-9-4-12-6 0-11 2-15 4z" fill="#ffb9cf" opacity=".82"/>
+</svg>`);
 const ENDPOINT=String(window.ANITA_COMMUNITY_ENDPOINT||"").replace(/\/+$/,"");
 const VISIT_KEY="anita_global_visit_v1";
 const LIKE_KEY="anita_global_like_v1";
@@ -49,9 +53,18 @@ function css(){
     #anitaDemoRoot .anitaCommunityBar{
       font-family:Arial,Helvetica,sans-serif;color:#111
     }
+    #anitaDemoRoot .anitaLayout{position:relative}
     #anitaDemoRoot .anitaCommunitySide{
-      display:none;align-self:center;position:sticky;top:18px
+      display:none;
+      position:absolute;
+      width:150px;
+      top:50%;
+      transform:translateY(-50%);
+      z-index:12;
+      pointer-events:auto
     }
+    #anitaDemoRoot .anitaCommunitySide.left{left:-166px}
+    #anitaDemoRoot .anitaCommunitySide.right{right:-166px}
     #anitaDemoRoot .anitaCommunityCard{
       background:#fff;border:1px solid #ddd;border-radius:18px;padding:14px 12px;
       box-shadow:0 12px 34px rgba(0,0,0,.08);text-align:center
@@ -81,13 +94,18 @@ function css(){
     }
     #anitaDemoRoot .anitaCommunityBar .anitaMiniLike img{width:25px;height:25px;object-fit:contain}
     #anitaDemoRoot .anitaCommunityBar .anitaMiniLike.liked{opacity:.72}
-    @media(min-width:1600px){
-      #anitaDemoRoot .anitaLayout{
-        width:min(1770px,100%);
-        grid-template-columns:140px minmax(620px,1.18fr) minmax(390px,.82fr) 140px
-      }
+    @media(min-width:1580px){
       #anitaDemoRoot .anitaCommunitySide{display:block}
       #anitaDemoRoot .anitaCommunityBar{display:none}
+    }
+    @media(min-width:1580px) and (max-width:1699px){
+      #anitaDemoRoot .anitaCommunitySide{
+        width:128px
+      }
+      #anitaDemoRoot .anitaCommunitySide.left{left:-138px}
+      #anitaDemoRoot .anitaCommunitySide.right{right:-138px}
+      #anitaDemoRoot .anitaCommunityCard{padding:12px 9px}
+      #anitaDemoRoot .anitaCommunityNumber{font-size:19px}
     }
     @media(max-width:820px){
       #anitaDemoRoot .anitaCommunityBar{font-size:10px;gap:8px}
@@ -214,6 +232,6 @@ function renderLabelsOnly(){
 
 inject();
 registerVisit();
-window.ANITA_COMMUNITY={version:"26.0",refresh,like};
-console.log("[ANITA v26.0] Community stats UI loaded");
+window.ANITA_COMMUNITY={version:"26.0.1",refresh,like};
+console.log("[ANITA v26.0.1] Community stats UI loaded");
 })();
