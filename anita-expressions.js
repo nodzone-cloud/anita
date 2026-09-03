@@ -1,4 +1,4 @@
-/* ANITA v25.1.1 — Expression / Visual Reaction Layer (load-safe patch)
+/* ANITA v26.0 — Expression / Visual Reaction Layer (load-safe patch)
    Fixes black portrait flash when focus image is not yet loaded.
    - Preloads both reaction images.
    - Never reveals the portrait overlay until the image has actually loaded.
@@ -8,12 +8,13 @@
 (function(){
   "use strict";
 
-  const VERSION = "25.1.1";
+  const VERSION = "26.0";
   const BASE = "https://nodzone-cloud.github.io/anita/";
   const HAPPY_IMAGE = BASE + "anita-happy.png?v=" + VERSION;
   const FOCUS_IMAGE = BASE + "anita-focus.png?v=" + VERSION;
 
   let pendingHappyImage = false;
+  let pendingFocusChatImage = false;
   let focusTimer = null;
   let focusPreload = null;
   let happyPreload = null;
@@ -120,11 +121,22 @@
     focusPreload.src = FOCUS_IMAGE;
   }
 
-  function appendHappyImage(messageNode){
-    if(!messageNode || messageNode.querySelector(".anitaExpressionChatImage")) return;
+  function isMobileChat(){
+    try{
+      return window.matchMedia && window.matchMedia("(max-width:820px)").matches;
+    }catch(_){
+      return window.innerWidth <= 820;
+    }
+  }
+
+  function appendChatImage(messageNode, src, alt, extraClass){
+    if(!messageNode) return;
+    const marker = extraClass || "anitaExpressionChatImage";
+    if(messageNode.querySelector("." + marker)) return;
+
     const img = document.createElement("img");
-    img.className = "anitaExpressionChatImage";
-    img.alt = "ANITA smiling, winking and giving a thumbs up";
+    img.className = "anitaExpressionChatImage " + marker;
+    img.alt = alt;
     img.loading = "eager";
     img.decoding = "async";
     img.style.display = "none";
@@ -136,8 +148,26 @@
       }catch(_){ }
     };
     img.onerror = function(){ this.remove(); };
-    img.src = HAPPY_IMAGE;
+    img.src = src;
     messageNode.appendChild(img);
+  }
+
+  function appendHappyImage(messageNode){
+    appendChatImage(
+      messageNode,
+      HAPPY_IMAGE,
+      "ANITA smiling, winking and giving a thumbs up",
+      "anitaHappyChatImage"
+    );
+  }
+
+  function appendFocusImage(messageNode){
+    appendChatImage(
+      messageNode,
+      FOCUS_IMAGE,
+      "ANITA focused on a difficult computer problem",
+      "anitaFocusChatImage"
+    );
   }
 
   function ensurePortraitExpression(){
@@ -203,10 +233,19 @@
           inspect.forEach(function(msg){
             if(msg.classList.contains("user")){
               const txt = msg.textContent || "";
-              if(frustration(txt) || problemSignal(txt)) showFocusedPortrait(2000);
-            }else if(msg.classList.contains("bot") && pendingHappyImage){
-              pendingHappyImage = false;
-              appendHappyImage(msg);
+              if(frustration(txt) || problemSignal(txt)){
+                showFocusedPortrait(2000);
+                if(isMobileChat()) pendingFocusChatImage = true;
+              }
+            }else if(msg.classList.contains("bot")){
+              if(pendingHappyImage){
+                pendingHappyImage = false;
+                appendHappyImage(msg);
+              }
+              if(pendingFocusChatImage && isMobileChat()){
+                pendingFocusChatImage = false;
+                appendFocusImage(msg);
+              }
             }
           });
         });
@@ -224,7 +263,10 @@
         pendingHappyImage = true;
         return {type:"answer", text:happyReply(l)};
       }
-      if(frustration(text) || problemSignal(text)) showFocusedPortrait(2000);
+      if(frustration(text) || problemSignal(text)){
+        showFocusedPortrait(2000);
+        if(isMobileChat()) pendingFocusChatImage = true;
+      }
       return previous(text,l);
     };
     window.ANITA_V7.__expressionLayer25_1_1 = true;
@@ -248,5 +290,5 @@
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",init,{once:true});
   else init();
 
-  console.log("[ANITA v25.1.1] Expression Visual Layer loaded");
+  console.log("[ANITA v26.0] Expression Visual Layer loaded");
 })();
