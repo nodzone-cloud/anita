@@ -4959,7 +4959,7 @@ window.ANITA_V12_5={
 console.log("[ANITA v12.5] Observation vs Cause Engine loaded");
 })();
 
-/* ================= ANITA v12.6 MENU MEMORY FIX =================
+/* ================= ANITA v26.1.1 MENU MEMORY + NUMBERED CHOICE FIX =================
    Remembers numbered clarification menus.
    "7" and "Something else" remain attached to the menu that ANITA asked.
    Also supports 1..6 for the generic weird/glitch and browser menus.
@@ -4988,23 +4988,39 @@ function R(l,en,ru,fi){return l==="ru"?ru:l==="fi"?fi:en;}
 
 function detectMenu(answerText){
  const t=clean(answerText);
+ // v26.1.1: detect the same clarification menu in RU / EN / FI.
  if(
-   t.includes("screen graphics problem") &&
-   t.includes("programs freeze") &&
-   t.includes("computer is slow") &&
-   t.includes("something else")
+   (t.includes("screen graphics problem") && t.includes("programs freeze") && t.includes("computer is slow")) ||
+   (t.includes("проблема с экраном графикой") && t.includes("программы зависают") && t.includes("компьютер работает медленно")) ||
+   (t.includes("мигает экран артефакты") && t.includes("программы зависают или закрываются") && t.includes("windows тормозит")) ||
+   (t.includes("näyttö grafiikka") && t.includes("ohjelmat jumittuvat") && t.includes("windows hidastuu"))
  ) return "weird";
  if(
-   t.includes("browser does not open") &&
-   t.includes("browser opens but pages do not load") &&
-   t.includes("something else")
+   (t.includes("browser does not open") && t.includes("browser opens but pages do not load")) ||
+   (t.includes("браузер вообще не открывается") && t.includes("браузер открывается но страницы не загружаются")) ||
+   (t.includes("selain ei avaudu") && t.includes("selain avautuu mutta sivut eivät lataudu"))
  ) return "browser";
  return null;
 }
 
 function choice(text){
  const t=clean(text);
- if(/^[1-7]$/.test(t)) return Number(t);
+ let m=t.match(/^(?:вариант\s*)?([1-7])(?:\s*вариант)?$/);
+ if(m) return Number(m[1]);
+ m=t.match(/^([1-7])\s*(?:option|choice|вариант|варианта|вариантом)$/);
+ if(m) return Number(m[1]);
+ m=t.match(/^(?:option|choice|вариант)\s*([1-7])$/);
+ if(m) return Number(m[1]);
+ const words={
+   "первый":1,"первое":1,"первая":1,"first":1,"ensimmäinen":1,
+   "второй":2,"второе":2,"вторая":2,"second":2,"toinen":2,
+   "третий":3,"третье":3,"третья":3,"third":3,"kolmas":3,
+   "четвертый":4,"четвёртый":4,"четвертое":4,"четвёртое":4,"fourth":4,"neljäs":4,
+   "пятый":5,"пятое":5,"fifth":5,"viides":5,
+   "шестой":6,"шестое":6,"sixth":6,"kuudes":6,
+   "седьмой":7,"седьмое":7,"seventh":7,"seitsemäs":7
+ };
+ if(words[t]) return words[t];
  if(["something else","something different","other","другое","что то другое","что-то другое","jotain muuta","muu"].includes(t)) return 7;
  return null;
 }
@@ -5127,8 +5143,8 @@ V.handle=function(text,l){
  return r;
 };
 
-window.ANITA_V12_6={version:"12.6"};
-console.log("[ANITA v12.6] Menu Memory Fix loaded");
+window.ANITA_V12_6={version:"26.1.1"};
+console.log("[ANITA v26.1.1] Menu Memory + Numbered Choice Fix loaded");
 })();
 
 /* ================= ANITA v12.7 CONTINUITY + ESCALATION ENGINE =================

@@ -1,4 +1,4 @@
-/* ANITA v25.0 — SEMANTIC QUICK CHOICE UI
+/* ANITA v26.1.1 — SEMANTIC QUICK CHOICE UI
    Adds buttons whenever ANITA asks a finite-choice question.
    Free text and voice input always remain available.
 */
@@ -96,14 +96,16 @@ function semanticKey(text){
 }
 function numberedChoices(text,l){
   const t=String(text||"");
-  if(!/(что именно происходит|выберите|choose|what exactly happens|valitse|mitä tarkalleen tapahtuu)/i.test(t))return null;
+  /* v26.1.1: generic numbered clarification menus, including RU/EN/FI
+     "Что ближе?", "Which is closest?", "Mikä sopii parhaiten?" and 1..7. */
+  if(!/(что ближе|что именно происходит|выберите|какой вариант|which is closest|what exactly happens|choose|select|mikä sopii parhaiten|mitä tarkalleen tapahtuu|valitse)/i.test(t))return null;
   const lines=t.split(/\n+/).map(x=>x.trim()).filter(Boolean);
   const opts=[];
   for(const line of lines){
-    const m=line.match(/^\s*([1-6])[\).]\s*(.+?)\s*$/);
-    if(m)opts.push(C(m[2],m[2],"option_"+m[1]));
+    const m=line.match(/^\s*([1-7])[\).]\s*(.+?)\s*$/);
+    if(m)opts.push(C(m[2],m[1],"option_"+m[1]));
   }
-  return opts.length>=2&&opts.length<=6?opts:null;
+  return opts.length>=2&&opts.length<=7?opts:null;
 }
 function inferChoices(text){
   const l=lang();
@@ -159,8 +161,8 @@ if(chat){
 }
 
 window.ANITA_CHOICES={
-  version:"23.0",sets:SETS,inferChoices,semanticKey,stateKey,submit,renderCustom,
+  version:"26.1.1",sets:SETS,inferChoices,semanticKey,stateKey,submit,renderCustom,
   option:C
 };
-console.log("[ANITA v25.0] Semantic Quick Choice UI loaded");
+console.log("[ANITA v26.1.1] Semantic Quick Choice UI loaded");
 })();
