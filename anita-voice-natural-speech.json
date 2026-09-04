@@ -1,0 +1,123 @@
+{
+  "meta": {
+    "name": "ANITA Voice Natural Speech Layer",
+    "version": "26.1.3",
+    "languages": [
+      "ru",
+      "en",
+      "fi"
+    ],
+    "purpose": "Interpret spontaneous, self-correcting and uncertain speech before normal ANITA intent routing."
+  },
+  "markers": {
+    "self_correction": {
+      "ru": [
+        "точнее",
+        "вернее",
+        "нет, точнее",
+        "я хотел сказать",
+        "я имею в виду",
+        "скорее"
+      ],
+      "en": [
+        "actually",
+        "more precisely",
+        "I mean",
+        "rather",
+        "no, I mean"
+      ],
+      "fi": [
+        "tarkemmin",
+        "siis",
+        "tarkoitan",
+        "oikeastaan",
+        "pikemminkin"
+      ]
+    },
+    "rephrase": {
+      "ru": [
+        "то есть",
+        "другими словами",
+        "в смысле"
+      ],
+      "en": [
+        "that is",
+        "in other words",
+        "what I mean is"
+      ],
+      "fi": [
+        "eli",
+        "toisin sanoen"
+      ]
+    },
+    "uncertainty": {
+      "ru": [
+        "как будто",
+        "вроде",
+        "кажется",
+        "наверное",
+        "похоже",
+        "не уверен",
+        "не знаю"
+      ],
+      "en": [
+        "like",
+        "seems",
+        "maybe",
+        "probably",
+        "not sure",
+        "I don't know"
+      ],
+      "fi": [
+        "ikään kuin",
+        "ehkä",
+        "näyttää siltä",
+        "en ole varma",
+        "en tiedä"
+      ]
+    },
+    "fillers": {
+      "ru": [
+        "ну",
+        "вот",
+        "ээ",
+        "эм",
+        "типа",
+        "как бы"
+      ],
+      "en": [
+        "well",
+        "um",
+        "uh",
+        "like",
+        "you know"
+      ],
+      "fi": [
+        "no",
+        "öö",
+        "tuota",
+        "niinku"
+      ]
+    }
+  },
+  "rules": [
+    "Later explicit self-correction may replace an earlier conflicting phrase.",
+    "Rephrasing adds evidence unless it explicitly corrects previous evidence.",
+    "Uncertainty lowers confidence but does not erase concrete entities or observations.",
+    "Fillers carry little semantic weight and must not become intents.",
+    "Keep already-known device/topic facts when asking for clarification.",
+    "Prefer the latest concrete visual observation over an earlier vague description.",
+    "If two plausible meanings remain, summarize the best interpretation and ask for confirmation.",
+    "If speech is too contradictory, ask only for the missing fact instead of restarting the conversation."
+  ],
+  "confirmation_thresholds": {
+    "accept": 0.82,
+    "confirm": 0.56,
+    "clarify": 0.0
+  },
+  "friendly_clarification": {
+    "ru": "Кажется, я уловила проблему, но в описании несколько мыслей смешались вместе 😄 Скажи ещё раз одним предложением, что именно произошло на экране. Я всё-таки тоже полу-человек 😁❤️",
+    "en": "I think I caught the problem, but a few thoughts got mixed together 😄 Tell me once more in one sentence what exactly happened on the screen. I'm still kind of half-human too 😁❤️",
+    "fi": "Luulen ymmärtäneeni ongelman, mutta muutama ajatus meni kuvauksessa päällekkäin 😄 Kerro vielä yhdellä lauseella, mitä näytöllä tarkalleen tapahtui. Olenhan minäkin vähän puoliksi ihminen 😁❤️"
+  }
+}

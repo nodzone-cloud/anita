@@ -111,7 +111,17 @@ function route(text,l){
    }
  }
 
+ // v26.1.3 — spontaneous voice/self-correction analysis.
+ const VN=window.ANITA_VOICE_NATURAL;
+ const voiceAnalysis=(VN && typeof VN.analyze==="function") ? VN.analyze(text,lang) : null;
+
+ // Keep the complete utterance, but if the speaker explicitly corrected themselves,
+ // feed the corrected/later clause once more so newer evidence can override vague older evidence.
  if(C && C.update) C.update(text,lang);
+ if(voiceAnalysis && voiceAnalysis.hasCorrection && voiceAnalysis.preferredText &&
+    voiceAnalysis.preferredText!==String(text||"")){
+   C.update(voiceAnalysis.preferredText,lang);
+ }
 
  // v26.1.2: resolve finite context-menu replies (1..7 / first / вариант 1)
  // before the generic "repeat the pending question" branch can steal them.
@@ -240,6 +250,6 @@ function route(text,l){
  return legacy(text,lang);
 }
 window.ANITA_V7.handle=route;
-window.ANITA_V19={version:"26.1.2",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
-console.log("[ANITA v26.1.2] Semantic-aware Universal Context Router loaded");
+window.ANITA_V19={version:"26.1.3",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
+console.log("[ANITA v26.1.3] Semantic-aware Universal Context Router loaded");
 })();
