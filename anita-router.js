@@ -111,6 +111,22 @@ function route(text,l){
    }
  }
 
+ // v26.1.4 — ANITA product/self conversation has priority over accidental IT keyword matches.
+ const PC=window.ANITA_PRODUCT_CONVERSATION;
+ if(PC){
+   let lastBot="";
+   try{
+     const hist=(M && typeof M.get==="function")?M.get():[];
+     if(Array.isArray(hist)){ const b=[...hist].reverse().find(x=>x && (x.role==="bot"||x.role==="assistant")); lastBot=b?.text||""; }
+   }catch(e){}
+   const pr=(typeof PC.direct==="function" && PC.direct(text,lang)) ||
+            (typeof PC.follow==="function" && PC.follow(text,lang,lastBot));
+   if(pr && pr.text){
+     if(M && M.push) M.push("bot",pr.text);
+     return {text:pr.text,handled:true,done:false,productConversation:true,topic:pr.topic};
+   }
+ }
+
  // v26.1.3 — spontaneous voice/self-correction analysis.
  const VN=window.ANITA_VOICE_NATURAL;
  const voiceAnalysis=(VN && typeof VN.analyze==="function") ? VN.analyze(text,lang) : null;
@@ -250,6 +266,6 @@ function route(text,l){
  return legacy(text,lang);
 }
 window.ANITA_V7.handle=route;
-window.ANITA_V19={version:"26.1.3",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
-console.log("[ANITA v26.1.3] Semantic-aware Universal Context Router loaded");
+window.ANITA_V19={version:"26.1.4",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
+console.log("[ANITA v26.1.4] Semantic-aware Universal Context Router loaded");
 })();
