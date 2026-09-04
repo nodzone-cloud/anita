@@ -50,6 +50,7 @@ function detectDevice(t){
     ["disk", /\bssd\b|\bhdd\b|\bnvme\b|\bdisk\b|\bdrive\b|диск|накопител|levy|asema/i],
     ["bluetooth", /\bbluetooth\b|блютуз/i],
     ["usb_device", /\busb\b.*\b(device|stick|drive)\b|флешк|usb.?устрой|muistitik/i],
+    ["browser", /\b(browser|chrome|edge|firefox|opera|brave)\b|браузер|хром|эдж|selain/i],
     ["computer", /\bcomputer\b|\bpc\b|компьютер|\bпк\b|tietokone/i],
     ["laptop", /\blaptop\b|\bnotebook\b|ноутбук|kannettava/i]
   ];
@@ -66,6 +67,16 @@ function detectSymptom(t){
   if(has(t, /\bblack screen\b|черн(ый|ого) экран|pimeä näyttö/i)) return "black_screen";
   if(has(t, /\bnot detected\b|\bnot recognized\b|не видит|не определя|ei tunnista/i)) return "not_detected";
   if(has(t, /\bcrash|crashes|crashed|вылет|kaatu/i)) return "crashing";
+
+  // v26.1.2 — vague "glitchy / acting weird" should trigger a guided symptom menu,
+  // not an endless repeat of "what exactly happens?".
+  if(has(t, /\b(glitch|glitchy|buggy|acting weird|acts weird|weird behaviour|weird behavior)\b|глюч|чудит|вед[её]т себя странно|странно работает|temppuilee|toimii oudosti/i))
+    return "unstable";
+
+  // Browser suddenly minimizing while Explorer/folder appears is a concrete symptom.
+  if(has(t, /(?:браузер|chrome|edge|firefox|selain).{0,80}(?:сворач|минимиз|minimi|pienenee).{0,120}(?:папк|проводник|file explorer|folder|resurssienhallinta)|(?:папк|проводник|file explorer|folder|resurssienhallinta).{0,120}(?:открыва|opens?|avautuu).{0,120}(?:браузер|chrome|edge|firefox|selain)/i))
+    return "browser_window_switch";
+
   return null;
 }
 
@@ -153,6 +164,7 @@ function deviceName(lang){
     disk:{en:"drive",ru:"диск",fi:"levy"},
     bluetooth:{en:"Bluetooth device",ru:"Bluetooth-устройство",fi:"Bluetooth-laite"},
     usb_device:{en:"USB device",ru:"USB-устройство",fi:"USB-laite"},
+    browser:{en:"browser",ru:"браузер",fi:"selain"},
     computer:{en:"computer",ru:"компьютер",fi:"tietokone"},
     laptop:{en:"laptop",ru:"ноутбук",fi:"kannettava"}
   };
@@ -164,9 +176,136 @@ function isPeripheral(){
   return ["keyboard","mouse","printer","scanner","microphone","webcam","headphones","speakers","usb_device","bluetooth"].includes(state.device);
 }
 
+
+/* v26.1.2 — consume answers to the guided "computer is glitchy" menu. */
+function choiceNumber(text){
+  const t=norm(text);
+  let m=t.match(/^(?:вариант\s*)?([1-7])(?:\s*вариант)?$/);
+  if(!m) m=t.match(/^(?:option|choice)\s*([1-7])$/);
+  if(!m) m=t.match(/^([1-7])(?:\s*(?:option|choice|вариант))?$/);
+  const words={
+    "первый":1,"первое":1,"первая":1,"first":1,"ensimmäinen":1,
+    "второй":2,"второе":2,"вторая":2,"second":2,"toinen":2,
+    "третий":3,"третье":3,"третья":3,"third":3,"kolmas":3,
+    "четвертый":4,"четвертое":4,"четвёртый":4,"четвёртое":4,"fourth":4,"neljäs":4,
+    "пятый":5,"пятое":5,"fifth":5,"viides":5,
+    "шестой":6,"шестое":6,"sixth":6,"kuudes":6,
+    "седьмой":7,"седьмое":7,"seventh":7,"seitsemäs":7
+  };
+  return m ? Number(m[1]) : (words[t]||null);
+}
+
+function consumePending(text,lang){
+  if(state.lastQuestion!=="symptom_choice_menu") return null;
+  const n=choiceNumber(text);
+  if(!n) return null;
+
+  state.lastQuestion=null;
+  if(n===1){ state.symptom="display_problem"; state.device="monitor"; }
+  if(n===2){ state.symptom="freezing"; }
+  if(n===3){ state.symptom="slow"; }
+  if(n===4){ state.symptom="popups"; }
+  if(n===5){ state.symptom="input_problem"; }
+  if(n===6){ state.symptom="shell_problem"; }
+  if(n===7){ state.symptom="other"; }
+
+  return {choice:n,snapshot:snapshot()};
+}
+
 function nextQuestion(lang){
   lang=lang||state.language||"en";
   const dev=deviceName(lang);
+
+  // v26.1.2 — concrete browser behaviour: acknowledge what the user actually described.
+  if(state.device==="browser" && state.symptom==="browser_window_switch"){
+    state.lastQuestion="browser_window_switch_scope";
+    return L(lang,
+      "I understand the concrete symptom now: the browser suddenly minimizes and a File Explorer/folder window appears. First I need one detail: does the browser stay open minimized on the taskbar, or does it close completely?",
+      "Теперь я поняла конкретный симптом: браузер внезапно сворачивается, а вместо него открывается окно Проводника/папка. Сначала уточню одно: браузер остаётся открытым свёрнутым на панели задач или полностью закрывается?",
+      "Nyt ymmärrän oireen: selain pienenee yhtäkkiä ja Resurssienhallinta/kansio avautuu. Jääkö selain tehtäväpalkkiin pienennettynä vai sulkeutuuko se kokonaan?"
+    );
+  }
+
+  // v26.1.2 — vague "computer glitches" gets a finite menu instead of repeated generic wording.
+  if((state.device==="computer" || state.device==="laptop") && state.symptom==="unstable"){
+    state.lastQuestion="symptom_choice_menu";
+    return L(lang,
+`Which is closest?
+1. Screen/graphics problem
+2. Programs freeze
+3. Computer is slow
+4. Errors/pop-up windows
+5. Mouse/keyboard
+6. File Explorer/taskbar/Start
+7. Something else`,
+`Что ближе?
+1. Проблема с экраном/графикой
+2. Программы зависают
+3. Компьютер работает медленно
+4. Ошибки/всплывающие окна
+5. Мышь/клавиатура
+6. Проводник/панель задач/Пуск
+7. Другое`,
+`Mikä sopii parhaiten?
+1. Näyttö/grafiikka
+2. Ohjelmat jumittuvat
+3. Tietokone on hidas
+4. Virheet/ponnahdusikkunat
+5. Hiiri/näppäimistö
+6. Resurssienhallinta/tehtäväpalkki/Käynnistä
+7. Jotain muuta`
+    );
+  }
+
+  if(state.symptom==="display_problem"){
+    state.lastQuestion="display_problem_detail";
+    return L(lang,
+      "What exactly happens on the screen: flickering, artifacts, black screen, or “No signal”?",
+      "Что именно происходит с экраном: мерцает, появляются артефакты, становится чёрным или пишет «Нет сигнала»?",
+      "Mitä näytöllä tapahtuu: välkkyykö se, näkyykö artefakteja, meneekö se mustaksi vai näkyykö “No signal”?"
+    );
+  }
+  if(state.symptom==="freezing"){
+    state.lastQuestion="freeze_scope";
+    return L(lang,
+      "Do only individual programs freeze, or does the whole computer stop responding?",
+      "Зависают только отдельные программы или перестаёт отвечать весь компьютер?",
+      "Jäätyvätkö vain yksittäiset ohjelmat vai lakkaako koko tietokone vastaamasta?"
+    );
+  }
+  if(state.symptom==="popups"){
+    state.lastQuestion="popup_detail";
+    return L(lang,
+      "Please type the exact error/pop-up text you see, or send a screenshot.",
+      "Напиши точный текст ошибки/всплывающего окна, которое появляется, или пришли скриншот.",
+      "Kirjoita näkyvän virheen/ponnahdusikkunan tarkka teksti tai lähetä kuvakaappaus."
+    );
+  }
+  if(state.symptom==="input_problem"){
+    state.lastQuestion="input_detail";
+    return L(lang,
+      "Which one behaves incorrectly — mouse or keyboard — and what exactly happens?",
+      "Что именно работает неправильно — мышь или клавиатура — и что с ней происходит?",
+      "Kumpi toimii väärin — hiiri vai näppäimistö — ja mitä tarkalleen tapahtuu?"
+    );
+  }
+  if(state.symptom==="shell_problem"){
+    state.lastQuestion="shell_detail";
+    return L(lang,
+      "Which part has the problem: File Explorer, taskbar, Start menu, or several of them?",
+      "С чем именно проблема: Проводник, панель задач, меню Пуск или сразу несколько?",
+      "Missä ongelma on: Resurssienhallinnassa, tehtäväpalkissa, Käynnistä-valikossa vai useassa niistä?"
+    );
+  }
+  if(state.symptom==="other"){
+    state.lastQuestion="symptom_other_free_text";
+    return L(lang,
+      "Okay. Describe exactly what you notice in your own words. I will keep the computer as the current device and won't make you start over.",
+      "Хорошо. Опиши своими словами, что именно ты замечаешь. Компьютер я уже запомнила как текущее устройство и не буду заставлять тебя начинать заново.",
+      "Selvä. Kuvaile omin sanoin mitä huomaat. Muistan tietokoneen nykyisenä laitteena, eikä sinun tarvitse aloittaa alusta."
+    );
+  }
+
 
   // We already know DEVICE + not-working + during-game.
   // The missing discriminating fact is SCOPE, not "what happened?".
@@ -259,15 +398,16 @@ function reset(){
 }
 
 window.ANITA_CONTEXT={
-  version:"21.0",
+  version:"26.1.2",
   state,
   update,
   snapshot,
   nextQuestion,
+  consumePending,
   rememberEvidence,
   shouldHandle,
   reset
 };
 
-console.log("[ANITA v21.0] Semantic Context Engine loaded");
+console.log("[ANITA v26.1.2] Semantic Context Engine loaded");
 })();

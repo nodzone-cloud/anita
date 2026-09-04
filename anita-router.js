@@ -112,6 +112,31 @@ function route(text,l){
  }
 
  if(C && C.update) C.update(text,lang);
+
+ // v26.1.2: resolve finite context-menu replies (1..7 / first / вариант 1)
+ // before the generic "repeat the pending question" branch can steal them.
+ if(C && typeof C.consumePending==="function"){
+   const consumed=C.consumePending(text,lang);
+   if(consumed){
+     const cq=C.nextQuestion(lang);
+     if(cq){
+       M.push("bot",cq);
+       return {text:cq,handled:true,done:false,contextChoice:consumed.choice};
+     }
+   }
+ }
+
+ // If the current message itself supplied a new concrete browser/window symptom,
+ // acknowledge and follow that new evidence instead of replaying an older vague PC question.
+ if(C && C.state && C.state.lastUserText===String(text||"") &&
+    C.state.device==="browser" && C.state.symptom==="browser_window_switch"){
+   const cq=C.nextQuestion(lang);
+   if(cq){
+     M.push("bot",cq);
+     return {text:cq,handled:true,done:false,contextAdvance:true};
+   }
+ }
+
  const shortContextReply = String(text||"").trim().split(/\s+/).length <= 7;
  const hasActiveContextQuestion = !!(
    C && C.state && C.state.active && C.state.lastQuestion
@@ -215,6 +240,6 @@ function route(text,l){
  return legacy(text,lang);
 }
 window.ANITA_V7.handle=route;
-window.ANITA_V19={version:"26.1.0",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
-console.log("[ANITA v26.1] Semantic-aware Universal Context Router loaded");
+window.ANITA_V19={version:"26.1.2",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
+console.log("[ANITA v26.1.2] Semantic-aware Universal Context Router loaded");
 })();

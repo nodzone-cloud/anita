@@ -1,4 +1,4 @@
-/* ANITA v26.1.1 — SEMANTIC QUICK CHOICE UI
+/* ANITA v26.1.2 — SEMANTIC QUICK CHOICE UI
    Adds buttons whenever ANITA asks a finite-choice question.
    Free text and voice input always remain available.
 */
@@ -161,8 +161,8 @@ if(chat){
 }
 
 window.ANITA_CHOICES={
-  version:"26.1.1",sets:SETS,inferChoices,semanticKey,stateKey,submit,renderCustom,
+  version:"26.1.2",sets:SETS,inferChoices,semanticKey,stateKey,submit,renderCustom,
   option:C
 };
-console.log("[ANITA v26.1.1] Semantic Quick Choice UI loaded");
+console.log("[ANITA v26.1.2] Semantic Quick Choice UI loaded");
 })();
