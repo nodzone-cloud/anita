@@ -8,6 +8,7 @@ if(!window.ANITA_MEMORY||!window.ANITA_INTENTS||!window.ANITA_RESPONSES){console
 if(!window.ANITA_V7||typeof window.ANITA_V7.handle!=="function"){console.error("[ANITA v25.0] Legacy ANITA_V7 missing");return;}
 const legacy=window.ANITA_V7.handle.bind(window.ANITA_V7), M=window.ANITA_MEMORY, I=window.ANITA_INTENTS, R=window.ANITA_RESPONSES;
 const K=window.ANITA_SUPPORT_KNOWLEDGE, D=window.ANITA_DIAGNOSTICS, C=window.ANITA_CONTEXT, E=window.ANITA_ENTITIES, LP=window.ANITA_LANGUAGE_PARSER, MK=window.ANITA_MALWARE_KNOWLEDGE;
+const SEMA=window.ANITA_SEMANTIC;
 function explicitTextLanguage(text){
  const s=String(text||"").trim();
  if(/[а-яё]/i.test(s)) return "ru";
@@ -174,6 +175,27 @@ function route(text,l){
    M.push("bot",msg); return {text:msg,handled:true,done:false,malwareCandidate:true};
  }
 
+ // ANITA v26.1: semantic JSON layer. It only routes when confidence is high enough; otherwise legacy logic stays in control.
+ const sem=SEMA&&SEMA.analyze?SEMA.analyze(text,{lang,pendingQuestion:M.state.lastQuestion}):null;
+ if(sem&&sem.kind==="intent"&&sem.confidence>=0.82){
+   M.fact&&M.fact("semanticIntent",sem.intentId);
+   M.fact&&M.fact("semanticConfidence",sem.confidence);
+   M.fact&&M.fact("semanticNormalized",sem.normalized);
+
+   // Prefer the existing 400-case diagnostic engine when the JSON supplies a canonical problem sentence.
+   if(sem.canonicalQuery&&K&&K.find&&D){
+     const q=sem.canonicalQuery[lang]||sem.canonicalQuery.en;
+     const sk=q?K.find(q):null;
+     if(sk&&sk.case)return D.start(sk,lang);
+   }
+
+   // Otherwise translate the semantic intent into the same category/issue contract already used by ANITA_RESPONSES.
+   if(sem.target&&sem.target.category&&sem.target.issue){
+     M.setIssue&&M.setIssue(sem.target.category,sem.target.issue,sem.target.device||null);
+     return R.first({id:null,category:sem.target.category,issue:sem.target.issue,confidence:sem.confidence,match:"v26.1-semantic-json",semanticIntent:sem.intentId},lang);
+   }
+ }
+
  // ANITA v20: 400 user-provided problems have priority over the older 200-example bank.
  const km=K && K.find ? K.find(text) : null;
  if(km && km.case && D){ return D.start(km,lang); }
@@ -193,6 +215,6 @@ function route(text,l){
  return legacy(text,lang);
 }
 window.ANITA_V7.handle=route;
-window.ANITA_V19={version:"25.0",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
-console.log("[ANITA v25.0] Language-Locked Universal Context Router loaded");
+window.ANITA_V19={version:"26.1.0",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
+console.log("[ANITA v26.1] Semantic-aware Universal Context Router loaded");
 })();

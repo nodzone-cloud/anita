@@ -1,0 +1,606 @@
+{
+  "meta": {
+    "name": "ANITA Semantic Intent Layer",
+    "version": "1.0.0",
+    "project": "ANITA — Alex Node IT Assistant",
+    "purpose": "Data layer for intent recognition, semantic normalization, context continuity, short-reply handling and routing into ANITA diagnostic workflows.",
+    "languages": [
+      "ru",
+      "en",
+      "fi"
+    ],
+    "important": [
+      "This file contains data and rules, not executable logic.",
+      "ANITA JavaScript must load this file and use its mappings.",
+      "Exact phrase matching is only one signal; combine intent, entities, topic and dialogue context."
+    ]
+  },
+  "normalization": {
+    "lowercase": true,
+    "trim": true,
+    "collapse_whitespace": true,
+    "keep_numbers": true,
+    "avoid_partial_word_matching": true,
+    "preserve_distinct_tokens": [
+      "low",
+      "slow",
+      "0",
+      "zeroaccess",
+      "zero access"
+    ],
+    "replace": {
+      "ru": {
+        "комп": "computer",
+        "компик": "computer",
+        "пк": "computer",
+        "ноут": "laptop",
+        "ноутик": "laptop",
+        "инет": "internet",
+        "вайфай": "wifi",
+        "тормозит": "slow",
+        "тупит": "slow",
+        "лагает": "slow",
+        "зависает": "freeze"
+      },
+      "en": {
+        "pc": "computer",
+        "desktop": "computer",
+        "rig": "computer",
+        "lappy": "laptop",
+        "net": "internet",
+        "wi-fi": "wifi",
+        "laggy": "slow",
+        "sluggish": "slow",
+        "freezes": "freeze",
+        "crashes": "crash"
+      },
+      "fi": {
+        "kone": "computer",
+        "läppäri": "laptop",
+        "netti": "internet",
+        "wlan": "wifi",
+        "lagaa": "slow",
+        "hidas": "slow",
+        "jumittaa": "freeze"
+      }
+    }
+  },
+  "semantic_groups": {
+    "device": {
+      "computer": [
+        "computer",
+        "pc",
+        "desktop",
+        "machine",
+        "rig",
+        "компьютер",
+        "комп",
+        "компик",
+        "пк",
+        "tietokone",
+        "kone"
+      ],
+      "laptop": [
+        "laptop",
+        "notebook",
+        "lappy",
+        "ноутбук",
+        "ноут",
+        "kannettava",
+        "läppäri"
+      ],
+      "printer": [
+        "printer",
+        "принтер",
+        "tulostin"
+      ],
+      "monitor": [
+        "monitor",
+        "screen",
+        "display",
+        "монитор",
+        "экран",
+        "näyttö"
+      ],
+      "router": [
+        "router",
+        "роутер",
+        "маршрутизатор",
+        "reititin"
+      ],
+      "mouse": [
+        "mouse",
+        "мышь",
+        "мышка",
+        "hiiri"
+      ],
+      "keyboard": [
+        "keyboard",
+        "клавиатура",
+        "näppäimistö"
+      ]
+    },
+    "symptom": {
+      "slow": [
+        "slow",
+        "laggy",
+        "sluggish",
+        "takes forever",
+        "not fast enough",
+        "тормозит",
+        "тупит",
+        "лагает",
+        "медленно",
+        "hidas",
+        "lagaa",
+        "barely moves",
+        "crawling",
+        "painfully slow",
+        "works very slowly",
+        "еле ползает",
+        "еле работает",
+        "работает очень медленно",
+        "очень тормозит",
+        "tosi hidas",
+        "toimii todella hitaasti"
+      ],
+      "no_power": [
+        "won't turn on",
+        "does not turn on",
+        "dead",
+        "не включается",
+        "не запускается",
+        "ei käynnisty"
+      ],
+      "no_internet": [
+        "no internet",
+        "internet down",
+        "no connection",
+        "нет интернета",
+        "интернет не работает",
+        "ei internetiä",
+        "netti ei toimi",
+        "nothing opens",
+        "pages do not open",
+        "websites do not open",
+        "ничего не открывается",
+        "страницы не открываются",
+        "sivut eivät aukea"
+      ],
+      "freeze": [
+        "freeze",
+        "freezing",
+        "stuck",
+        "hangs",
+        "зависает",
+        "завис",
+        "jumittaa"
+      ],
+      "crash": [
+        "crash",
+        "crashes",
+        "keeps closing",
+        "вылетает",
+        "падает",
+        "kaatuu"
+      ],
+      "high_cpu": [
+        "cpu 100",
+        "cpu 100%",
+        "processor 100",
+        "процессор 100",
+        "suoritin 100"
+      ],
+      "high_ram": [
+        "ram full",
+        "memory full",
+        "оперативная память заполнена",
+        "ram täynnä"
+      ]
+    }
+  },
+  "dialogue": {
+    "short_replies": {
+      "yes": [
+        "да",
+        "ага",
+        "угу",
+        "давай",
+        "получилось",
+        "работает",
+        "yes",
+        "yeah",
+        "yep",
+        "worked",
+        "works",
+        "kyllä",
+        "joo",
+        "toimii",
+        "onnistui"
+      ],
+      "no": [
+        "нет",
+        "неа",
+        "не получилось",
+        "не работает",
+        "no",
+        "nope",
+        "didn't work",
+        "doesn't work",
+        "ei",
+        "ei toimi",
+        "ei onnistunut"
+      ],
+      "unknown": [
+        "не знаю",
+        "без понятия",
+        "не уверен",
+        "i don't know",
+        "not sure",
+        "en tiedä",
+        "en ole varma"
+      ],
+      "repeat": [
+        "повтори",
+        "ещё раз",
+        "что?",
+        "repeat",
+        "say that again",
+        "toista",
+        "uudestaan"
+      ],
+      "simplify": [
+        "проще",
+        "объясни проще",
+        "не понял",
+        "too complicated",
+        "simpler",
+        "i don't get it",
+        "selitä helpommin",
+        "en ymmärrä"
+      ]
+    },
+    "context_rules": [
+      {
+        "id": "answer_pending_question_first",
+        "rule": "If ANITA has a pending_question, interpret short replies against that question before detecting a new unrelated intent."
+      },
+      {
+        "id": "new_concrete_issue_overrides_stale_context",
+        "rule": "A new explicit device + symptom combination overrides stale dialogue context."
+      },
+      {
+        "id": "do_not_repeat_known_info",
+        "rule": "Do not ask again for information already present in confirmed profile or dialogue memory."
+      },
+      {
+        "id": "what_how_why_reference_previous_step",
+        "rule": "Short clarification questions such as 'how?', 'why?', 'what?' should refer to the most recent ANITA instruction unless a newer concrete topic is stated."
+      }
+    ]
+  },
+  "intents": [
+    {
+      "id": "greeting",
+      "type": "conversation",
+      "priority": 30,
+      "patterns": {
+        "ru": [
+          "привет",
+          "здравствуйте",
+          "добрый день",
+          "доброе утро",
+          "есть кто"
+        ],
+        "en": [
+          "hi",
+          "hello",
+          "hey",
+          "good morning",
+          "is anyone there",
+          "howdy"
+        ],
+        "fi": [
+          "hei",
+          "moi",
+          "terve",
+          "hyvää huomenta",
+          "onko siellä ketään"
+        ]
+      },
+      "route": "conversation.greeting"
+    },
+    {
+      "id": "clarification_request",
+      "type": "conversation",
+      "priority": 80,
+      "patterns": {
+        "ru": [
+          "что ты имеешь в виду",
+          "как это",
+          "не понял",
+          "можно проще",
+          "объясни проще"
+        ],
+        "en": [
+          "what do you mean",
+          "huh",
+          "i don't get it",
+          "make it simpler",
+          "explain more simply"
+        ],
+        "fi": [
+          "mitä tarkoitat",
+          "en ymmärrä",
+          "selitä helpommin",
+          "miten niin"
+        ]
+      },
+      "route": "dialogue.clarify_previous"
+    },
+    {
+      "id": "computer_slow",
+      "type": "it_problem",
+      "priority": 95,
+      "requires": {
+        "device": [
+          "computer",
+          "laptop"
+        ],
+        "symptom": [
+          "slow"
+        ]
+      },
+      "examples": {
+        "ru": [
+          "компьютер тормозит",
+          "ноутбук стал очень медленным",
+          "комп тупит уже несколько дней"
+        ],
+        "en": [
+          "my computer is slow",
+          "the laptop became sluggish",
+          "my pc takes forever"
+        ],
+        "fi": [
+          "tietokone on hidas",
+          "läppäri lagaa",
+          "koneesta tuli todella hidas"
+        ]
+      },
+      "route": "diagnostics.performance",
+      "legacy_target": {
+        "category": "windows",
+        "issue": "poor_system_performance",
+        "device": "computer"
+      }
+    },
+    {
+      "id": "internet_not_working",
+      "type": "it_problem",
+      "priority": 100,
+      "requires": {
+        "symptom": [
+          "no_internet"
+        ]
+      },
+      "examples": {
+        "ru": [
+          "у меня нет интернета",
+          "вайфай есть но интернет не работает",
+          "пропало соединение"
+        ],
+        "en": [
+          "i have no internet",
+          "wifi is connected but internet doesn't work",
+          "connection is gone"
+        ],
+        "fi": [
+          "minulla ei ole internetiä",
+          "wifi yhdistää mutta netti ei toimi",
+          "yhteys katosi"
+        ]
+      },
+      "route": "diagnostics.network",
+      "canonical_query": {
+        "ru": "Wi-Fi в Windows не работает или не открывается.",
+        "en": "The Wi-Fi in Windows does not work or will not open.",
+        "fi": "Wi-Fi Windowsissa ei toimi tai avaudu."
+      }
+    },
+    {
+      "id": "monitor_not_working",
+      "type": "it_problem",
+      "priority": 100,
+      "requires": {
+        "device": [
+          "monitor"
+        ],
+        "symptom": [
+          "no_power",
+          "freeze",
+          "crash"
+        ]
+      },
+      "examples": {
+        "ru": [
+          "монитор не работает",
+          "экран черный",
+          "нет сигнала на мониторе"
+        ],
+        "en": [
+          "monitor doesn't work",
+          "screen is black",
+          "no signal on monitor"
+        ],
+        "fi": [
+          "näyttö ei toimi",
+          "ruutu on musta",
+          "näytössä ei ole signaalia"
+        ]
+      },
+      "route": "diagnostics.monitor",
+      "legacy_target": {
+        "category": "display",
+        "issue": "no_picture",
+        "device": "monitor"
+      }
+    },
+    {
+      "id": "cpu_high",
+      "type": "it_problem",
+      "priority": 110,
+      "requires": {
+        "symptom": [
+          "high_cpu"
+        ]
+      },
+      "examples": {
+        "ru": [
+          "cpu 100%",
+          "процессор постоянно на 100"
+        ],
+        "en": [
+          "cpu is at 100%",
+          "processor is always 100"
+        ],
+        "fi": [
+          "cpu on 100%",
+          "suoritin on jatkuvasti 100"
+        ]
+      },
+      "route": "diagnostics.task_manager.cpu",
+      "legacy_target": {
+        "category": "windows",
+        "issue": "high_cpu_process",
+        "device": "computer"
+      }
+    },
+    {
+      "id": "ram_high",
+      "type": "it_problem",
+      "priority": 110,
+      "requires": {
+        "symptom": [
+          "high_ram"
+        ]
+      },
+      "examples": {
+        "ru": [
+          "оперативка забита",
+          "память почти 100%"
+        ],
+        "en": [
+          "ram is full",
+          "memory usage is almost 100%"
+        ],
+        "fi": [
+          "ram on täynnä",
+          "muistin käyttö on lähes 100%"
+        ]
+      },
+      "route": "diagnostics.task_manager.memory",
+      "legacy_target": {
+        "category": "ram",
+        "issue": "slow",
+        "device": "computer"
+      }
+    }
+  ],
+  "intent_resolution": {
+    "strategy": [
+      "Normalize text.",
+      "Detect explicit device entities.",
+      "Detect symptoms and observations.",
+      "Check active pending question and dialogue context.",
+      "Score candidate intents by semantic evidence, not just substring matches.",
+      "Prefer concrete device+symptom intent over vague category.",
+      "If confidence is medium, ask one targeted clarification.",
+      "If confidence is low, use AI interpreter/fallback when enabled.",
+      "AI interpreter should return structured intent/entity/context data, not freely replace ANITA Core."
+    ],
+    "confidence": {
+      "high": 0.82,
+      "medium": 0.58,
+      "low": 0.0
+    }
+  },
+  "ai_fallback_contract": {
+    "enabled_by_config": true,
+    "role": "interpreter_only",
+    "when": [
+      "No intent reaches medium confidence.",
+      "User wording is unusual, slang-heavy or ambiguous.",
+      "The parser detects a likely IT problem but cannot map it safely."
+    ],
+    "must_return": {
+      "intent_id": "string|null",
+      "topic": "string|null",
+      "entities": "object",
+      "symptoms": "array",
+      "confidence": "number 0..1",
+      "clarification_question": "string|null",
+      "normalized_meaning": "short structured paraphrase"
+    },
+    "restrictions": [
+      "Do not invent a diagnosis.",
+      "Do not execute destructive steps.",
+      "Do not bypass ANITA diagnostic workflow.",
+      "If uncertain, ask a clarification question."
+    ]
+  },
+  "memory_model": {
+    "session": {
+      "current_topic": null,
+      "current_intent": null,
+      "active_diagnostic": null,
+      "pending_question": null,
+      "known_entities": {},
+      "recent_turn_limit": 10
+    },
+    "remember": [
+      "device currently being discussed",
+      "symptom",
+      "steps already tried",
+      "result of each step",
+      "confirmed profile facts",
+      "last question ANITA asked"
+    ]
+  },
+  "routing_examples": [
+    {
+      "user": "Комп что-то жутко тупит",
+      "normalized": {
+        "device": "computer",
+        "symptom": "slow"
+      },
+      "intent": "computer_slow",
+      "route": "diagnostics.performance"
+    },
+    {
+      "user": "да",
+      "context": {
+        "pending_question": "Did Task Manager open?"
+      },
+      "intent": "contextual_yes",
+      "route": "continue_pending_diagnostic"
+    },
+    {
+      "user": "Как?",
+      "context": {
+        "last_instruction": "Open Task Manager"
+      },
+      "intent": "clarification_request",
+      "route": "explain_previous_step"
+    },
+    {
+      "user": "wifi connected but nothing opens",
+      "normalized": {
+        "topic": "network",
+        "symptom": "no_internet"
+      },
+      "intent": "internet_not_working",
+      "route": "diagnostics.network"
+    }
+  ]
+}
