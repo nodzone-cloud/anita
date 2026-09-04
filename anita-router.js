@@ -266,6 +266,6 @@ function route(text,l){
  return legacy(text,lang);
 }
 window.ANITA_V7.handle=route;
-window.ANITA_V19={version:"26.1.4",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
-console.log("[ANITA v26.1.4] Semantic-aware Universal Context Router loaded");
+window.ANITA_V19={version:"26.1.4.2",route,state:M.state,reset:M.resetConversation,test:(t,l)=>route(t,l),detectCategory,parseReply:R.parseReply};
+console.log("[ANITA v26.1.4.2] Semantic-aware Universal Context Router loaded");
 })();
