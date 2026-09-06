@@ -35,7 +35,11 @@
         return true;
       }
       W.ui.setPose(step.pose||"ready");
-      setTimeout(()=>W.ui.highlight(step.target),450);
+      if(step.target){
+        setTimeout(()=>W.ui.highlight(step.target),450);
+      }else{
+        try{ window.scrollTo({top:0,behavior:"smooth"}); }catch(_){ window.scrollTo(0,0); }
+      }
       W.ui.showTourBubble(localized(step.text,s.language||"en"), s.step === map.tour.length-1);
       return true;
     },

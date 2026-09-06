@@ -1,120 +1,129 @@
 {
-  "version": 1,
+  "version": 2,
+  "site": "https://alexnode.fi",
   "pages": {
     "home": {
       "url": "https://alexnode.fi/",
-      "targets": [
-        "anita-home-idea",
-        "anita-home-services"
-      ]
+      "targets": []
     },
     "services": {
       "url": "https://alexnode.fi/Services",
-      "targets": [
-        "anita-services",
-        "anita-pricing"
-      ]
+      "targets": []
+    },
+    "nodequote": {
+      "url": "https://alexnode.fi/nodequote",
+      "targets": []
     },
     "portfolio": {
       "url": "https://alexnode.fi/portfolio",
-      "targets": [
-        "anita-portfolio"
-      ]
-    },
-    "about": {
-      "url": "https://alexnode.fi/about",
-      "targets": [
-        "anita-about"
-      ]
-    },
-    "contacts": {
-      "url": "https://alexnode.fi/contacts",
-      "targets": [
-        "anita-contacts"
-      ]
+      "targets": []
     },
     "graphic_design": {
       "url": "https://alexnode.fi/gd",
-      "targets": [
-        "anita-graphic-design"
-      ]
+      "targets": []
     },
     "why": {
       "url": "https://alexnode.fi/why",
-      "targets": [
-        "anita-why"
-      ]
+      "targets": []
+    },
+    "about": {
+      "url": "https://alexnode.fi/about",
+      "targets": []
+    },
+    "contacts": {
+      "url": "https://alexnode.fi/contacts",
+      "targets": []
     }
   },
   "tour": [
     {
       "page": "home",
-      "target": "anita-home-idea",
+      "target": null,
       "pose": "neutral",
       "text": {
-        "en": "Welcome to Alex Node 😊 The idea is Human-Tech: Websites, IT and Virtual Characters combined into a more personal digital experience.",
-        "ru": "Добро пожаловать в Alex Node 😊 Идея Human-Tech объединяет сайты, IT и виртуальных персонажей в более живой цифровой опыт.",
-        "fi": "Tervetuloa Alex Nodeen 😊 Human-Tech yhdistää verkkosivut, IT-tuen ja virtuaalihahmot henkilökohtaisemmaksi digitaaliseksi kokemukseksi."
+        "en": "Welcome to Alex Node 😊 I can guide you through the real website page by page. Use Next when you're ready to continue.",
+        "ru": "Добро пожаловать в Alex Node 😊 Я могу провести вас по настоящему сайту страница за страницей. Нажмите Next, когда будете готовы продолжить.",
+        "fi": "Tervetuloa Alex Nodeen 😊 Voin opastaa sinut oikean sivuston läpi sivu kerrallaan. Paina Next, kun olet valmis jatkamaan."
       }
     },
     {
       "page": "services",
-      "target": "anita-services",
+      "target": null,
       "pose": "professional",
       "text": {
-        "en": "Here are the main Alex Node services: Web Design, Graphic Design, IT Support and original Virtual Characters created for each client.",
-        "ru": "Здесь основные услуги Alex Node: Web Design, Graphic Design, IT Support и оригинальные виртуальные персонажи для каждого клиента.",
-        "fi": "Tässä ovat Alex Noden pääpalvelut: verkkosuunnittelu, graafinen suunnittelu, IT-tuki ja asiakkaalle luotavat alkuperäiset virtuaalihahmot."
+        "en": "This is the Services page. Here you can explore Alex Node website and design services and the available options.",
+        "ru": "Это страница Services. Здесь можно посмотреть услуги Alex Node по созданию сайтов и дизайну, а также доступные варианты.",
+        "fi": "Tämä on Services-sivu. Täällä voit tutustua Alex Noden verkkosivu- ja suunnittelupalveluihin sekä saatavilla oleviin vaihtoehtoihin."
       }
     },
     {
-      "page": "services",
-      "target": "anita-pricing",
-      "pose": "ready",
+      "page": "nodequote",
+      "target": null,
+      "pose": "important",
       "text": {
-        "en": "These are the current website packages: START 250 €, LIGHT 450 €, MEDIUM 620 €, and CODE from 700 €. Extra custom coding is quoted individually.",
-        "ru": "Это текущие пакеты сайтов: START 250 €, LIGHT 450 €, MEDIUM 620 €, CODE от 700 €. Дополнительный custom coding оценивается индивидуально.",
-        "fi": "Nykyiset verkkosivupaketit ovat START 250 €, LIGHT 450 €, MEDIUM 620 € ja CODE alkaen 700 €. Lisäkoodaus hinnoitellaan erikseen."
+        "en": "This is NodeQuote — Alex Node's website calculator for quickly estimating a website or design project.",
+        "ru": "Это NodeQuote — калькулятор Alex Node для быстрой предварительной оценки сайта или дизайн-проекта.",
+        "fi": "Tämä on NodeQuote — Alex Noden laskuri verkkosivu- tai suunnitteluprojektin nopeaan alustavaan arviointiin."
       }
     },
     {
       "page": "portfolio",
-      "target": "anita-portfolio",
+      "target": null,
       "pose": "ready",
       "text": {
-        "en": "This is the Alex Node portfolio. It shows different business types and visual directions instead of one repeated template.",
-        "ru": "Это портфолио Alex Node. Здесь разные типы бизнеса и разные визуальные направления, а не один повторяющийся шаблон.",
-        "fi": "Tämä on Alex Noden portfolio. Se näyttää erilaisia yrityksiä ja visuaalisia suuntia yhden toistuvan mallin sijaan."
+        "en": "Here is the Alex Node portfolio. You can see selected projects, website concepts and different visual directions.",
+        "ru": "Здесь портфолио Alex Node. Можно посмотреть избранные проекты, концепции сайтов и разные визуальные направления.",
+        "fi": "Tässä on Alex Noden portfolio. Voit nähdä valittuja projekteja, verkkosivukonsepteja ja erilaisia visuaalisia suuntia."
+      }
+    },
+    {
+      "page": "graphic_design",
+      "target": null,
+      "pose": "professional",
+      "text": {
+        "en": "This page is dedicated to Graphic Design — visual materials such as logos, banners, posters and other brand graphics.",
+        "ru": "Эта страница посвящена Graphic Design — логотипам, баннерам, постерам и другим визуальным материалам для бренда.",
+        "fi": "Tämä sivu on omistettu graafiselle suunnittelulle — logoille, bannereille, julisteille ja muille brändin visuaalisille materiaaleille."
+      }
+    },
+    {
+      "page": "why",
+      "target": null,
+      "pose": "important",
+      "text": {
+        "en": "Here you can learn more about the Alex Node approach and why a client might choose Alex Node for a digital project.",
+        "ru": "Здесь можно подробнее узнать о подходе Alex Node и о том, почему клиент может выбрать Alex Node для цифрового проекта.",
+        "fi": "Täällä voit lukea lisää Alex Noden toimintatavasta ja siitä, miksi asiakas voisi valita Alex Noden digitaaliseen projektiin."
       }
     },
     {
       "page": "about",
-      "target": "anita-about",
-      "pose": "important",
+      "target": null,
+      "pose": "neutral",
       "text": {
-        "en": "This is the idea behind Alex Node: technology should be useful and professional, but it can also have personality. ANITA demonstrates that Human-Tech approach.",
-        "ru": "Идея Alex Node в том, что технология должна быть полезной и профессиональной, но при этом может иметь характер. ANITA показывает этот подход Human-Tech.",
-        "fi": "Alex Noden ajatuksena on, että teknologia voi olla hyödyllistä ja ammattimaista sekä samalla persoonallista. ANITA näyttää tämän Human-Tech-ajattelun käytännössä."
+        "en": "This is the About page, with more information about Alex Node, the work and the approach behind the projects.",
+        "ru": "Это страница About — здесь больше информации об Alex Node, работе и подходе к проектам.",
+        "fi": "Tämä on About-sivu, jossa kerrotaan lisää Alex Nodesta, työstä ja projektien taustalla olevasta lähestymistavasta."
       }
     },
     {
       "page": "contacts",
-      "target": "anita-contacts",
+      "target": null,
       "pose": "professional",
       "text": {
-        "en": "Here are the Alex Node contact details. You can discuss a project by phone or email.",
-        "ru": "Здесь контакты Alex Node. Проект можно обсудить по телефону или электронной почте.",
-        "fi": "Tässä ovat Alex Noden yhteystiedot. Projektista voi keskustella puhelimitse tai sähköpostitse."
+        "en": "And here are the contact options. If you want to discuss a project, this is the place to continue.",
+        "ru": "А здесь находятся варианты связи. Если хотите обсудить проект, это подходящее место для продолжения.",
+        "fi": "Täältä löytyvät yhteydenottotavat. Jos haluat keskustella projektista, voit jatkaa täällä."
       }
     },
     {
       "page": "home",
-      "target": "anita-home-idea",
+      "target": null,
       "pose": "success",
       "text": {
-        "en": "That's the main Alex Node tour 😊 We're back on the home page. You can now ask me about services, prices, IT assistance, virtual characters, portfolio or contact details.",
-        "ru": "Основная экскурсия по Alex Node закончена 😊 Мы снова на главной странице. Теперь можете спросить меня об услугах, ценах, IT Assistance, виртуальных персонажах, портфолио или контактах.",
-        "fi": "Alex Node -kierros on valmis 😊 Olemme taas etusivulla. Voit kysyä palveluista, hinnoista, IT-tuesta, virtuaalihahmoista, portfoliosta tai yhteystiedoista."
+        "en": "Tour complete 😊 We're back on the Alex Node home page. You can keep talking to me normally or ask about a specific service.",
+        "ru": "Экскурсия завершена 😊 Мы снова на главной странице Alex Node. Теперь можете продолжить разговор со мной или спросить о конкретной услуге.",
+        "fi": "Kierros on valmis 😊 Olemme taas Alex Noden etusivulla. Voit jatkaa keskustelua kanssani tai kysyä tietystä palvelusta."
       }
     }
   ]
