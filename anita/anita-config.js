@@ -1,5 +1,5 @@
 window.ANITA_CONFIG = {
-  version: "1.0.0",
+  version: "1.0.1",
   engineUrl: "", // IMPORTANT: set this to your public HTTPS ANITA Server later. Do NOT use localhost on the live site.
   visitorKey: "anita_visitor_id",
   tourKey: "anita_site_tour",

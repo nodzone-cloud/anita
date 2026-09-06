@@ -128,5 +128,9 @@
       );
     }
   }
-  window.addEventListener("DOMContentLoaded",boot);
+  if(document.readyState === "loading"){
+    window.addEventListener("DOMContentLoaded",boot,{once:true});
+  }else{
+    boot();
+  }
 })();

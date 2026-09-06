@@ -61,5 +61,12 @@
     }
   };
 
-  window.addEventListener("DOMContentLoaded",()=>setTimeout(()=>W.tour.resume(),600));
+  function resumeAfterLoad(){
+    setTimeout(()=>W.tour.resume(),600);
+  }
+  if(document.readyState === "loading"){
+    window.addEventListener("DOMContentLoaded",resumeAfterLoad,{once:true});
+  }else{
+    resumeAfterLoad();
+  }
 })();
