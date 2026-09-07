@@ -1,0 +1,61 @@
+{
+  "version": "0.1.0",
+  "pages": {
+    "home": {
+      "url": "https://alexnode.fi/"
+    },
+    "services": {
+      "url": "https://alexnode.fi/Services"
+    },
+    "quote": {
+      "url": "https://alexnode.fi/nodequote"
+    },
+    "portfolio": {
+      "url": "https://alexnode.fi/portfolio"
+    },
+    "graphic": {
+      "url": "https://alexnode.fi/gd"
+    },
+    "why": {
+      "url": "https://alexnode.fi/why"
+    },
+    "about": {
+      "url": "https://alexnode.fi/about"
+    },
+    "contacts": {
+      "url": "https://alexnode.fi/contacts"
+    }
+  },
+  "tour": [
+    {
+      "page": "home",
+      "text": "Welcome to Alex Node. I’ll show you the main parts of the website.",
+      "pose": "neutral"
+    },
+    {
+      "page": "services",
+      "text": "Here you can explore Alex Node services and website options.",
+      "pose": "professional"
+    },
+    {
+      "page": "portfolio",
+      "text": "Here is the Alex Node portfolio.",
+      "pose": "ready"
+    },
+    {
+      "page": "why",
+      "text": "Here you can see the Alex Node approach and why it is different.",
+      "pose": "important"
+    },
+    {
+      "page": "about",
+      "text": "Here you can learn more about Alex Node and the Human‑Tech approach.",
+      "pose": "neutral"
+    },
+    {
+      "page": "contacts",
+      "text": "Here are the contact details. I can also help structure your request first.",
+      "pose": "success"
+    }
+  ]
+}

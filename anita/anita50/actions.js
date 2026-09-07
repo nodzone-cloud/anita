@@ -1,0 +1,1 @@
+(function(){const C=ANITA50_CONFIG,W=window.ANITA50=window.ANITA50||{};W.actions={navigate(u){try{const x=new URL(u,location.href);if(x.protocol!=="https:"||!C.siteHostAllowlist.includes(x.hostname))return false;location.href=x.href;return true}catch(_){return false}}}})();
