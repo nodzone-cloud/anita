@@ -22,10 +22,10 @@
     if(!C.engineUrl){
       W.ui.setPose("important");
       W.ui.showBubble(language==="ru"
-        ? "Сейчас Website Guide работает, но публичный ANITA Server ещё не подключён к этому frontend-коду."
+        ? "Сейчас моя расширенная помощь временно недоступна 😊 Но я всё ещё могу провести вас по сайту Alex Node и ответить на известные мне вопросы."
         : language==="fi"
-        ? "Website Guide toimii nyt, mutta julkista ANITA Server -osoitetta ei ole vielä kytketty tähän frontend-koodiin."
-        : "The Website Guide is working, but the public ANITA Server is not connected to this frontend yet.");
+        ? "Laajempi avustukseni ei ole juuri nyt käytettävissä 😊 Voin silti opastaa sinut Alex Noden sivuston läpi ja vastata tuntemiini kysymyksiin."
+        : "My extended assistance is temporarily unavailable 😊 I can still guide you through the Alex Node website and answer the questions I already know.");
       return;
     }
     const map = await getMap();
@@ -115,6 +115,11 @@
     if(!i||!s) return;
     s.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();enqueue()});
     i.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();enqueue()}});
+    // Classic intro owns the first visual state on the real website.
+    // The input handlers are attached here, but READY/bubble must not overwrite
+    // the corner "Hi, I'm ANITA" image.
+    if(window.ANITA_CLASSIC_MODE) return;
+
     W.ui.ready();
 
     const activeTour = localStorage.getItem(C.tourKey);

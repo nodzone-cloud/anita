@@ -60,6 +60,9 @@
       const s = {active:true,step:0,language:language||"en"};
       save(s);
       W.context.patch({language:language||"en",topic:"website_tour"});
+      if(window.ANITA_CLASSIC && typeof window.ANITA_CLASSIC.enterTourMode === "function"){
+        window.ANITA_CLASSIC.enterTourMode();
+      }
       const page = map.pages[map.tour[0].page];
       if(page && pageKey(location.href) !== pageKey(page.url)){
         markPending(page.url,0);
@@ -84,6 +87,9 @@
       if(pageKey(location.href) !== pageKey(page.url)) return false;
       if(!consumePendingForCurrentPage(s.step)) return false;
 
+      if(window.ANITA_CLASSIC && typeof window.ANITA_CLASSIC.enterTourMode === "function"){
+        window.ANITA_CLASSIC.enterTourMode();
+      }
       showStep(map,s);
       return true;
     },
@@ -112,6 +118,9 @@
       W.context.patch({topic:null});
       W.ui.ready();
       W.ui.showBubble("Tour stopped 😊 You can keep asking me questions normally.");
+      if(window.ANITA_CLASSIC && typeof window.ANITA_CLASSIC.showChat === "function"){
+        window.ANITA_CLASSIC.showChat();
+      }
     },
 
     finish(){
@@ -119,6 +128,9 @@
       W.context.patch({topic:null});
       W.ui.setPose("success");
       W.ui.showBubble("Tour finished 😊 You can keep talking to me normally.");
+      if(window.ANITA_CLASSIC && typeof window.ANITA_CLASSIC.showChat === "function"){
+        window.ANITA_CLASSIC.showChat();
+      }
     }
   };
 
