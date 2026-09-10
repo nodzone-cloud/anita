@@ -1,0 +1,290 @@
+(function(){
+const C=ANITA50_CONFIG,W=window.ANITA50=window.ANITA50||{};
+const n=s=>(s||"").toLowerCase().replace(/[?!.,:;()"']/g," ").replace(/\s+/g," ").trim();
+const lng=t=>/[А-Яа-яЁё]/.test(t)?"ru":"en";
+const say=(l,en,ru)=>l==="ru"?ru:en;
+const cleanStored=s=>(s||"").trim().replace(/[\s]*[.;,:!?]+$/g,"").trim();
+const cleanSize=s=>{let v=cleanStored(s);if(!v)return "";if(/\?$|\b(?:what|how much|price|cost|difference|why|when|where|who|can|do i|does|is it)\b/i.test(v))return "";if(/\b(?:landing page|one-page|single-page)\b/i.test(v))return "one landing page";if(/\b(?:few|several|2|3|4|5)\s+(?:separate\s+)?pages?\b/i.test(v))return "a few separate pages";if(/\b(?:large|larger|multi-page|multipage)\b/i.test(v))return "a larger multi-page site";return ""};
+const cleanGoal=s=>{let v=cleanStored(s).replace(/^i\s+(?:want|wanted)\s+visitors\s+to\s+/i,"").replace(/^visitors\s+(?:should|need to|can)\s+/i,"").replace(/^я\s+хочу,?\s+чтобы\s+посетители\s+/i,"").trim();if(/\bbook(?:ing)?\b/i.test(v)&&/\b(?:place|location)\b/i.test(v))return "customers book a service time and choose the service location";if(/\bbook(?:ing)?\b/i.test(v))return "customers book a service time";return v.replace(/^they\s+/i,"customers ")};
+function cleanBusiness(s){return cleanStored(s).replace(/\bpetshop\b/ig,"pet shop").replace(/^i\s+(?:h?ave|ave|run|own)\s+(?:a|an)?\s*/i,"").replace(/^we\s+(?:h?ave|ave|run|own)\s+(?:a|an)?\s*/i,"").replace(/^(?:my|our)\s+(?:business\s+is\s+)?(?:a|an)?\s*/i,"").replace(/^(?:a|an)\s+/i,"").split(/\s+(?:where|that|which|so that|because|and i want|with visitors)\s+/i)[0].trim()}
+function extractName(t){const m=(t||"").match(/\b(?:my name is|call me)\s+([A-Za-zÀ-ÖØ-öø-ÿА-Яа-яЁё-]{2,40})\b/i);return m?m[1].trim():null}
+function extractBusiness(t){
+ const ps=[/\b(?:website|site)\s+for\s+my\s+(.+?)(?:[.!?]|$)/i,/\b(?:website|site)\s+for\s+(?:a|an)\s+(.+?)(?:[.!?]|$)/i,/\bmy\s+business\s+is\s+(?:a|an\s+)?(.+?)(?:[.!?]|$)/i,/\bi\s+(?:run|own)\s+(?:a|an\s+)?(.+?)(?:[.!?]|$)/i,/\bсайт\s+для\s+(?:моего|моей|моих)\s+(.+?)(?:[.!?]|$)/i,/\bмой\s+бизнес\s*[-—:]?\s*(.+?)(?:[.!?]|$)/i];
+ for(const re of ps){const m=(t||"").match(re);if(m){const b=cleanBusiness(m[1]);if(b&&b.length<=80&&!/section|gallery|button|price|map|portfolio|page/i.test(b))return b}} return null;
+}
+function memoryWith(ctx,p){return Object.assign({name:null,business:null,businessRaw:null,contact:{name:null,email:null,phone:null}},ctx.clientMemory||{},p||{})}
+function briefWith(ctx,p){const b=Object.assign({business:null,goal:null,size:null,requirements:[],additionalServices:[],recommendedPackage:null,recommendedStructure:null,needsAlexReview:false},ctx.websiteBrief||{},p||{});b.requirements=[...new Set(b.requirements||[])];b.additionalServices=[...new Set(b.additionalServices||[])];return b}
+function extractRequirements(text){
+ const x=n(text),r=[]; const add=(k,re)=>{if(re.test(x))r.push(k)};
+ add("gallery",/gallery|photo gallery|галере/); add("booking",/booking|book(?:ing)? (?:a )?(?:service|time|appointment|checkup)|appointment|calendar|reservation|checkup|запис|брон/); add("fast contact",/fast contact|quick contact|contact button|call button|whatsapp|быстр.*связ|кнопк.*связ/); add("price list",/price list|prices|pricing|прайс|цен/); add("map",/\bmap\b|location map|google maps|карт/); add("portfolio",/portfolio|works|projects|портфолио/); add("video",/video|videos|видео/); add("about",/about us|about section|о нас/); add("why choose us",/why (?:to )?choose us|why us|почему мы/); add("contact",/contacts?|contact us|контакт/); add("product sales",/buy (?:my )?products|sell (?:some )?(?:products|spare ?parts)|spare ?parts.*(?:sale|sell|online)|sale online|online sale|online shop|shop|checkout|cart|e-?commerce|купить|прода.*товар|магазин/); add("quote request",/request a quote|quote form|estimate|заявк.*расчет|расч[её]т/);
+ const sec=(text||"").match(/\b(\d{1,2})\s+(?:sections?|pages?)\b/i); if(sec)r.push(`${sec[1]} sections/pages`);
+ return [...new Set(r)];
+}
+function mergeReq(b,text){b.requirements=[...new Set([...(b.requirements||[]),...extractRequirements(text)])];return b}
+function complex(b){const r=b.requirements||[];return r.some(v=>["booking","product sales"].includes(v))||r.length>=5}
+function structureFor(b){const r=b.requirements||[];const a=["Home"];a.push("Services");if(r.includes("booking"))a.push("Booking");if(r.includes("product sales"))a.push("Shop / Products");if(r.includes("gallery")||r.includes("portfolio"))a.push("Gallery / Portfolio");if(r.includes("price list"))a.push("Prices");if(r.includes("video"))a.push("Video");if(r.includes("about")||r.includes("why choose us"))a.push("About / Why Us");a.push("Contact");return [...new Set(a)].join(" → ")}
+function recommend(b){
+ const x=n(b.size||""); let p="MEDIUM";
+ if(/one|single|1 page|landing|одн|1 стра/.test(x))p="START"; else if(/2|3|few|couple|несколько|пару/.test(x))p="LIGHT"; else if(/custom|interactive|нестандарт|интерактив/.test(x))p="CODE";
+ const needs=complex(b); if(needs&&p==="START")p="LIGHT";
+ b.recommendedStructure=structureFor(b); b.needsAlexReview=needs; b.recommendedPackage=needs?null:p; return b;
+}
+function requirementsText(b,l){const r=b.requirements||[];if(!r.length)return "";return l==="ru"?` Требования: ${r.join(", ")}.`:` Requirements: ${r.join(", ")}.`}
+function summary(ctx,l,forAlex=false){const b=ctx.websiteBrief||{},m=ctx.clientMemory||{},parts=[];const business=cleanStored(b.business||m.business||"");
+ if(forAlex)parts.push(l==="ru"?"Краткий бриф проекта для Алекса 😊":"Project summary for Alex 😊"); else parts.push(l==="ru"?"Вот что я помню о вашем проекте 😊":"Here’s what I remember about your project 😊");
+ if(business)parts.push(l==="ru"?`Бизнес: ${business}.`:`Business: ${business}.`); const cg=cleanGoal(b.goal),cs=cleanSize(b.size); if(cg)parts.push(l==="ru"?`Цель сайта: ${cg}.`:`Website goal: ${cg}.`); if(cs)parts.push(l==="ru"?`Размер: ${cs}.`:`Website size: ${cs}.`); if((b.requirements||[]).length)parts.push(l==="ru"?`Требования: ${b.requirements.join(", ")}.`:`Requirements: ${b.requirements.join(", ")}.`); if(b.recommendedStructure)parts.push(l==="ru"?`Предлагаемая структура: ${b.recommendedStructure}.`:`Suggested structure: ${b.recommendedStructure}.`);
+ if(b.recommendedPackage){const pr=(C.packages[b.recommendedPackage]||{}).price;parts.push(l==="ru"?`Рекомендованный пакет: ${b.recommendedPackage}${pr?` — ${pr}`:""}.`:`Recommended package: ${b.recommendedPackage}${pr?` — ${pr}`:""}.`)} else if(b.needsAlexReview)parts.push(l==="ru"?"Пакет и цена требуют подтверждения Алекса из-за функций/интеграций.":"Package and price need Alex's review because of the requested functionality/integrations.");
+ if((b.additionalServices||[]).length)parts.push(l==="ru"?`Дополнительные услуги: ${b.additionalServices.join(", ")}.`:`Additional services: ${b.additionalServices.join(", ")}.`);if(forAlex)parts.push(l==="ru"?"Основной бриф подготовлен для Alex Node.":"The main brief is prepared for Alex Node."); return parts.join(" ");
+}
+const affirmative=x=>/^(yes|yes please|please do|do it|sure|okay|ok|go ahead|да|да пожалуйста|пожалуйста|сделай|хорошо|ок)$/.test(x);
+function handlePending(text,l,ctx,memory){
+ const x=n(text);
+
+ if(ctx.pendingAction==="website_project_choice"){
+  if(/^(?:yes|yes please|continue|continue it|continue that|same one|same project|old one|the previous one|да|продолжим|тот же|старый проект)$/.test(x)){
+   return{
+    kind:"answer",role:"secretary",language:l,memory,pose:"professional",
+    topic:"website_consultation",pending:null,pendingAction:"prepare_project_summary",
+    text:`${summary(ctx,l,false)} ${say(l,"Would you like me to continue from this project and prepare the brief for Alex Node?","Хотите, я продолжу с этим проектом и подготовлю бриф для Alex Node?")}`
+   };
+  }
+  if(/^(?:no|nope|new one|a new one|new project|different one|another one|нет|новый|новый проект|другой|другой проект)$/.test(x)){
+   const fresh={business:null,goal:null,size:null,requirements:[],additionalServices:[],recommendedPackage:null,recommendedStructure:null,needsAlexReview:false};
+   return{
+    kind:"answer",role:"secretary",language:l,memory,pose:"professional",
+    topic:"website_consultation",pending:"business",pendingAction:null,brief:fresh,
+    previousWebsiteBrief:ctx.websiteBrief||null,
+    text:say(l,
+      "Perfect 😊 We'll start a new website project. I still remember the previous one, but I won't mix them. What kind of business is the new website for?",
+      "Отлично 😊 Начнём новый проект сайта. Предыдущий проект я помню, но смешивать их не буду. Для какого бизнеса нужен новый сайт?"
+    )
+   };
+  }
+ }
+
+ if(ctx.pendingAction==="prepare_project_summary"&&affirmative(x)){
+  return{
+   kind:"answer",role:"secretary",language:l,memory,pose:"professional",
+   pendingAction:"additional_services",
+   text:`${summary(ctx,l,true)} ${say(l,
+    "Before we finish, would you like to add anything else to the project — for example a logo, other graphic design, a virtual character, or something else?",
+    "Перед завершением хотите добавить к проекту что-нибудь ещё — например логотип, другой графический дизайн, виртуального персонажа или что-то ещё?"
+   )}`
+  };
+ }
+
+ if(ctx.pendingAction==="prepare_project_summary"&&/^(no|not now|later|нет|не сейчас|позже)$/.test(x)){
+  return{kind:"answer",role:"secretary",language:l,memory,pendingAction:null,text:say(l,"No problem 😊 I’ll keep the brief here for later.","Хорошо 😊 Я сохраню бриф здесь на потом.")};
+ }
+
+ if(ctx.pendingAction==="additional_services"){
+  let b=briefWith(ctx),added=[];
+  const add=v=>{if(!(b.additionalServices||[]).includes(v)){b.additionalServices.push(v);added.push(v)}};
+
+  if(/\b(?:logo|logotype)\b|логотип/.test(x))add("logo");
+  if(/\b(?:graphic design|graphics|flyer|flyers|poster|posters|banner|banners|business card|business cards)\b|графическ.*дизайн|флаер|листовк|постер|баннер|визитк/.test(x))add("graphic design");
+  if(/\b(?:virtual character|digital character|website character|character for (?:my|the) business)\b|виртуальн.*персонаж|цифров.*персонаж/.test(x))add("virtual character");
+
+  if(/^(?:no|nothing|nothing else|that's all|that is all|all good|нет|ничего|больше ничего|это всё|всё)$/.test(x)){
+   return{
+    kind:"answer",role:"secretary",language:l,memory,pose:"professional",
+    pendingAction:null,brief:b,
+    text:say(l,
+      "Perfect 😊 The project brief is prepared for Alex Node. If you need anything else later, you can continue with me without starting over.",
+      "Отлично 😊 Бриф проекта подготовлен для Alex Node. Если позже понадобится что-то ещё, можете продолжить со мной — начинать заново не придётся."
+    )
+   };
+  }
+
+  if(added.length){
+   return{
+    kind:"answer",role:"secretary",language:l,memory,pose:"professional",
+    pendingAction:"additional_services",brief:b,
+    text:say(l,
+      `Got it 😊 I've added ${added.join(", ")} as an additional service for this project. Would you like to add anything else?`,
+      `Поняла 😊 Я добавила к этому проекту дополнительные услуги: ${added.join(", ")}. Хотите добавить что-нибудь ещё?`
+    )
+   };
+  }
+
+  if(/^(?:yes|yes please|sure|okay|ok|да|да пожалуйста|конечно|хорошо)$/.test(x)){
+   return{
+    kind:"answer",role:"secretary",language:l,memory,pose:"professional",
+    pendingAction:"additional_services_detail",
+    text:say(l,
+      "Sure 😊 Tell me what else you'd like to add.",
+      "Конечно 😊 Расскажите, что ещё вы хотели бы добавить."
+    )
+   };
+  }
+ }
+
+ if(ctx.pendingAction==="additional_services_detail"){
+  let b=briefWith(ctx);
+  const detail=cleanStored(text);
+  if(detail && !b.additionalServices.includes(detail))b.additionalServices.push(detail);
+  return{
+   kind:"answer",role:"secretary",language:l,memory,pose:"professional",
+   pendingAction:"additional_services",brief:b,
+   text:say(l,
+     `Got it 😊 I've added "${detail}" to the additional project notes. Anything else?`,
+     `Поняла 😊 Я добавила «${detail}» к дополнительным пожеланиям проекта. Что-нибудь ещё?`
+   )
+  };
+ }
+
+ return null
+}
+
+function wantsWebsite(x){return /looking for (?:a )?website|thinking about (?:a )?website|want (?:a )?website|need (?:a )?website|want (?:a )?site|need (?:a )?site|here for (?:a )?website|website for my business|хочу сайт|нужен сайт|приш[её]л.*сайт/.test(x)}
+function orderWebsiteIntent(x){return /how (?:do|can) i order (?:a )?website|how to order (?:a )?website|order (?:a )?website|ordering (?:a )?website|start (?:a )?website (?:order|project)|get (?:a )?website from alex|заказать сайт|как заказать сайт|оформить.*сайт/.test(x)}
+function orderCorrection(x){return /(?:i mean|i meant|but i mean|no.*mean).*order(?:ing)? (?:a )?website|meant ordering (?:a )?website|not.*(?:tour|browse|look).*website|i can myself see.*website|не.*смотреть.*сайт.*заказ|имею в виду.*заказ/.test(x)}
+function contactIntent(x){return /contact alex|contact alex node|talk to alex|send.*alex|i'll contact|ill contact|i will contact|связ.*алекс|напиш.*алекс|позвон.*алекс/.test(x)}
+function timelineIntent(x){return /how long|how soon|when can you start|delivery time|turnaround|срок|сколько времени|когда.*начать/.test(x)}
+function greetingOnly(x){
+  return /^(?:(?:oh|wow|well|hey|hi|hello|hiya|there|anita|good morning|good afternoon|good evening|good day|привет|здравствуй|здравствуйте|доброе утро|добрый день|добрый вечер|ого|вау)\s*)+$/.test(x);
+}
+function reactionOnly(x){
+  return /^(?:wow|oh wow|cool|nice|great|awesome|amazing|haha|ha ha|lol|thanks|thank you|thank you very much|ok|okay|okay then|got it|i see|understood|вау|ого|круто|класс|здорово|супер|спасибо|большое спасибо|понял|поняла|ясно|ок|окей)$/.test(x);
+}
+
+function newWebsiteProjectIntent(x){
+  return /\b(?:new|another|different)\s+(?:website|web site|site)\b|\b(?:website|web site|site)\s+for\s+(?:a|my)\s+(?:new|different)\s+business\b|\bchanged?\s+(?:my\s+)?business\b|\b(?:new|different)\s+business\b.{0,50}\b(?:website|site)\b|нов(?:ый|ого|ая)\s+сайт|друг(?:ой|ого)\s+сайт|сменил[аи]?\s+бизнес|друг(?:ой|ого)\s+бизнес/.test(x);
+}
+function logoIntent(x){
+  return /\b(?:need|want|looking for|make|create|design)\b.{0,45}\b(?:a\s+)?logo\b|\blogo\s+(?:design|for my|for our)\b|нужен\s+логотип|хочу\s+логотип|сделать\s+логотип|дизайн\s+логотип/.test(x);
+}
+
+
+function consult(text,l,ctx){
+ const x=n(text);let b=briefWith(ctx);const found=extractBusiness(text);b=mergeReq(b,text);if(found)b.business=found;
+ if(wantsWebsite(x)&&ctx.topic!=="website_consultation"){
+  if(found)return{kind:"answer",role:"secretary",language:l,topic:"website_consultation",pending:"goal",brief:b,memory:memoryWith(ctx,{business:found,businessRaw:text}),text:say(l,`Absolutely 😊 A website for ${found}. What should visitors mainly be able to do there?`,`Конечно 😊 Сайт для ${found}. Что посетители должны в первую очередь уметь делать на сайте?`)};
+  return{kind:"answer",role:"secretary",language:l,topic:"website_consultation",pending:"business",brief:b,memory:memoryWith(ctx),text:say(l,"Absolutely 😊 Let’s first understand the project before choosing a package. What kind of business is the website for?","Конечно 😊 Сначала разберём проект, а пакет выберем позже. Для какого бизнеса нужен сайт?")};
+ }
+ if(ctx.topic==="website_consultation"&&ctx.pending==="business"){
+  const business=found||((extractRequirements(text).length||/website|section|button|gallery|price|map|portfolio/i.test(text))?null:cleanBusiness(text));
+  if(!business)return{kind:"answer",role:"secretary",language:l,topic:"website_consultation",pending:"business",brief:b,memory:memoryWith(ctx),text:say(l,"I’ve noted those website requirements 😊 I still need one detail: what kind of business is the website for?","Я записала требования к сайту 😊 Осталось уточнить: для какого бизнеса нужен сайт?")};
+  b.business=business;return{kind:"answer",role:"secretary",language:l,topic:"website_consultation",pending:"goal",brief:b,memory:memoryWith(ctx,{business,businessRaw:text}),text:say(l,`Got it 😊 So the website is for your ${business}. What should visitors mainly do on the website — get information, contact you, book, view prices, buy products, or something else?`,`Поняла 😊 Значит, сайт нужен для вашего бизнеса: ${business}. Что посетители должны делать на сайте — получать информацию, связываться с вами, бронировать, смотреть цены, покупать товары или что-то ещё?`)};
+ }
+ if(ctx.topic==="website_consultation"&&ctx.pending==="goal"){
+  b.goal=cleanGoal(text);return{kind:"answer",role:"secretary",language:l,topic:"website_consultation",pending:"size",brief:b,memory:memoryWith(ctx),text:say(l,`Got it 😊 I’ve noted that.${requirementsText(b,l)} Roughly how large should the site be: one landing page, a few separate pages, or a larger multi-page site?`,`Поняла 😊 Я это записала.${requirementsText(b,l)} Примерно какой объём нужен: одна страница, несколько отдельных страниц или большой многостраничный сайт?`)};
+ }
+ if(ctx.topic==="website_consultation"&&ctx.pending==="size"){
+  const validSize=cleanSize(text);
+  if(!validSize){
+    const looksQuestion=/\?|\b(?:what|how much|price|cost|difference|why|when|where|who)\b/i.test(text);
+    if(looksQuestion)return null;
+    return{kind:"answer",role:"secretary",language:l,topic:"website_consultation",pending:"size",brief:b,memory:memoryWith(ctx),text:say(l,"I haven't set the website size yet 😊 Would you prefer one landing page, a few separate pages, or a larger multi-page site?","Я пока не определила размер сайта 😊 Вы предпочитаете одну страницу, несколько отдельных страниц или большой многостраничный сайт?")};
+  }
+  b.size=validSize;b=recommend(b);let msg;
+  if(b.needsAlexReview)msg=say(l,`Based on what you've told me, I’d suggest: ${b.recommendedStructure}. Because you also need ${b.requirements.join(", ")}, I won’t lock this into a fixed package yet — Alex should review the integrations and confirm the exact package and price.`,`По вашему описанию я бы предложила: ${b.recommendedStructure}. Поскольку нужны ${b.requirements.join(", ")}, я пока не буду фиксировать пакет — Алекс должен проверить интеграции и подтвердить пакет и цену.`);
+  else {const p=b.recommendedPackage;msg=say(l,`Based on what you've told me, I’d start with: ${b.recommendedStructure}. The closest package is ${p} (${C.packages[p].price}). Alex can confirm the exact scope after reviewing the project.`,`По вашему описанию я бы начала со структуры: ${b.recommendedStructure}. Ближе всего пакет ${p} (${C.packages[p].price}). Точный объём Алекс подтвердит после просмотра проекта.`)}
+  return{kind:"answer",role:"secretary",language:l,topic:"website_consultation",pending:null,brief:b,memory:memoryWith(ctx),text:msg};
+ }
+ return null;
+}
+W.roles={route(text){
+ const ctx=W.state.context(),raw=String(text||""),x=n(text),l=lng(text);const foundName=extractName(text),foundBusiness=extractBusiness(text);let memory=memoryWith(ctx);if(foundName)memory=memoryWith(ctx,{name:foundName});if(foundBusiness)memory=Object.assign({},memory,{business:foundBusiness,businessRaw:text});
+
+ if(greetingOnly(x))return{
+   kind:"answer",
+   role:ctx.role||"guide",
+   language:l,
+   memory,
+   pose:"neutral",
+   text:say(l,
+     "Hi 😊 Nice to see you. How can I help you today?",
+     "Привет 😊 Рада вас видеть. Чем могу помочь сегодня?"
+   )
+ };
+ if(reactionOnly(x))return{
+   kind:"answer",
+   role:ctx.role||"guide",
+   language:l,
+   memory,
+   pose:"neutral",
+   text:say(l,
+     "😊 Of course. What would you like to do next?",
+     "😊 Конечно. Что вы хотели бы сделать дальше?"
+   )
+ };
+
+ if(ctx.websiteBrief&&ctx.websiteBrief.business&&(
+   /(?:i(?:'m| am)?\s+here\s+for|i\s+need|i\s+want|looking\s+for)\s+(?:a\s+)?(?:website|web site|site)\b/.test(x)
+   || /(?:я\s+здесь.*(?:сайт|сайта)|мне\s+нужен\s+сайт|хочу\s+сайт)/.test(x)
+  )&&!newWebsiteProjectIntent(x)){
+   return{
+    kind:"answer",role:"secretary",language:l,memory,pose:"professional",
+    topic:"website_consultation",pending:null,pendingAction:"website_project_choice",
+    text:say(
+      l,
+      `Of course 😊 I remember the website project for your ${ctx.websiteBrief.business}. Would you like to continue that project, or start a new website project?`,
+      `Конечно 😊 Я помню проект сайта для вашего бизнеса: ${ctx.websiteBrief.business}. Хотите продолжить этот проект или начать новый сайт?`
+    )
+   };
+ }
+ if(newWebsiteProjectIntent(x)){
+   const oldBrief=ctx.websiteBrief||null;
+   const freshBrief={business:null,goal:null,size:null,requirements:[],recommendedPackage:null,recommendedStructure:null,needsAlexReview:false};
+   return{
+     kind:"answer",
+     role:"secretary",
+     language:l,
+     memory,
+     pose:"professional",
+     topic:"website_consultation",
+     pending:"business",
+     pendingAction:null,
+     brief:freshBrief,
+     previousWebsiteBrief:oldBrief,
+     text:say(
+       l,
+       "Got it 😊 Since this is a new website project, we'll start a fresh brief. I still remember our earlier conversation, but I won't mix the old project into this one. What kind of business is the new website for?",
+       "Поняла 😊 Раз это новый проект сайта, начнём новый бриф. Предыдущий разговор я помню, но не буду смешивать старый проект с новым. Для какого бизнеса нужен новый сайт?"
+     )
+   };
+ }
+ if(logoIntent(x)){
+   return{
+     kind:"answer",
+     role:"guide",
+     language:l,
+     memory,
+     pose:"professional",
+     text:say(
+       l,
+       "Yes 😊 Alex Node also does graphic design, including logos. Tell me what the logo is for and, if you already know, what style or feeling you want it to have.",
+       "Да 😊 Alex Node также занимается графическим дизайном, включая логотипы. Расскажите, для чего нужен логотип и, если уже знаете, какой стиль или настроение вы хотите."
+     )
+   };
+ }
+ const hp=handlePending(text,l,ctx,memory);if(hp)return hp;
+ if(foundName)return{kind:"answer",role:ctx.role||"guide",language:l,memory,pose:"neutral",text:say(l,`Nice to meet you, ${foundName} 😊`,`Приятно познакомиться, ${foundName} 😊`)};
+ if(/what is my name|what's my name|do you remember my name|как меня зовут/.test(x))return{kind:"answer",role:ctx.role||"guide",language:l,memory,text:memory.name?say(l,`Your name is ${memory.name} 😊`,`Вас зовут ${memory.name} 😊`):say(l,"I don't know your name yet 😊 What should I call you?","Я пока не знаю вашего имени 😊 Как мне к вам обращаться?")};
+ if(/are you (?:a )?real person|are you real|are you human|ты настоящ|ты человек/.test(x))return{kind:"answer",role:"guide",language:l,memory,pose:"neutral",text:say(l,"No 😊 I'm not a real person. I'm ANITA, Alex Node IT Assistance — an original virtual character created by Alex Node. My main specialty is IT assistance, and I can also help visitors with Alex Node services and website projects.","Нет 😊 Я не реальный человек. Я ANITA, Alex Node IT Assistance — оригинальный виртуальный персонаж Alex Node. Моя основная специализация — IT-помощь, а ещё я помогаю посетителям с услугами Alex Node и проектами сайтов.")};
+ if(/what(?:'s| is) your role|your role here|just it help|only it help|твоя роль|только it/.test(x))return{kind:"answer",role:"guide",language:l,memory,pose:"neutral",text:say(l,"My main specialty is IT assistance 😊 I also guide visitors through Alex Node services and can help start a website project by collecting the main details for Alex. I don't claim which service people ask for most unless I have verified statistics.","Моя основная специализация — IT-помощь 😊 Также я помогаю с услугами Alex Node и могу начать оформление проекта сайта, собрав основные детали для Алекса. Я не утверждаю, что люди чаще спрашивают какую-то конкретную услугу без подтверждённой статистики.")};
+ if(/can we talk without alex|talk without alex node|without alex node|можем.*без алекс/.test(x))return{kind:"answer",role:ctx.role||"guide",language:l,memory,pose:"neutral",text:say(l,"Yes 😊 You can talk with me directly. For a website project, I can collect the main requirements and prepare a brief for Alex. Alex confirms the final scope, price and anything that needs human approval.","Да 😊 Вы можете общаться со мной напрямую. По проекту сайта я могу собрать основные требования и подготовить бриф для Алекса. Алекс подтверждает итоговый объём, цену и всё, что требует решения человека.")};
+ if(orderCorrection(x)||orderWebsiteIntent(x))return{kind:"answer",role:"secretary",language:l,memory,pose:"professional",topic:"website_consultation",pending:(ctx.websiteBrief&&ctx.websiteBrief.business)?"goal":"business",text:(ctx.websiteBrief&&ctx.websiteBrief.business)?say(l,"Got it 😊 You're here to discuss ordering a website, not for a website tour. We can continue the order right here. What should visitors mainly be able to do on the website?","Поняла 😊 Вы хотите обсудить заказ сайта, а не экскурсию по сайту. Продолжим заказ прямо здесь. Что посетители должны уметь делать на сайте?"):say(l,"Of course 😊 You can start the website order right here with me. I'll collect the main project details for Alex as we talk. What kind of business is the website for?","Конечно 😊 Начать заказ сайта можно прямо здесь со мной. По ходу разговора я соберу основные детали проекта для Алекса. Для какого бизнеса нужен сайт?")};
+ if(/what kind of business did i tell you about|what is my business|what's my business|do you remember my business|какой у меня бизнес/.test(x))return{kind:"answer",role:"secretary",language:l,memory,pose:"professional",text:memory.business?say(l,`You told me about your ${memory.business} 😊`,`Вы рассказывали о своём бизнесе: ${memory.business} 😊`):say(l,"I don't have your business type saved yet 😊","Тип вашего бизнеса у меня пока не сохранён 😊")};
+ if(/what did i want visitors to do|what was my website goal|do you remember my website goal/.test(x)){const b=ctx.websiteBrief||{};return{kind:"answer",role:"secretary",language:l,memory,text:b.goal?say(l,`You wanted visitors to ${cleanGoal(b.goal)}. 😊`,`Вы хотели, чтобы посетители ${cleanGoal(b.goal)}. 😊`):say(l,"I don't have your website goal saved yet 😊","Цель сайта пока не сохранена 😊")}}
+ if(/what size website did i want|how big.*website|how many pages.*(?:did i want|we discuss)/.test(x)){const b=ctx.websiteBrief||{};return{kind:"answer",role:"secretary",language:l,memory,text:b.size?say(l,`You wanted ${cleanSize(b.size)}. 😊`,`Вы хотели ${cleanSize(b.size)}. 😊`):say(l,"I don't have the website size saved yet 😊","Размер сайта пока не сохранён 😊")}}
+ if(/which package did you recommend|what package did you recommend/.test(x)){const b=ctx.websiteBrief||{};if(b.needsAlexReview)return{kind:"answer",role:"secretary",language:l,memory,text:say(l,"I left the package for Alex to confirm because your requested functionality needs an integration review 😊","Я оставила пакет на подтверждение Алексу, потому что функции требуют проверки интеграций 😊")};const p=b.recommendedPackage,pr=p&&(C.packages[p]||{}).price;return{kind:"answer",role:"secretary",language:l,memory,text:p?say(l,`I recommended ${p}${pr?` (${pr})`:""} 😊`,`Я рекомендовала ${p}${pr?` (${pr})`:""} 😊`):say(l,"I haven't saved a package recommendation yet 😊","Рекомендация пакета пока не сохранена 😊")}}
+ if(/what do you remember about my website|what do you remember about my project|remind me.*(?:website|project)/.test(x))return{kind:"answer",role:"secretary",language:l,memory,pose:"professional",text:summary(ctx,l,false)};
+ if(/can we continue.*(?:website|project)|continue.*my.*(?:website|project)/.test(x))return{kind:"answer",role:"secretary",language:l,memory,pose:"professional",pendingAction:"prepare_project_summary",text:`${summary(ctx,l,false)} ${say(l,"I can prepare a short project summary for Alex now. Would you like me to do that?","Я могу подготовить короткий бриф для Алекса. Подготовить?")}`};
+ if(/(?:prepare|make|create|show|give me).*?(?:project )?(?:summary|brief).*alex/.test(x))return{kind:"answer",role:"secretary",language:l,memory,pose:"professional",pendingAction:"additional_services",text:`${summary(ctx,l,true)} ${say(l,"Before we finish, would you like to add anything else — for example a logo, other graphic design, a virtual character, or something else?","Перед завершением хотите добавить что-нибудь ещё — например логотип, другой графический дизайн, виртуального персонажа или что-то ещё?")}`};
+ if(timelineIntent(x))return{kind:"answer",role:"secretary",language:l,memory,pose:"important",text:say(l,"The timeline depends on the final scope and current availability. Alex can confirm the estimated delivery time after reviewing your project 😊","Срок зависит от итогового объёма и текущей загрузки. Алекс подтвердит примерный срок после просмотра проекта 😊")};
+ if(contactIntent(x)&&ctx.topic==="website_consultation")return{kind:"answer",role:"secretary",language:l,memory,pose:"professional",pendingAction:"prepare_project_summary",text:say(l,`Perfect 😊 I already have the main details of your project. I can prepare a short summary for Alex so you won't need to explain everything again. Would you like me to do that?`,`Отлично 😊 Основные детали проекта у меня уже есть. Я могу подготовить короткий бриф для Алекса, чтобы вам не пришлось объяснять всё заново. Подготовить?`)};
+ const c=consult(text,l,ctx);if(c)return c;
+ if(/guide me|website tour|покажи.*сайт|проведи.*сайт/.test(x))return{kind:"tour",role:"guide",language:l,memory};
+ if(/book|appointment|meeting|calendar|запис|встреч|календар/.test(x))return{kind:"answer",role:"secretary",language:l,memory,pose:"professional",text:say(l,`I can't book an appointment directly yet 😊 You can contact Alex Node by phone at ${C.contact.phone} or by email at ${C.contact.email}.`,`Я пока не могу забронировать встречу напрямую 😊 Свяжитесь с Alex Node: ${C.contact.phone} или ${C.contact.email}.`)};
+ if(/computer|windows|printer|wifi|pc|laptop|компьютер|виндов|принтер|ноутбук/.test(x))return{kind:"answer",role:"it",language:l,memory,pose:"important",text:say(l,"I can help as IT Assistance. Tell me exactly what happens and whether you see an error message.","Я могу помочь как IT Assistance. Расскажите, что именно происходит и появляется ли ошибка.")};
+ if(/\b(do i need to (?:talk|speak|contact) (?:to )?(?:alex|him)|why did you ask (?:me )?(?:these|those) questions|why are you asking (?:me )?(?:these|those) questions|what happens next|what do you do with (?:this|these) (?:details|information)|do i have to explain (?:it|everything) again)\b/i.test(raw)){ctx.role="secretary";ctx.topic="website_order";return{kind:"answer",role:"secretary",language:l,memory,pose:"neutral",text:"Not necessarily 😊 You don't need to start everything again with Alex. I'm collecting the project details so I can prepare a brief for him. Once we've finished, Alex can review anything that needs his confirmation, such as technical integrations, and continue from the information we've already collected."};}
+if(/\b(what character|which character|character\?|what do you mean by character)\b/i.test(raw)){return{kind:"answer",role:ctx.role||"secretary",language:l,memory,pose:"neutral",text:"I meant Alex Node's separate Virtual Character service 😊 It is completely optional and is not automatically included with a website. We can continue with just your website project."};}
+if(/\b(i don't need (?:one|a character)|i do not need (?:one|a character)|don't want (?:one|a character)|no character)\b/i.test(raw)){ctx.role="secretary";ctx.topic="website_order";return{kind:"answer",role:"secretary",language:l,memory,pose:"neutral",text:"Of course 😊 A virtual character is completely optional and separate from your website project. We'll continue with just the website."};}
+if(/^(hi|hello|hey|привет|здравствуй)$/.test(x))return{kind:"answer",role:"guide",language:l,memory,pose:"neutral",text:say(l,"Hi 😊 How can I help you today?","Привет 😊 Чем могу помочь?")};
+ if(/^(?:oh\s+)?(?:ok|okay)(?:\s+ok)?(?:\s+got it)?$|^(?:oh\s+)?(?:i see|got it|understood|thanks,? got it)$/i.test(x))return{kind:"answer",role:ctx.role||"guide",language:l,memory,pose:"neutral",text:say(l,"Of course 😊 What would you like to do next?","Конечно 😊 Что вы хотели бы сделать дальше?")};
+ if(/price|pricing|how much.*website|цена.*сайт|стоимость.*сайт/.test(x))return{kind:"answer",role:"secretary",language:l,memory,pose:"professional",text:say(l,"START 250 €, LIGHT 450 €, MEDIUM 620 €, CODE from 700 €. I can suggest the closest package after I understand the project scope and functionality.","START 250 €, LIGHT 450 €, MEDIUM 620 €, CODE от 700 €. Я предложу подходящий пакет после того, как пойму объём и функции проекта.")};
+ return{kind:"engine",role:ctx.role||"guide",language:l,memory};
+}};
+})();
