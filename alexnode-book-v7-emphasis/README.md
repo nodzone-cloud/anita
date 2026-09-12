@@ -35,3 +35,11 @@ After upload, remove obsolete files such as `placeholder.txt` if you want; they 
 - Clicking the back cover now enlarges it in the center of the screen.
 - Clicking the enlarged back cover again restores it to normal size.
 - The zoomed back cover has a dark backdrop and works on desktop and mobile.
+
+
+## Return to book list
+- A round back arrow appears to the left after a book is selected.
+- Clicking it returns to the original floating-book/list view.
+- Back-cover zoom is reset automatically.
+- The arrow disappears while the reader is open.
+- Works on desktop and mobile.

@@ -22,6 +22,7 @@
   const root = $("#anbook");
   const floatingCover = $("#floatingCover");
   const focusZone = $("#focusZone");
+  const returnBooksBtn = $("#returnBooksBtn");
   const reader = $("#reader");
   const bookOpen = $("#bookOpen");
   const leftPage = $("#leftPage");
@@ -466,7 +467,34 @@
       ghost.remove();
       focusZone.classList.add("show");
       focusZone.setAttribute("aria-hidden","false");
+      returnBooksBtn.classList.add("show");
     },740);
+  }
+
+  function returnToBookList(){
+    resetBackCoverZoom();
+
+    focusZone.classList.remove("show");
+    focusZone.setAttribute("aria-hidden","true");
+    returnBooksBtn.classList.remove("show");
+
+    focused = false;
+    opened = false;
+
+    // Restore original floating cover.
+    floatingCover.style.visibility = "visible";
+
+    // Small re-entry animation so returning feels intentional.
+    floatingCover.animate(
+      [
+        {opacity:0, transform:"translateX(38px) scale(.92)"},
+        {opacity:1, transform:"translateX(0) scale(1)"}
+      ],
+      {
+        duration:420,
+        easing:"cubic-bezier(.2,.85,.18,1)"
+      }
+    );
   }
 
   function setReaderUI(active){
@@ -475,6 +503,7 @@
 
   function openReader(){
     resetBackCoverZoom();
+    returnBooksBtn.classList.remove("show");
     opened = true;
     focusZone.classList.remove("show");
     focusZone.setAttribute("aria-hidden","true");
@@ -566,6 +595,7 @@
   }
 
   $("#floatingCover").addEventListener("click",focusBook);
+  returnBooksBtn.addEventListener("click",returnToBookList);
   $("#focusFront").addEventListener("click",openReader);
   $("#focusBack").addEventListener("click",toggleBackCoverZoom);
   $("#openBookButton").addEventListener("click",openReader);
