@@ -801,3 +801,24 @@ select.hub-field option{color:#111;background:#fff}
 }
 
 /* Alex Node & ANITA Book Hub v13 — based on v12 stable baseline. */
+
+/* =========================================================
+   v14 — MOBILE-ONLY BACKGROUND FIX
+   Desktop/PC backgrounds remain unchanged.
+   Mobile uses dedicated portrait backgrounds to avoid stretching.
+   ========================================================= */
+@media (max-width:900px){
+  .anbook-bg{
+    background-image:url('./assets/mobile-bg-ru.png') !important;
+    background-size:cover !important;
+    background-position:center top !important;
+    background-repeat:no-repeat !important;
+  }
+
+  .anbook.lang-en .anbook-bg{
+    background-image:url('./assets/mobile-bg-en.png') !important;
+    background-size:cover !important;
+    background-position:center top !important;
+    background-repeat:no-repeat !important;
+  }
+}
