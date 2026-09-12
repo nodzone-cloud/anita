@@ -1,0 +1,77 @@
+/* Alex Node & ANITA — MOBILE ADD-ON ONLY
+   Desktop/tablet above 760px: NOTHING is shown.
+*/
+.an-mobile-book-addon{display:none!important;}
+
+@media (max-width:760px){
+  #an-book-app .an-mobile-book-addon{
+    display:flex!important;
+    position:absolute;
+    z-index:9;
+    top:92px;
+    left:50%;
+    transform:translateX(-50%);
+    width:min(88vw,560px);
+    min-height:74px;
+    padding:10px 14px 8px;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    text-align:center;
+    pointer-events:none;
+    filter:drop-shadow(0 4px 14px rgba(0,0,0,.38));
+  }
+
+  #an-book-app .an-mobile-book-addon-title{
+    margin:0;
+    line-height:1;
+    font-family:"Russo One",Arial,sans-serif;
+    font-size:clamp(20px,6.1vw,30px);
+    letter-spacing:.2px;
+    white-space:nowrap;
+    text-shadow:0 2px 7px rgba(0,0,0,.55);
+  }
+
+  #an-book-app .an-mobile-book-addon-title .an-mobile-alex{
+    color:#fff;
+  }
+
+  #an-book-app .an-mobile-book-addon-title .an-mobile-amp{
+    color:#8c2cff;
+    padding:0 .12em;
+  }
+
+  #an-book-app .an-mobile-book-addon-title .an-mobile-anita{
+    color:#ff6a1d;
+  }
+
+  #an-book-app .an-mobile-book-addon-sub{
+    margin-top:7px;
+    color:rgba(255,255,255,.94);
+    font-family:Arial,sans-serif;
+    font-size:clamp(10px,3.15vw,14px);
+    line-height:1.2;
+    letter-spacing:.35px;
+    text-shadow:0 2px 6px rgba(0,0,0,.62);
+  }
+
+  #an-book-app .an-mobile-book-addon-accent{
+    width:min(42vw,180px);
+    height:3px;
+    margin-top:7px;
+    border-radius:999px;
+    background:linear-gradient(90deg,#7a1cff 0%,#d42eb6 52%,#ff6a1d 100%);
+    box-shadow:0 0 10px rgba(191,42,179,.35);
+  }
+}
+
+/* Extra-small phones */
+@media (max-width:390px){
+  #an-book-app .an-mobile-book-addon{
+    top:88px;
+    width:92vw;
+  }
+  #an-book-app .an-mobile-book-addon-sub{
+    max-width:84vw;
+  }
+}
