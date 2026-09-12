@@ -1,0 +1,57 @@
+/* Alex Node Book — Purchase Info Add-on
+   Mobile only. Desktop/PC is intentionally untouched.
+*/
+.an-book-purchase-addon {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .an-book-purchase-addon {
+    display: block;
+    position: relative;
+    z-index: 20;
+    width: min(92%, 560px);
+    margin: 18px auto 34px;
+    padding: 0 12px;
+    box-sizing: border-box;
+  }
+
+  .an-book-purchase-card {
+    padding: 20px 18px;
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 18px;
+    background: rgba(12,12,16,.76);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 12px 32px rgba(0,0,0,.28);
+    text-align: center;
+  }
+
+  .an-book-purchase-card h2 {
+    margin: 0 0 10px;
+    font-size: clamp(20px, 5.5vw, 27px);
+    line-height: 1.15;
+    color: #fff;
+  }
+
+  .an-book-purchase-card p {
+    margin: 0 auto 16px;
+    max-width: 42ch;
+    font-size: 15px;
+    line-height: 1.5;
+    color: rgba(255,255,255,.84);
+  }
+
+  .an-book-purchase-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 46px;
+    padding: 0 22px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #7c3cff, #ff8a2a);
+    color: #fff !important;
+    text-decoration: none !important;
+    font-weight: 700;
+  }
+}
