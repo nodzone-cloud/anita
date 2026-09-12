@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Alex Node & ANITA — AN Book</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./book-purchase-addon.css">
+  <script src="./book-purchase-addon.js" defer></script>
+</head>
+<body>
+<main id="anbook" class="anbook">
+  <div class="anbook-bg" aria-hidden="true"></div>
+  <div class="anbook-shade" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="brand" href="https://alexnode.fi/" aria-label="Alex Node">
+      <span class="brand-an">AN</span>
+      <span class="brand-line"></span>
+      <span class="brand-copy">
+        <span class="brand-name">ALEX NODE</span>
+        <span class="brand-sub">WEBSITES. DESIGN. IT SUPPORT.</span>
+      </span>
+    </a>
+
+    <nav class="nav" aria-label="Book navigation">
+      <a href="#home" data-view-link="home" data-i18n="home">Главная</a>
+      <a class="active" href="#book" data-view-link="book" data-i18n="about">О книге</a>
+      <a href="#gallery" data-view-link="gallery" data-i18n="gallery">Галерея</a>
+      <a href="#reviews" data-view-link="reviews" data-i18n="reviews">Отзывы</a>
+      <a id="buyLinkTop" href="#buy" data-view-link="buy" data-i18n="buyShort">Купить</a>
+    </nav>
+
+    <div class="top-actions">
+      <a id="buyButton" class="buy-button" href="#buy" data-view-link="buy">
+        <span class="cart">🛒</span>
+        <span data-i18n="buy">Купить книгу</span>
+      </a>
+      <div class="languages" aria-label="Language">
+        <button type="button" data-lang="ru" class="active">RU</button>
+        <button type="button" data-lang="en">EN</button>
+        <button type="button" data-lang="fi">FI</button>
+      </div>
+    </div>
+  </header>
+
+  <section id="book" class="hero">
+    <div class="book-dock editions-dock" id="bookDock">
+      <div class="edition-item">
+        <button class="floating-cover edition-cover"
+                type="button"
+                data-book-id="alex-node-anita-ru"
+                aria-label="Alex Node & ANITA Russian edition">
+          <img src="https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp" alt="Alex Node & ANITA Russian edition">
+        </button>
+        <span class="edition-badge">RU</span>
+        <button class="edition-share"
+                type="button"
+                data-share-book="alex-node-anita-ru"
+                aria-label="Share Russian edition">↗</button>
+      </div>
+
+      <div class="edition-item">
+        <button class="floating-cover edition-cover"
+                type="button"
+                data-book-id="alex-node-anita-en"
+                aria-label="Alex Node & ANITA English edition">
+          <img src="https://optim.tildacdn.net/tild3862-6437-4362-b765-636465336337/-/format/webp/ENG_front_cover.png.webp" alt="Alex Node & ANITA English edition">
+        </button>
+        <span class="edition-badge">EN</span>
+        <button class="edition-share"
+                type="button"
+                data-share-book="alex-node-anita-en"
+                aria-label="Share English edition">↗</button>
+      </div>
+    </div>
+
+    <button class="return-books-btn" id="returnBooksBtn" type="button" aria-label="Back to book list">‹</button>
+
+    <div class="focus-zone" id="focusZone" aria-hidden="true">
+      <button class="focus-cover front" id="focusFront" type="button" aria-label="Open book">
+        <img src="https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp" alt="Front cover">
+      </button>
+
+      <div class="focus-copy">
+        <h1>Alex Node &amp; ANITA</h1>
+        <p data-i18n="focusText">Нажмите на переднюю обложку, чтобы открыть книгу.</p>
+        <button id="openBookButton" class="primary-cta" type="button" data-i18n="openBook">Открыть книгу</button>
+      </div>
+
+      <button class="focus-cover back" id="focusBack" type="button" aria-label="Zoom back cover" aria-pressed="false">
+        <img src="https://optim.tildacdn.net/tild6261-6139-4333-a265-383535373737/-/format/webp/no_bg_book_back.png.webp" alt="Back cover">
+      </button>
+    </div>
+
+    <section class="reader" id="reader" aria-hidden="true">
+      <button class="reader-close" id="closeReader" type="button" aria-label="Close book">×</button>
+      <button class="page-arrow left" id="prevPage" type="button" aria-label="Previous page">‹</button>
+
+      <div class="book-open" id="bookOpen">
+        <article class="page page-left">
+          <div class="page-inner" id="leftPage"></div>
+          <div class="page-num" id="leftNum"></div>
+        </article>
+        <div class="spine"></div>
+        <article class="page page-right">
+          <div class="page-inner" id="rightPage"></div>
+          <div class="page-num" id="rightNum"></div>
+        </article>
+      </div>
+
+      <button class="page-arrow right" id="nextPage" type="button" aria-label="Next page">›</button>
+      <div class="mobile-hint" data-i18n="swipe">Листайте свайпом</div>
+    </section>
+  </section>
+
+
+  <section id="galleryView" class="section-view" aria-hidden="true">
+    <div class="section-card wide">
+      <h1 data-i18n="gallery">Галерея</h1>
+      <p class="section-lead" data-i18n="galleryEmpty">Галерея готова. Изображения будут добавлены позже.</p>
+      <div id="galleryGrid" class="gallery-grid"></div>
+    </div>
+  </section>
+
+  <section id="reviewsView" class="section-view" aria-hidden="true">
+    <div class="section-card reviews-card">
+      <h1 data-i18n="reviews">Отзывы</h1>
+      <p class="section-lead" data-i18n="reviewsLead">Выберите книгу, поставьте оценку и оставьте комментарий.</p>
+
+      <div class="review-book-row">
+        <img id="reviewBookCover" class="review-book-cover" src="https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp" alt="">
+        <div>
+          <label class="field-label" for="reviewBookSelect" data-i18n="chooseBook">Книга</label>
+          <select id="reviewBookSelect" class="hub-field"></select>
+          <button id="shareReviewBook" class="secondary-btn" type="button">↗ <span data-i18n="share">Поделиться</span></button>
+        </div>
+      </div>
+
+      <form id="reviewForm" class="review-form">
+        <label class="field-label" data-i18n="rating">Оценка</label>
+        <div class="stars" id="ratingStars" aria-label="Rating">
+          <button type="button" data-rating="1">★</button>
+          <button type="button" data-rating="2">★</button>
+          <button type="button" data-rating="3">★</button>
+          <button type="button" data-rating="4">★</button>
+          <button type="button" data-rating="5">★</button>
+        </div>
+
+        <label class="field-label" for="reviewName" data-i18n="yourName">Ваше имя</label>
+        <input id="reviewName" class="hub-field" maxlength="60" required>
+
+        <label class="field-label" for="reviewText" data-i18n="yourReview">Ваш отзыв</label>
+        <textarea id="reviewText" class="hub-field review-text" maxlength="1200" required></textarea>
+
+        <button class="primary-cta" type="submit" data-i18n="publishReview">Опубликовать отзыв</button>
+        <div id="reviewStatus" class="review-status" aria-live="polite"></div>
+      </form>
+
+      <div class="review-list-head">
+        <h2 data-i18n="readerReviews">Отзывы читателей</h2>
+        <div id="reviewAverage" class="review-average"></div>
+      </div>
+      <div id="reviewsList" class="reviews-list"></div>
+    </div>
+  </section>
+
+  <section id="buyView" class="section-view" aria-hidden="true">
+    <div class="section-card wide buy-hub-card">
+      <h1 data-i18n="buyBooks">Купить книгу</h1>
+      <p class="section-lead" data-i18n="buyLead">Выберите книгу. Вы сможете посмотреть её перед покупкой.</p>
+      <div id="buyBooksGrid" class="books-grid"></div>
+    </div>
+  </section>
+
+  <div class="bottom-left">
+    <button id="contentsBtn" class="round-control" type="button" aria-label="Contents">▦</button>
+    <span data-i18n="contents">Содержание</span>
+  </div>
+
+  <div class="bottom-center hidden" id="pageCounter">1 / 1</div>
+
+  <div class="bottom-right">
+    <button id="zoomBtn" class="bottom-tool" type="button">
+      <span class="tool-icon">⌕</span><span data-i18n="zoom">Увеличить</span>
+    </button>
+    <button id="fullscreenBtn" class="bottom-tool" type="button">
+      <span class="tool-icon">⛶</span><span data-i18n="fullscreen">На весь экран</span>
+    </button>
+    <button id="shareBtn" class="bottom-tool" type="button">
+      <span class="tool-icon">⌯</span><span data-i18n="share">Поделиться</span>
+    </button>
+  </div>
+
+  <button id="exitFullscreen" class="exit-fullscreen" type="button" data-i18n="exitFullscreen">
+    Выйти из полноэкранного режима
+  </button>
+
+  <aside class="contents-panel" id="contentsPanel" aria-hidden="true">
+    <div class="contents-card">
+      <button class="contents-close" id="contentsClose" type="button">×</button>
+      <h2 data-i18n="contents">Содержание</h2>
+      <div id="contentsList"></div>
+    </div>
+  </aside>
+</main>
+<script src="./app.js"></script>
+</body>
+</html>
