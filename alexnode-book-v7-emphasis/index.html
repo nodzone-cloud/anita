@@ -4,14 +4,145 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Alex Node & ANITA — AN Book</title>
-
   <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./mobile-direct-open-fix.css">
 
-  <!-- MOBILE NAV ONLY -->
-  <link rel="stylesheet" href="./mobile-nav-addon.css">
+  <style>
+    /* MOBILE NAV: only mobile, desktop untouched */
+    @media screen and (max-width:640px){
+      #anbook .topbar .nav{
+        display:flex !important;
+        position:absolute !important;
+        top:58px !important;
+        left:50% !important;
+        transform:translateX(-50%) !important;
+        width:calc(100vw - 20px) !important;
+        max-width:520px !important;
+        align-items:center !important;
+        justify-content:center !important;
+        gap:5px !important;
+        flex-wrap:nowrap !important;
+        margin:0 !important;
+        padding:7px 6px !important;
+        border:1px solid rgba(255,255,255,.16) !important;
+        border-radius:16px !important;
+        background:rgba(12,8,13,.58) !important;
+        backdrop-filter:blur(10px) !important;
+        -webkit-backdrop-filter:blur(10px) !important;
+        z-index:60 !important;
+        box-shadow:0 6px 20px rgba(0,0,0,.25) !important;
+      }
 
-  <!-- BUY INFO: PC + MOBILE -->
-  <link rel="stylesheet" href="./buy-info-addon.css">
+      #anbook .topbar .nav a{
+        display:flex !important;
+        align-items:center !important;
+        justify-content:center !important;
+        min-width:0 !important;
+        margin:0 !important;
+        padding:6px 7px !important;
+        border-radius:10px !important;
+        color:#fff !important;
+        text-decoration:none !important;
+        white-space:nowrap !important;
+        font-size:clamp(9px,2.75vw,12px) !important;
+        line-height:1 !important;
+        font-weight:600 !important;
+        opacity:.9 !important;
+      }
+
+      #anbook .topbar .nav a.active{
+        opacity:1 !important;
+        background:rgba(255,255,255,.12) !important;
+      }
+
+      #anbook .hero{
+        padding-top:72px !important;
+      }
+    }
+
+    /* BUY INFO: desktop + mobile */
+    #anbook .buy-info-box{
+      width:min(760px,92%);
+      margin:18px auto 24px;
+      padding:18px 20px;
+      border:1px solid rgba(255,255,255,.16);
+      border-radius:18px;
+      background:rgba(12,8,13,.56);
+      backdrop-filter:blur(10px);
+      -webkit-backdrop-filter:blur(10px);
+      box-shadow:0 10px 28px rgba(0,0,0,.24);
+      color:#fff;
+      text-align:left;
+    }
+
+    #anbook .buy-info-box h2{
+      margin:0 0 9px;
+      font-size:clamp(19px,2vw,27px);
+      line-height:1.1;
+    }
+
+    #anbook .buy-info-box p{
+      margin:0;
+      font-size:clamp(13px,1.2vw,16px);
+      line-height:1.5;
+      color:rgba(255,255,255,.92);
+    }
+
+    #anbook .buy-info-steps{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:10px;
+      margin-top:15px;
+    }
+
+    #anbook .buy-info-step{
+      padding:12px 13px;
+      border-radius:14px;
+      background:rgba(255,255,255,.07);
+      border:1px solid rgba(255,255,255,.10);
+    }
+
+    #anbook .buy-step-num{
+      display:inline-flex;
+      width:27px;
+      height:27px;
+      align-items:center;
+      justify-content:center;
+      margin-bottom:7px;
+      border-radius:50%;
+      background:linear-gradient(135deg,#7a1cff,#ff6a1d);
+      font-weight:800;
+      font-size:13px;
+    }
+
+    #anbook .buy-info-step strong{
+      display:block;
+      margin-bottom:4px;
+      font-size:14px;
+    }
+
+    #anbook .buy-info-step span{
+      display:block;
+      font-size:12.5px;
+      line-height:1.35;
+      color:rgba(255,255,255,.84);
+    }
+
+    @media screen and (max-width:640px){
+      #anbook .buy-info-box{
+        width:calc(100% - 24px);
+        margin:14px auto 18px;
+        padding:15px 14px;
+        border-radius:16px;
+      }
+
+      #anbook .buy-info-steps{
+        grid-template-columns:1fr;
+        gap:8px;
+        margin-top:12px;
+      }
+    }
+  </style>
 </head>
 
 <body>
@@ -42,7 +173,6 @@
         <span class="cart">🛒</span>
         <span data-i18n="buy">Купить книгу</span>
       </a>
-
       <div class="languages" aria-label="Language">
         <button type="button" data-lang="ru" class="active">RU</button>
         <button type="button" data-lang="en">EN</button>
@@ -53,19 +183,14 @@
 
   <section id="book" class="hero">
     <div class="book-dock editions-dock" id="bookDock">
-
       <div class="edition-item">
         <button class="floating-cover edition-cover"
                 type="button"
                 data-book-id="alex-node-anita-ru"
                 aria-label="Alex Node & ANITA Russian edition">
-
-          <img src="https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp"
-               alt="Alex Node & ANITA Russian edition">
+          <img src="https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp" alt="Alex Node & ANITA Russian edition">
         </button>
-
         <span class="edition-badge">RU</span>
-
         <button class="edition-share"
                 type="button"
                 data-share-book="alex-node-anita-ru"
@@ -77,166 +202,80 @@
                 type="button"
                 data-book-id="alex-node-anita-en"
                 aria-label="Alex Node & ANITA English edition">
-
-          <img src="https://optim.tildacdn.net/tild3862-6437-4362-b765-636465336337/-/format/webp/ENG_front_cover.png.webp"
-               alt="Alex Node & ANITA English edition">
+          <img src="https://optim.tildacdn.net/tild3862-6437-4362-b765-636465336337/-/format/webp/ENG_front_cover.png.webp" alt="Alex Node & ANITA English edition">
         </button>
-
         <span class="edition-badge">EN</span>
-
         <button class="edition-share"
                 type="button"
                 data-share-book="alex-node-anita-en"
                 aria-label="Share English edition">↗</button>
       </div>
-
     </div>
 
-    <button class="return-books-btn"
-            id="returnBooksBtn"
-            type="button"
-            aria-label="Back to book list">‹</button>
+    <button class="return-books-btn" id="returnBooksBtn" type="button" aria-label="Back to book list">‹</button>
 
     <div class="focus-zone" id="focusZone" aria-hidden="true">
-
-      <button class="focus-cover front"
-              id="focusFront"
-              type="button"
-              aria-label="Open book">
-
-        <img src="https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp"
-             alt="Front cover">
+      <button class="focus-cover front" id="focusFront" type="button" aria-label="Open book">
+        <img src="https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp" alt="Front cover">
       </button>
 
       <div class="focus-copy">
         <h1>Alex Node &amp; ANITA</h1>
-
-        <p data-i18n="focusText">
-          Нажмите на переднюю обложку, чтобы открыть книгу.
-        </p>
-
-        <button id="openBookButton"
-                class="primary-cta"
-                type="button"
-                data-i18n="openBook">
-          Открыть книгу
-        </button>
+        <p data-i18n="focusText">Нажмите на переднюю обложку, чтобы открыть книгу.</p>
+        <button id="openBookButton" class="primary-cta" type="button" data-i18n="openBook">Открыть книгу</button>
       </div>
 
-      <button class="focus-cover back"
-              id="focusBack"
-              type="button"
-              aria-label="Zoom back cover"
-              aria-pressed="false">
-
-        <img src="https://optim.tildacdn.net/tild6261-6139-4333-a265-383535373737/-/format/webp/no_bg_book_back.png.webp"
-             alt="Back cover">
+      <button class="focus-cover back" id="focusBack" type="button" aria-label="Zoom back cover" aria-pressed="false">
+        <img src="https://optim.tildacdn.net/tild6261-6139-4333-a265-383535373737/-/format/webp/no_bg_book_back.png.webp" alt="Back cover">
       </button>
-
     </div>
 
     <section class="reader" id="reader" aria-hidden="true">
-
-      <button class="reader-close"
-              id="closeReader"
-              type="button"
-              aria-label="Close book">×</button>
-
-      <button class="page-arrow left"
-              id="prevPage"
-              type="button"
-              aria-label="Previous page">‹</button>
+      <button class="reader-close" id="closeReader" type="button" aria-label="Close book">×</button>
+      <button class="page-arrow left" id="prevPage" type="button" aria-label="Previous page">‹</button>
 
       <div class="book-open" id="bookOpen">
-
         <article class="page page-left">
           <div class="page-inner" id="leftPage"></div>
           <div class="page-num" id="leftNum"></div>
         </article>
-
         <div class="spine"></div>
-
         <article class="page page-right">
           <div class="page-inner" id="rightPage"></div>
           <div class="page-num" id="rightNum"></div>
         </article>
-
       </div>
 
-      <button class="page-arrow right"
-              id="nextPage"
-              type="button"
-              aria-label="Next page">›</button>
-
-      <div class="mobile-hint" data-i18n="swipe">
-        Листайте свайпом
-      </div>
-
+      <button class="page-arrow right" id="nextPage" type="button" aria-label="Next page">›</button>
+      <div class="mobile-hint" data-i18n="swipe">Листайте свайпом</div>
     </section>
   </section>
 
-  <section id="galleryView"
-           class="section-view"
-           aria-hidden="true">
-
+  <section id="galleryView" class="section-view" aria-hidden="true">
     <div class="section-card wide">
       <h1 data-i18n="gallery">Галерея</h1>
-
-      <p class="section-lead" data-i18n="galleryEmpty">
-        Галерея готова. Изображения будут добавлены позже.
-      </p>
-
+      <p class="section-lead" data-i18n="galleryEmpty">Галерея готова. Изображения будут добавлены позже.</p>
       <div id="galleryGrid" class="gallery-grid"></div>
     </div>
   </section>
 
-  <section id="reviewsView"
-           class="section-view"
-           aria-hidden="true">
-
+  <section id="reviewsView" class="section-view" aria-hidden="true">
     <div class="section-card reviews-card">
-
       <h1 data-i18n="reviews">Отзывы</h1>
-
-      <p class="section-lead" data-i18n="reviewsLead">
-        Выберите книгу, поставьте оценку и оставьте комментарий.
-      </p>
+      <p class="section-lead" data-i18n="reviewsLead">Выберите книгу, поставьте оценку и оставьте комментарий.</p>
 
       <div class="review-book-row">
-
-        <img id="reviewBookCover"
-             class="review-book-cover"
-             src="https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp"
-             alt="">
-
+        <img id="reviewBookCover" class="review-book-cover" src="https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp" alt="">
         <div>
-          <label class="field-label"
-                 for="reviewBookSelect"
-                 data-i18n="chooseBook">
-            Книга
-          </label>
-
-          <select id="reviewBookSelect"
-                  class="hub-field"></select>
-
-          <button id="shareReviewBook"
-                  class="secondary-btn"
-                  type="button">
-            ↗ <span data-i18n="share">Поделиться</span>
-          </button>
+          <label class="field-label" for="reviewBookSelect" data-i18n="chooseBook">Книга</label>
+          <select id="reviewBookSelect" class="hub-field"></select>
+          <button id="shareReviewBook" class="secondary-btn" type="button">↗ <span data-i18n="share">Поделиться</span></button>
         </div>
       </div>
 
       <form id="reviewForm" class="review-form">
-
-        <label class="field-label" data-i18n="rating">
-          Оценка
-        </label>
-
-        <div class="stars"
-             id="ratingStars"
-             aria-label="Rating">
-
+        <label class="field-label" data-i18n="rating">Оценка</label>
+        <div class="stars" id="ratingStars" aria-label="Rating">
           <button type="button" data-rating="1">★</button>
           <button type="button" data-rating="2">★</button>
           <button type="button" data-rating="3">★</button>
@@ -244,153 +283,145 @@
           <button type="button" data-rating="5">★</button>
         </div>
 
-        <label class="field-label"
-               for="reviewName"
-               data-i18n="yourName">
-          Ваше имя
-        </label>
+        <label class="field-label" for="reviewName" data-i18n="yourName">Ваше имя</label>
+        <input id="reviewName" class="hub-field" maxlength="60" required>
 
-        <input id="reviewName"
-               class="hub-field"
-               maxlength="60"
-               required>
+        <label class="field-label" for="reviewText" data-i18n="yourReview">Ваш отзыв</label>
+        <textarea id="reviewText" class="hub-field review-text" maxlength="1200" required></textarea>
 
-        <label class="field-label"
-               for="reviewText"
-               data-i18n="yourReview">
-          Ваш отзыв
-        </label>
-
-        <textarea id="reviewText"
-                  class="hub-field review-text"
-                  maxlength="1200"
-                  required></textarea>
-
-        <button class="primary-cta"
-                type="submit"
-                data-i18n="publishReview">
-          Опубликовать отзыв
-        </button>
-
-        <div id="reviewStatus"
-             class="review-status"
-             aria-live="polite"></div>
+        <button class="primary-cta" type="submit" data-i18n="publishReview">Опубликовать отзыв</button>
+        <div id="reviewStatus" class="review-status" aria-live="polite"></div>
       </form>
 
       <div class="review-list-head">
-        <h2 data-i18n="readerReviews">
-          Отзывы читателей
-        </h2>
-
-        <div id="reviewAverage"
-             class="review-average"></div>
+        <h2 data-i18n="readerReviews">Отзывы читателей</h2>
+        <div id="reviewAverage" class="review-average"></div>
       </div>
-
-      <div id="reviewsList"
-           class="reviews-list"></div>
+      <div id="reviewsList" class="reviews-list"></div>
     </div>
   </section>
 
-  <section id="buyView"
-           class="section-view"
-           aria-hidden="true">
-
+  <section id="buyView" class="section-view" aria-hidden="true">
     <div class="section-card wide buy-hub-card">
+      <h1 data-i18n="buyBooks">Купить книгу</h1>
+      <p class="section-lead" data-i18n="buyLead">Выберите книгу. Вы сможете посмотреть её перед покупкой.</p>
 
-      <h1 data-i18n="buyBooks">
-        Купить книгу
-      </h1>
+      <section class="buy-info-box" id="buyInfoBox">
+        <h2 id="buyInfoTitle">Как купить книгу</h2>
+        <p id="buyInfoIntro">Выберите нужное издание ниже. Перед покупкой вы можете открыть книгу и посмотреть её. Когда определитесь, нажмите кнопку покупки у выбранного издания.</p>
 
-      <p class="section-lead" data-i18n="buyLead">
-        Выберите книгу. Вы сможете посмотреть её перед покупкой.
-      </p>
+        <div class="buy-info-steps">
+          <div class="buy-info-step">
+            <div class="buy-step-num">1</div>
+            <strong id="buyStep1Title">Выберите издание</strong>
+            <span id="buyStep1Text">Русская или английская версия.</span>
+          </div>
 
-      <div id="buyBooksGrid"
-           class="books-grid"></div>
+          <div class="buy-info-step">
+            <div class="buy-step-num">2</div>
+            <strong id="buyStep2Title">Посмотрите книгу</strong>
+            <span id="buyStep2Text">Откройте книгу и ознакомьтесь с содержанием перед покупкой.</span>
+          </div>
 
+          <div class="buy-info-step">
+            <div class="buy-step-num">3</div>
+            <strong id="buyStep3Title">Перейдите к покупке</strong>
+            <span id="buyStep3Text">Нажмите кнопку покупки у выбранного издания и продолжите оформление.</span>
+          </div>
+        </div>
+      </section>
+
+      <div id="buyBooksGrid" class="books-grid"></div>
     </div>
   </section>
 
   <div class="bottom-left">
-
-    <button id="contentsBtn"
-            class="round-control"
-            type="button"
-            aria-label="Contents">▦</button>
-
-    <span data-i18n="contents">
-      Содержание
-    </span>
-
+    <button id="contentsBtn" class="round-control" type="button" aria-label="Contents">▦</button>
+    <span data-i18n="contents">Содержание</span>
   </div>
 
-  <div class="bottom-center hidden"
-       id="pageCounter">
-    1 / 1
-  </div>
+  <div class="bottom-center hidden" id="pageCounter">1 / 1</div>
 
   <div class="bottom-right">
-
-    <button id="zoomBtn"
-            class="bottom-tool"
-            type="button">
-
-      <span class="tool-icon">⌕</span>
-      <span data-i18n="zoom">Увеличить</span>
+    <button id="zoomBtn" class="bottom-tool" type="button">
+      <span class="tool-icon">⌕</span><span data-i18n="zoom">Увеличить</span>
     </button>
-
-    <button id="fullscreenBtn"
-            class="bottom-tool"
-            type="button">
-
-      <span class="tool-icon">⛶</span>
-      <span data-i18n="fullscreen">На весь экран</span>
+    <button id="fullscreenBtn" class="bottom-tool" type="button">
+      <span class="tool-icon">⛶</span><span data-i18n="fullscreen">На весь экран</span>
     </button>
-
-    <button id="shareBtn"
-            class="bottom-tool"
-            type="button">
-
-      <span class="tool-icon">⌯</span>
-      <span data-i18n="share">Поделиться</span>
+    <button id="shareBtn" class="bottom-tool" type="button">
+      <span class="tool-icon">⌯</span><span data-i18n="share">Поделиться</span>
     </button>
-
   </div>
 
-  <button id="exitFullscreen"
-          class="exit-fullscreen"
-          type="button"
-          data-i18n="exitFullscreen">
-
+  <button id="exitFullscreen" class="exit-fullscreen" type="button" data-i18n="exitFullscreen">
     Выйти из полноэкранного режима
   </button>
 
-  <aside class="contents-panel"
-         id="contentsPanel"
-         aria-hidden="true">
-
+  <aside class="contents-panel" id="contentsPanel" aria-hidden="true">
     <div class="contents-card">
-
-      <button class="contents-close"
-              id="contentsClose"
-              type="button">×</button>
-
-      <h2 data-i18n="contents">
-        Содержание
-      </h2>
-
+      <button class="contents-close" id="contentsClose" type="button">×</button>
+      <h2 data-i18n="contents">Содержание</h2>
       <div id="contentsList"></div>
     </div>
   </aside>
 </main>
 
 <script src="./app.js"></script>
+<script src="./mobile-direct-open-fix.js"></script>
 
-<!-- BUY INFO: PC + MOBILE -->
-<script src="./buy-info-addon.js"></script>
+<script>
+(function(){
+  const COPY={
+    ru:{
+      title:"Как купить книгу",
+      intro:"Выберите нужное издание ниже. Перед покупкой вы можете открыть книгу и посмотреть её. Когда определитесь, нажмите кнопку покупки у выбранного издания.",
+      s1t:"Выберите издание",s1:"Русская или английская версия.",
+      s2t:"Посмотрите книгу",s2:"Откройте книгу и ознакомьтесь с содержанием перед покупкой.",
+      s3t:"Перейдите к покупке",s3:"Нажмите кнопку покупки у выбранного издания и продолжите оформление."
+    },
+    en:{
+      title:"How to buy the book",
+      intro:"Choose the edition you want below. You can open and preview the book before buying. When you are ready, use the purchase button for the selected edition.",
+      s1t:"Choose an edition",s1:"Select the Russian or English version.",
+      s2t:"Preview the book",s2:"Open the book and look through it before purchasing.",
+      s3t:"Continue to purchase",s3:"Use the purchase button for the selected edition and continue with checkout."
+    },
+    fi:{
+      title:"Kirjan ostaminen",
+      intro:"Valitse alta haluamasi painos. Voit avata ja esikatsella kirjaa ennen ostamista. Kun olet valmis, käytä valitun painoksen ostopainiketta.",
+      s1t:"Valitse painos",s1:"Valitse venäjän- tai englanninkielinen versio.",
+      s2t:"Esikatsele kirjaa",s2:"Avaa kirja ja tutustu siihen ennen ostamista.",
+      s3t:"Jatka ostoon",s3:"Paina valitun painoksen ostopainiketta ja jatka tilaukseen."
+    }
+  };
 
-<!-- SUPPORT NOTE FIXED -->
-<script src="./book-support-note-fixed.js?v=1"></script>
+  function lang(){
+    const active=document.querySelector(".languages button.active[data-lang]");
+    return active ? active.dataset.lang : "ru";
+  }
+
+  function updateBuyInfo(){
+    const c=COPY[lang()]||COPY.ru;
+    document.getElementById("buyInfoTitle").textContent=c.title;
+    document.getElementById("buyInfoIntro").textContent=c.intro;
+    document.getElementById("buyStep1Title").textContent=c.s1t;
+    document.getElementById("buyStep1Text").textContent=c.s1;
+    document.getElementById("buyStep2Title").textContent=c.s2t;
+    document.getElementById("buyStep2Text").textContent=c.s2;
+    document.getElementById("buyStep3Title").textContent=c.s3t;
+    document.getElementById("buyStep3Text").textContent=c.s3;
+  }
+
+  document.addEventListener("click",function(e){
+    if(e.target.closest && e.target.closest(".languages button[data-lang]")){
+      setTimeout(updateBuyInfo,0);
+    }
+  });
+
+  updateBuyInfo();
+})();
+</script>
 
 </body>
 </html>

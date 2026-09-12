@@ -1,0 +1,42 @@
+/* Alex Node Book — mobile direct-open fix
+   Desktop is intentionally untouched.
+   Goal: keep the clean mobile landing view and NEVER show the desktop
+   center card (Alex Node & ANITA / Open book) over the mobile layout.
+*/
+
+@media screen and (max-width: 640px){
+
+  /* The desktop focus composition must never be rendered on mobile.
+     This is the exact panel that caused the bad overlapping screenshot. */
+  #anbook .focus-zone,
+  #anbook .focus-zone.show{
+    display:none !important;
+    opacity:0 !important;
+    visibility:hidden !important;
+    pointer-events:none !important;
+  }
+
+  /* The return arrow belongs to the desktop focus step.
+     It is not needed when mobile goes directly from edition -> reader. */
+  #anbook #returnBooksBtn{
+    display:none !important;
+  }
+
+  /* RU / EN badges become real mobile controls too. */
+  #anbook .edition-badge{
+    cursor:pointer !important;
+    pointer-events:auto !important;
+    user-select:none !important;
+    -webkit-user-select:none !important;
+    touch-action:manipulation !important;
+  }
+
+  /* Give the badges a clear tap target without changing the approved look. */
+  #anbook .edition-badge{
+    min-width:48px;
+    min-height:34px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+  }
+}
