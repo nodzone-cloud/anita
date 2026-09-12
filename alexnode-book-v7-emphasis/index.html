@@ -43,12 +43,33 @@
   </header>
 
   <section id="book" class="hero">
-    <div class="book-dock">
-      <button class="floating-cover" id="floatingCover" type="button" aria-label="Open book preview">
-        <img src="https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp" alt="Alex Node & ANITA front cover">
-      </button>
-      <div class="dock-actions">
-        <button id="shareBookFromList" class="mini-action" type="button">↗ <span data-i18n="share">Поделиться</span></button>
+    <div class="book-dock editions-dock" id="bookDock">
+      <div class="edition-item">
+        <button class="floating-cover edition-cover"
+                type="button"
+                data-book-id="alex-node-anita-ru"
+                aria-label="Alex Node & ANITA Russian edition">
+          <img src="https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp" alt="Alex Node & ANITA Russian edition">
+        </button>
+        <span class="edition-badge">RU</span>
+        <button class="edition-share"
+                type="button"
+                data-share-book="alex-node-anita-ru"
+                aria-label="Share Russian edition">↗</button>
+      </div>
+
+      <div class="edition-item">
+        <button class="floating-cover edition-cover"
+                type="button"
+                data-book-id="alex-node-anita-en"
+                aria-label="Alex Node & ANITA English edition">
+          <img src="https://optim.tildacdn.net/tild3862-6437-4362-b765-636465336337/-/format/webp/ENG_front_cover.png.webp" alt="Alex Node & ANITA English edition">
+        </button>
+        <span class="edition-badge">EN</span>
+        <button class="edition-share"
+                type="button"
+                data-share-book="alex-node-anita-en"
+                aria-label="Share English edition">↗</button>
       </div>
     </div>
 

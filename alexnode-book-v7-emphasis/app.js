@@ -16,8 +16,8 @@
         editionLabel:"RU",
         bookLanguage:"ru",
         textFile:"book-ru.txt",
-        front:"https://optim.tildacdn.net/tild3862-6437-4362-b765-636465336337/-/format/webp/ENG_front_cover.png.webp",
-        back:"https://optim.tildacdn.net/tild3239-6138-4031-b861-303865346231/-/format/webp/ENG_back_cover.png.webp",
+        front:"https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp",
+        back:"https://optim.tildacdn.net/tild6261-6139-4333-a265-383535373737/-/format/webp/no_bg_book_back.png.webp",
         buyUrl:""
       },
       {
@@ -700,9 +700,23 @@
     });
   }
 
+
+  ["./assets/an-book-bg-signature.png","./assets/eng_bg.png"].forEach(src=>{
+    const img = new Image();
+    img.src = src;
+  });
+
   function applyLanguage(lang){
     language = lang;
     document.documentElement.lang = lang;
+
+    const bg = document.querySelector(".anbook-bg");
+    if(bg){
+      bg.style.backgroundImage = lang === "en"
+        ? "url('./assets/eng_bg.png')"
+        : "url('./assets/an-book-bg-signature.png')";
+    }
+
     root.classList.toggle("lang-en", lang === "en");
     $$(".languages button").forEach(b=>b.classList.toggle("active",b.dataset.lang===lang));
     $$("[data-i18n]").forEach(el=>{
