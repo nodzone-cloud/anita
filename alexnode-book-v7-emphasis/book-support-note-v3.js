@@ -100,13 +100,9 @@
       (cardRect.left - zoneRect.left) +
       (cardRect.width / 2);
 
-    /* POSITION OF SUPPORT TEXT
-       MOBILE = 14px below card
-       PC     = 75px below card
-    */
     const top =
       (cardRect.bottom - zoneRect.top) +
-      (isMobile ? 14 : 75);
+      (isMobile ? 14 : 18);
 
     note.style.width = width + "px";
     note.style.left = left + "px";
