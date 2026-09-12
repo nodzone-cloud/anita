@@ -16,8 +16,8 @@
         editionLabel:"RU",
         bookLanguage:"ru",
         textFile:"book-ru.txt",
-        front:"https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp",
-        back:"https://optim.tildacdn.net/tild6261-6139-4333-a265-383535373737/-/format/webp/no_bg_book_back.png.webp",
+        front:"https://optim.tildacdn.net/tild3862-6437-4362-b765-636465336337/-/format/webp/ENG_front_cover.png.webp",
+        back:"https://optim.tildacdn.net/tild3239-6138-4031-b861-303865346231/-/format/webp/ENG_back_cover.png.webp",
         buyUrl:""
       },
       {
@@ -26,8 +26,8 @@
         editionLabel:"EN",
         bookLanguage:"en",
         textFile:"book-en.txt",
-        front:"https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp",
-        back:"https://optim.tildacdn.net/tild6261-6139-4333-a265-383535373737/-/format/webp/no_bg_book_back.png.webp",
+        front:"https://optim.tildacdn.net/tild3862-6437-4362-b765-636465336337/-/format/webp/ENG_front_cover.png.webp",
+        back:"https://optim.tildacdn.net/tild3239-6138-4031-b861-303865346231/-/format/webp/ENG_back_cover.png.webp",
         buyUrl:""
       }
     ]
@@ -164,32 +164,45 @@
 
   function showView(view){
     currentView=view;
+
     galleryView.classList.remove("show");
     reviewsView.classList.remove("show");
     buyView.classList.remove("show");
-    $("#book").style.display = "none";
+
     resetFocusToList();
 
     if(view==="gallery"){
+      $("#book").style.display="none";
       galleryView.classList.add("show");
       galleryView.setAttribute("aria-hidden","false");
     }else if(view==="reviews"){
+      $("#book").style.display="none";
       reviewsView.classList.add("show");
       reviewsView.setAttribute("aria-hidden","false");
       renderReviews();
     }else if(view==="buy"){
+      $("#book").style.display="none";
       buyView.classList.add("show");
       buyView.setAttribute("aria-hidden","false");
       renderBuyBooks();
+    }else if(view==="book"){
+      $("#book").style.display="";
+      setTimeout(()=>{
+        const cover=$(`.floating-cover[data-book-id="${currentBookId}"]`);
+        if(cover) activeFloatingCover=cover;
+        focusBook(activeFloatingCover);
+      },80);
     }else{
-      $("#book").style.display = "";
-      if(view==="book"){
-        setTimeout(()=>focusBook(),80);
-      }
+      // HOME = book list. Show every available language edition.
+      $("#book").style.display="";
+      floatingCovers.forEach(el=>el.style.visibility="visible");
+      focusZone.classList.remove("show","buy-preview-mode");
+      focusZone.setAttribute("aria-hidden","true");
+      returnBooksBtn.classList.remove("show");
     }
 
     setActiveNav(view);
-    try{ history.replaceState(null,"",`#${view==="home"?"home":view}`); }catch(_e){}
+    try{ history.replaceState(null,"",`#${view}`); }catch(_e){}
   }
 
   function fillBookSelectors(){
@@ -201,6 +214,7 @@
   function renderBuyBooks(){
     const grid=$("#buyBooksGrid");
     grid.innerHTML="";
+
     CONFIG.BOOKS.forEach(book=>{
       const card=document.createElement("article");
       card.className="book-card";
@@ -212,22 +226,40 @@
         <h3>${escapeHtml(book.title)}</h3>
         <div class="book-card-actions">
           <button class="secondary-btn preview-btn" type="button">${I18N[language].preview}</button>
+          <button class="primary-cta direct-buy-btn" type="button">${I18N[language].buy}</button>
           <button class="secondary-btn share-book-card" type="button">↗ ${I18N[language].share}</button>
         </div>`;
-      const preview=async()=>{
+
+      const openBuyPreview=async()=>{
         currentBookId=book.id;
         buyMode=true;
         await loadCurrentBook();
+
         buyView.classList.remove("show");
         $("#book").style.display="";
         setActiveNav("buy");
-        focusZone.classList.add("buy-preview-mode");
-        focusBook();
-        const btn=$("#openBookButton");
-        btn.textContent=I18N[language].buy;
+
+        const selected=bookById(currentBookId);
+        $("#focusFront img").src=selected.front;
+        $("#focusBack img").src=selected.back;
+
+        focusZone.classList.add("buy-preview-mode","show");
+        focusZone.setAttribute("aria-hidden","false");
+        returnBooksBtn.classList.add("show");
+        focused=true;
+
+        // In Buy preview the center CTA always remains BUY.
+        $("#openBookButton").textContent=I18N[language].buy;
       };
-      card.querySelector(".book-card-cover").addEventListener("click",preview);
-      card.querySelector(".preview-btn").addEventListener("click",preview);
+
+      card.querySelector(".book-card-cover").addEventListener("click",openBuyPreview);
+      card.querySelector(".preview-btn").addEventListener("click",openBuyPreview);
+
+      card.querySelector(".direct-buy-btn").addEventListener("click",()=>{
+        if(book.buyUrl) location.href=book.buyUrl;
+        else alert(I18N[language].buyNotReady);
+      });
+
       card.querySelector(".share-book-card").addEventListener("click",()=>shareBook(book.id));
       grid.appendChild(card);
     });
@@ -671,6 +703,7 @@
   function applyLanguage(lang){
     language = lang;
     document.documentElement.lang = lang;
+    root.classList.toggle("lang-en", lang === "en");
     $$(".languages button").forEach(b=>b.classList.toggle("active",b.dataset.lang===lang));
     $$("[data-i18n]").forEach(el=>{
       const key = el.dataset.i18n;
@@ -741,6 +774,13 @@
 
   function returnToBookList(){
     if(currentView==="buy"){
+      resetBackCoverZoom();
+      focusZone.classList.remove("show","buy-preview-mode");
+      focusZone.setAttribute("aria-hidden","true");
+      returnBooksBtn.classList.remove("show");
+      focused=false;
+      opened=false;
+      buyMode=false;
       showView("buy");
       return;
     }
@@ -881,7 +921,8 @@
   }));
   returnBooksBtn.addEventListener("click",returnToBookList);
   $("#focusFront").addEventListener("click",()=>{
-    if(!buyMode) openReader();
+    if(buyMode) return;
+    openReader();
   });
   $("#focusBack").addEventListener("click",toggleBackCoverZoom);
   $("#openBookButton").addEventListener("click",()=>{
@@ -889,7 +930,9 @@
       const book=bookById(currentBookId);
       if(book.buyUrl) location.href=book.buyUrl;
       else alert(I18N[language].buyNotReady);
-    }else openReader();
+      return;
+    }
+    openReader();
   });
   $("#closeReader").addEventListener("click",closeReader);
   prevPage.addEventListener("click",prev);
@@ -1010,7 +1053,7 @@
   loadCurrentBook();
   applyLanguage("ru");
 
-  const initialHash=(location.hash||"#book").slice(1);
+  const initialHash=(location.hash||"#home").slice(1);
   if(["home","book","gallery","reviews","buy"].includes(initialHash)){
     setTimeout(()=>{
       const cover=$(`.floating-cover[data-book-id="${currentBookId}"]`);

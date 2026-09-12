@@ -11,6 +11,7 @@ button{font:inherit}
 
 .anbook{position:relative;min-height:100svh;overflow:hidden}
 .anbook-bg{position:absolute;inset:0;background:url('./assets/an-book-bg-signature.png') center/cover no-repeat;z-index:0}
+.anbook.lang-en .anbook-bg{background-image:url('./assets/eng_bg.png')}
 .anbook-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.12),rgba(0,0,0,.02) 58%,rgba(0,0,0,.20));z-index:1;pointer-events:none}
 
 /* compact live logo/header, matching the approved reference more closely */
@@ -530,5 +531,61 @@ select.hub-field option{color:#111;background:#fff}
     font-size:14px;
     right:0;
     bottom:0;
+  }
+}
+
+
+/* =========================================================
+   v6 — RU + EN ON MAIN LIST AND IN BUY
+   ========================================================= */
+.editions-dock{
+  left:70px !important;
+  top:28px !important;
+  gap:34px !important;
+}
+
+.edition-item{
+  width:180px !important;
+}
+
+.edition-cover,
+.edition-cover img{
+  width:170px !important;
+}
+
+.edition-badge{
+  cursor:default !important;
+  pointer-events:none !important;
+}
+
+.book-card-actions{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:8px;
+}
+
+.book-card-actions .direct-buy-btn{
+  cursor:pointer;
+  border:0;
+}
+
+.focus-zone.buy-preview-mode .focus-cover.front{
+  cursor:default !important;
+}
+
+@media(max-width:900px){
+  .editions-dock{
+    left:10px !important;
+    gap:12px !important;
+  }
+
+  .edition-item{
+    width:96px !important;
+  }
+
+  .edition-cover,
+  .edition-cover img{
+    width:90px !important;
   }
 }

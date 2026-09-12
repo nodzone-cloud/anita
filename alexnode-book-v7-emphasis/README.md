@@ -82,3 +82,19 @@ The interface is already prepared; only the backend endpoint is still needed for
 - In Buy mode the user gets the familiar front/back preview, can zoom the back cover, share the edition, and use the center Buy button.
 - Add a separate SumUp link to each edition under `CONFIG.BOOKS[].buyUrl`.
 - The current cover artwork is reused for both editions for now. It can later be replaced with separate English cover images by changing the EN edition's `front` and `back` URLs.
+
+
+## v6 correction
+- Main `/boook` page shows both RU and EN editions at the same time.
+- RU and EN are labels, not buttons.
+- Clicking an edition on the main list opens that edition normally and allows reading it.
+- Buy section also shows every language edition.
+- Each Buy card has Preview, Buy and Share.
+- Buy Preview shows front/back only and never opens the full reader.
+- The center CTA in Buy Preview remains Buy.
+- Each edition can have its own SumUp URL in CONFIG.BOOKS[].buyUrl.
+
+## v8 English background
+- Added `assets/eng_bg.png` for the English interface.
+- Selecting **EN** switches the site background to the English image automatically.
+- RU/FI keep the existing `assets/an-book-bg-signature.png` background.
