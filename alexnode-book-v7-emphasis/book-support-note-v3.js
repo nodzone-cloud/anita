@@ -96,8 +96,17 @@
       ? Math.min(window.innerWidth - 42, 470)
       : Math.min(Math.max(cardRect.width * 1.55, 430), 520);
 
-    const left = (cardRect.left - zoneRect.left) + (cardRect.width / 2);
-    const top = (cardRect.bottom - zoneRect.top) + (isMobile ? 14 : 18);
+    const left =
+      (cardRect.left - zoneRect.left) +
+      (cardRect.width / 2);
+
+    /* POSITION OF SUPPORT TEXT
+       MOBILE = 14px below card
+       PC     = 75px below card
+    */
+    const top =
+      (cardRect.bottom - zoneRect.top) +
+      (isMobile ? 14 : 75);
 
     note.style.width = width + "px";
     note.style.left = left + "px";
@@ -118,6 +127,7 @@
     });
 
     let note = document.getElementById(ID);
+
     if (!note) {
       note = document.createElement("div");
       note.id = ID;
@@ -143,18 +153,23 @@
   }
 
   let tries = 0;
+
   const timer = setInterval(function () {
     tries++;
     if (mount() || tries >= 20) clearInterval(timer);
   }, 150);
 
   window.addEventListener("resize", placeNote);
+
   window.addEventListener("orientationchange", function(){
     setTimeout(placeNote, 120);
   });
 
   document.addEventListener("click", function (e) {
-    const btn = e.target.closest && e.target.closest(".languages button[data-lang]");
+    const btn =
+      e.target.closest &&
+      e.target.closest(".languages button[data-lang]");
+
     if (btn) {
       setTimeout(function(){
         renderText();
