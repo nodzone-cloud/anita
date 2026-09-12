@@ -11,11 +11,24 @@
     REVIEWS_API: "", // later: Cloudflare Worker/API endpoint for public shared reviews
     BOOKS: [
       {
-        id:"alex-node-anita",
+        id:"alex-node-anita-ru",
         title:"Alex Node & ANITA",
+        editionLabel:"RU",
+        bookLanguage:"ru",
+        textFile:"book-ru.txt",
         front:"https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp",
         back:"https://optim.tildacdn.net/tild6261-6139-4333-a265-383535373737/-/format/webp/no_bg_book_back.png.webp",
-        buyUrl:"" // paste this book's SumUp payment link here later
+        buyUrl:""
+      },
+      {
+        id:"alex-node-anita-en",
+        title:"Alex Node & ANITA",
+        editionLabel:"EN",
+        bookLanguage:"en",
+        textFile:"book-en.txt",
+        front:"https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp",
+        back:"https://optim.tildacdn.net/tild6261-6139-4333-a265-383535373737/-/format/webp/no_bg_book_back.png.webp",
+        buyUrl:""
       }
     ]
   };
@@ -68,7 +81,8 @@
   const $$ = s => [...document.querySelectorAll(s)];
 
   const root = $("#anbook");
-  const floatingCover = $("#floatingCover");
+  const floatingCovers = $$(".floating-cover");
+  let activeFloatingCover = floatingCovers[0] || null;
   const focusZone = $("#focusZone");
   const returnBooksBtn = $("#returnBooksBtn");
   const reader = $("#reader");
@@ -101,7 +115,7 @@
   let backCoverZoomed = false;
   let resizeTimer = null;
   let currentView = "book";
-  let currentBookId = CONFIG.BOOKS[0].id;
+  let currentBookId = "alex-node-anita-ru";
   let currentRating = 0;
   let buyMode = false;
 
@@ -137,7 +151,7 @@
     focusZone.classList.remove("show");
     focusZone.setAttribute("aria-hidden","true");
     returnBooksBtn.classList.remove("show");
-    floatingCover.style.visibility="visible";
+    floatingCovers.forEach(el=>el.style.visibility="visible");
     focused=false;
     opened=false;
     buyMode=false;
@@ -179,7 +193,7 @@
   }
 
   function fillBookSelectors(){
-    reviewBookSelect.innerHTML = CONFIG.BOOKS.map(b=>`<option value="${escapeHtml(b.id)}">${escapeHtml(b.title)}</option>`).join("");
+    reviewBookSelect.innerHTML = CONFIG.BOOKS.map(b=>`<option value="${escapeHtml(b.id)}">${escapeHtml(b.title)} — ${escapeHtml(b.editionLabel)}</option>`).join("");
     reviewBookSelect.value=currentBookId;
     $("#reviewBookCover").src=bookById(currentBookId).front;
   }
@@ -191,20 +205,23 @@
       const card=document.createElement("article");
       card.className="book-card";
       card.innerHTML=`
-        <button class="book-card-cover" type="button" aria-label="${escapeHtml(book.title)}">
-          <img src="${book.front}" alt="${escapeHtml(book.title)}">
+        <button class="book-card-cover" type="button" aria-label="${escapeHtml(book.title)} ${escapeHtml(book.editionLabel)}">
+          <img src="${book.front}" alt="${escapeHtml(book.title)} ${escapeHtml(book.editionLabel)}">
         </button>
+        <span class="book-language-badge">${escapeHtml(book.editionLabel)}</span>
         <h3>${escapeHtml(book.title)}</h3>
         <div class="book-card-actions">
           <button class="secondary-btn preview-btn" type="button">${I18N[language].preview}</button>
           <button class="secondary-btn share-book-card" type="button">↗ ${I18N[language].share}</button>
         </div>`;
-      const preview=()=>{
+      const preview=async()=>{
         currentBookId=book.id;
         buyMode=true;
+        await loadCurrentBook();
         buyView.classList.remove("show");
         $("#book").style.display="";
         setActiveNav("buy");
+        focusZone.classList.add("buy-preview-mode");
         focusBook();
         const btn=$("#openBookButton");
         btn.textContent=I18N[language].buy;
@@ -316,6 +333,15 @@
       '$1Глава 12. Сумбур'
     );
 
+    text = text.replace(
+      /(^|\n)A Different Road(?=\n)/,
+      '$1Chapter 11. A Different Road'
+    );
+    text = text.replace(
+      /(^|\n)Chapter 11\. Chaos(?=\n|$)/,
+      '$1Chapter 12. Chaos'
+    );
+
     return text;
   }
 
@@ -326,7 +352,12 @@
       "А система не отвечает:",
       "Выберите тип услуги:",
       "[Landing page] [Website] [E-commerce] [Other]",
-      "Она отвечает:"
+      "Она отвечает:",
+      "And that is when the idea received a name:",
+      "You can simply say:",
+      "And the system does not reply:",
+      "Choose service type:",
+      "It replies:"
     ];
     return exact.includes(line);
   }
@@ -398,7 +429,7 @@
           html:
             `<div class="chapter-head" id="${id}">`+
               `<div class="chapter-label">`+
-                `${language==="en"?"Chapter":language==="fi"?"Luku":"Глава"} ${escapeHtml(number)}`+
+                `${bookById(currentBookId).bookLanguage==="en"?"Chapter":"Глава"} ${escapeHtml(number)}`+
               `</div>`+
               `<h1 class="chapter-title">${escapeHtml(chapterTitle)}</h1>`+
             `</div>`
@@ -613,20 +644,22 @@
     return out.length ? out : [makeIntroPage(data)];
   }
 
-  async function loadBook(lang){
-    language = lang;
-    let url = `${CONFIG.BOOK_BASE_URL}/${CONFIG.TEXT_FILES[lang]}`;
+  async function loadCurrentBook(){
+    const selected = bookById(currentBookId);
+    const file = selected.textFile || "book-ru.txt";
+    const url = `${CONFIG.BOOK_BASE_URL}/${file}`;
+
     try{
-      let r = await fetch(url,{cache:"no-store"});
-      if(!r.ok) throw new Error("language file missing");
+      const r = await fetch(url,{cache:"no-store"});
+      if(!r.ok) throw new Error("book file missing");
       rawBook = await r.text();
     }catch(_e){
-      const r2 = await fetch(`${CONFIG.BOOK_BASE_URL}/${CONFIG.TEXT_FILES.ru}`,{cache:"no-store"});
-      rawBook = await r2.text();
+      const fallback = await fetch(`${CONFIG.BOOK_BASE_URL}/book-ru.txt`,{cache:"no-store"});
+      rawBook = await fallback.text();
     }
 
     parsed = parseBook(rawBook);
-    // Wait one frame so page dimensions are stable before measuring.
+
     requestAnimationFrame(()=>{
       pages = paginate(parsed);
       spread = 0;
@@ -643,7 +676,6 @@
       const key = el.dataset.i18n;
       if(I18N[lang]?.[key]) el.innerHTML = I18N[lang][key];
     });
-    loadBook(lang);
     if(currentView==="buy") renderBuyBooks();
     if(currentView==="reviews") renderReviews();
   }
@@ -664,21 +696,33 @@
     if(back) back.setAttribute("aria-pressed","false");
   }
 
-  function focusBook(){
+  async function focusBook(sourceEl=null){
     if(focused || opened) return;
+
+    if(sourceEl?.dataset?.bookId){
+      currentBookId = sourceEl.dataset.bookId;
+      activeFloatingCover = sourceEl;
+      await loadCurrentBook();
+    }
+
     const selected=bookById(currentBookId);
     $("#focusFront img").src=selected.front;
     $("#focusBack img").src=selected.back;
     focused = true;
-    const r = floatingCover.getBoundingClientRect();
-    const ghost = floatingCover.cloneNode(true);
+
+    const source = activeFloatingCover || floatingCovers[0];
+    if(!source) return;
+
+    const r = source.getBoundingClientRect();
+    const ghost = source.cloneNode(true);
     ghost.removeAttribute("id");
     Object.assign(ghost.style,{
       position:"fixed",left:r.left+"px",top:r.top+"px",width:r.width+"px",height:r.height+"px",
       zIndex:"9999",margin:"0",animation:"none",transition:"all .76s cubic-bezier(.2,.85,.18,1)"
     });
+
     document.body.appendChild(ghost);
-    floatingCover.style.visibility="hidden";
+    source.style.visibility="hidden";
 
     requestAnimationFrame(()=>{
       ghost.style.left=(innerWidth*.5-r.width*.5)+"px";
@@ -709,20 +753,24 @@
     focused = false;
     opened = false;
 
-    // Restore original floating cover.
-    floatingCover.style.visibility = "visible";
+    focusZone.classList.remove("buy-preview-mode");
 
-    // Small re-entry animation so returning feels intentional.
-    floatingCover.animate(
-      [
-        {opacity:0, transform:"translateX(38px) scale(.92)"},
-        {opacity:1, transform:"translateX(0) scale(1)"}
-      ],
-      {
-        duration:420,
-        easing:"cubic-bezier(.2,.85,.18,1)"
-      }
-    );
+    // Restore both language editions.
+    floatingCovers.forEach(el=>el.style.visibility="visible");
+
+    // Animate only the edition that was selected.
+    if(activeFloatingCover){
+      activeFloatingCover.animate(
+        [
+          {opacity:0, transform:"translateX(38px) scale(.92)"},
+          {opacity:1, transform:"translateX(0) scale(1)"}
+        ],
+        {
+          duration:420,
+          easing:"cubic-bezier(.2,.85,.18,1)"
+        }
+      );
+    }
   }
 
   function setReaderUI(active){
@@ -730,7 +778,7 @@
   }
 
   function openReader(){
-    buyMode=false;
+    if(buyMode) return;
     $("#openBookButton").textContent=I18N[language].openBook;
     resetBackCoverZoom();
     returnBooksBtn.classList.remove("show");
@@ -745,6 +793,7 @@
   }
 
   function closeReader(){
+    focusZone.classList.remove("buy-preview-mode");
     opened = false;
     reader.classList.remove("show");
     reader.setAttribute("aria-hidden","true");
@@ -825,9 +874,15 @@
     });
   }
 
-  $("#floatingCover").addEventListener("click",focusBook);
+  floatingCovers.forEach(el=>el.addEventListener("click",()=>focusBook(el)));
+  $$("[data-share-book]").forEach(btn=>btn.addEventListener("click",e=>{
+    e.stopPropagation();
+    shareBook(btn.dataset.shareBook);
+  }));
   returnBooksBtn.addEventListener("click",returnToBookList);
-  $("#focusFront").addEventListener("click",openReader);
+  $("#focusFront").addEventListener("click",()=>{
+    if(!buyMode) openReader();
+  });
   $("#focusBack").addEventListener("click",toggleBackCoverZoom);
   $("#openBookButton").addEventListener("click",()=>{
     if(buyMode){
@@ -871,14 +926,18 @@
     showView(a.dataset.viewLink);
   }));
 
-  $("#shareBookFromList").addEventListener("click",e=>{
-    e.stopPropagation();
-    shareBook(currentBookId);
-  });
+  const oldListShare=$("#shareBookFromList");
+  if(oldListShare){
+    oldListShare.addEventListener("click",e=>{
+      e.stopPropagation();
+      shareBook(currentBookId);
+    });
+  }
 
-  reviewBookSelect.addEventListener("change",()=>{
+  reviewBookSelect.addEventListener("change",async()=>{
     currentBookId=reviewBookSelect.value;
     $("#reviewBookCover").src=bookById(currentBookId).front;
+    await loadCurrentBook();
     renderReviews();
   });
   $("#shareReviewBook").addEventListener("click",()=>shareBook(reviewBookSelect.value));
@@ -941,10 +1000,22 @@
 
   setReaderUI(false);
   fillBookSelectors();
+
+  const deepBook = new URLSearchParams(location.search).get("book");
+  if(deepBook && CONFIG.BOOKS.some(b=>b.id===deepBook)){
+    currentBookId=deepBook;
+    reviewBookSelect.value=currentBookId;
+  }
+
+  loadCurrentBook();
   applyLanguage("ru");
 
   const initialHash=(location.hash||"#book").slice(1);
   if(["home","book","gallery","reviews","buy"].includes(initialHash)){
-    setTimeout(()=>showView(initialHash),40);
+    setTimeout(()=>{
+      const cover=$(`.floating-cover[data-book-id="${currentBookId}"]`);
+      if(cover) activeFloatingCover=cover;
+      showView(initialHash);
+    },80);
   }
 })();

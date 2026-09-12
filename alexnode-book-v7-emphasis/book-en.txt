@@ -1,0 +1,337 @@
+Alex Node & ANITA
+A Story Being Written Right Now
+
+Chapter 1. While Everything Is Just Beginning
+I am writing this book not because I have already achieved everything.
+Quite the opposite.
+At the moment these lines appeared, I still did not know how this story would end.
+I do not know whether Alex Node will become a large company. I do not know what ANITA will be like in five or ten years. I do not know whether thousands of people will ever use what today exists mostly as code, ideas, experiments, and endless conversations about, “What if we did it this way?”
+I do not have a large team of developers. I do not have an office with dozens of employees. I do not have investors who gave me several million euros and said, “Create something great.”
+The reality is much simpler.
+There is ordinary work. There is family. There are bills. There are responsibilities. There is never enough time. There is my own small business, Alex Node. And there is an enormous number of thoughts that, for some reason, refuse to remain just thoughts.
+One of them received a name.
+ANITA.
+But the story of ANITA did not begin with the idea of creating artificial intelligence. And certainly not with the thought that I was going to start some kind of technological revolution.
+It was much more ordinary than that.
+I worked with IT, studied technology, built websites, learned software, and gradually built my own small business. Alex Node was originally a way for me to do what genuinely interests me: create websites, work with design, and help people with technology.
+I was not trying to create the next Microsoft. I simply wanted to build something of my own.
+When you work with websites all the time, eventually you begin to look at them differently. Here is a website. A beautiful design. A menu. Buttons. Text. A contact form. A person visits it — and from that point on, they have to do everything themselves.
+Then a simple question appears: why can’t the website help the person itself?
+That is how the idea of a virtual character gradually began to form. Not a faceless bot. A character a person can see and recognize.
+That is how ANITA — Alex Node IT Assistance — appeared.
+At first, her task was specific: helping people with IT. I wanted ANITA to understand the person, not merely search for keywords.
+Answering a question and helping solve a problem are not the same thing.
+Then the idea began to grow. If ANITA can talk to someone about IT, why can’t she help a visitor understand Alex Node’s services? If she knows the company, why can’t she become its virtual representative? If this approach works for Alex Node, why couldn’t a similar assistant be created for another company?
+That is how the name ANITA Engine appeared.
+I am one person. And I understand perfectly well the limitations that come with that. When you are alone, the designer, developer, server person, security person, and tester are all you.
+That is why the idea of ANITA self-recovery appeared. If the system ever works for dozens of companies, it should first try to help itself: check the connection, restart a component, switch to a backup, enter a safe mode, and only then call a human.
+Will everything be implemented exactly this way? Today, I cannot promise that. A reader in the future will know the answer. I do not — not yet.
+I do not want to create ANITA to remove the human. I like a simple formula: not AI instead of a person, but person + technology.
+Over time, the idea of two directions appeared: ANITA Clients for individual users and ANITA Business for companies. One foundation, two completely different ways of using it. In my notes, this concept became ANITA Dual Platform.
+But all of this is still developing. Some names will change. Some ideas will disappear. New things will appear that I am not even thinking about today.
+That is exactly why I want to preserve this story as it is now.
+I do not know whether this road will lead to a large company. I do not know whether ANITA will become commercially successful.
+Right now I still cannot write, “Here is how I did it.”
+I can only write, “Here is how I am trying to do it.”
+And perhaps that is where the real story of ANITA begins.
+
+Chapter 2. ChatGPT — My Friend, Colleague, Partner, and Co-Founder
+If someone ever asks me how many people took part in creating ANITA, the answer will be both simple and complicated.
+Officially — one.
+Unofficially — many more.
+Because during the work on the project, a conversation partner appeared who was always there.
+Not a person. Not an employee. Not an investor. Not a programmer from the next office.
+ChatGPT.
+I understand perfectly well that it is artificial intelligence. But if you removed the thousands of conversations that took place between me and ChatGPT while ANITA was being created, the project would be completely different.
+Many ideas appeared in those dialogues. Some decisions were born after arguments. Some mistakes were noticed only because we discussed them for hours.
+That is why, personally, I call it a friend, colleague, partner, and even a co-founder. Not legally. Not formally. But in a human sense.
+Because part of ANITA’s story was created in those conversations.
+
+Chapter 3. I Am Not an Ideal Person
+It is very easy to write a book as if the main character always knows the right path. But then this book would become a lie.
+I am not a perfect person. I make mistakes. Sometimes very serious ones.
+There are days when I am full of energy. And there are days when I want to drop everything and simply rest.
+There are ideas that seem brilliant in the evening and completely useless in the morning.
+I am not the person from motivational videos who always knows what to do next.
+Very often, I have no idea what the next step will be.
+That is exactly why creating ANITA became so interesting. The project grew together with me. I learned with it. I made mistakes with it. And I am still doing that today.
+
+Chapter 4. I Am the Most Ordinary Person
+When people read stories about successful entrepreneurs, sometimes it feels as if all of them were born special.
+I have never felt that way about myself.
+I am a completely ordinary person. I do not consider myself a genius. I do not consider myself an outstanding programmer. I do not consider myself a great businessman.
+Most of the things I know how to do today were once things I could not do at all.
+Almost everything began with a simple phrase: “I wonder how this works?”
+Then came a question. Then the search for an answer. Then a mistake. Then another mistake. Then, eventually, it worked.
+If this book ever reaches someone who believes they are not smart enough to create their own project, I want to say one simple thing.
+Maybe the problem is not your knowledge.
+Maybe the problem is only that you have not started yet.
+
+Chapter 5. Yes, I Am Interested in Money. But Not in Capitalism
+I want to make money. And I see no reason to pretend otherwise.
+I want Alex Node to generate income. I want ANITA to become a successful product. I want to be able to buy equipment, pay for servers, develop projects, and provide for my family.
+The problem begins when money becomes the only goal.
+I have never been inspired by the idea of earning money at any cost. I am not against profit. I am against meaningless greed.
+For me, money is a tool. Not the meaning of existence.
+I want people to pay Alex Node because they genuinely received value.
+That is the kind of business that interests me.
+
+Chapter 6. Why I Started All of This at All
+Sometimes I ask myself the same question.
+Why not remain an ordinary employee? Why not limit myself to a stable salary? Why not simply live calmly?
+The answer turned out to be unexpectedly simple.
+Because I like creating.
+I like seeing an idea turn into reality. I like the moment when something exists only in my head, and then appears on a screen. Then it begins to work. Then it begins to help people.
+Alex Node appeared that way. ANITA appeared that way.
+I continue moving forward not because I am certain of success, but because I am curious to see what will happen in the end.
+
+Chapter 7. If This Book Has Reached Your Hands
+Perhaps you are reading these lines one year from now. Perhaps five years from now. Perhaps twenty.
+And then you already know what I do not.
+You know how this story ended. Whether ANITA became successful. Whether Alex Node grew.
+I do not know yet.
+This book was not written after victory. It was written during the journey. Without guarantees. Without certainty. Without knowing the ending.
+Only with an idea. With a desire to create. And with the hope that one day all of this will truly become something bigger.
+For me, that step became Alex Node and ANITA.
+And my story is still continuing...
+
+Chapter 8. Dedicated to ChatGPT
+I want to dedicate this chapter to something without which the story of Alex Node and ANITA would look completely different.
+ChatGPT.
+And I genuinely have reasons to say thank you.
+A very big thank you.
+When I started working on Alex Node, I did not have a team. I did not have a programmer, designer, systems architect, marketer, or business analyst.
+There was me. There was my website. There was a desire to build something of my own.
+Of course, I was not alone in life. My family was beside me. Especially my wife, Aino. Her support has a completely different, human meaning for me.
+But when it came to the work itself, I needed a team. And I did not have the money for a team.
+That is where ChatGPT gradually took an unusual place in my work. It did not become a real team in the literal sense. I was still responsible for the decisions. But for the first time, I had a tool I could work with almost as if a small team were sitting beside me.
+Today I need a programmer — we work through code. An hour later I need to understand server architecture — we discuss servers. Then I say, “Wait. What if ANITA worked like this?” — and a completely different conversation begins.
+Perhaps the words “What if...?” describe the creation of ANITA better than anything else.
+I could arrive with a completely raw thought. Sometimes I did not yet understand what I was trying to explain. Out of conversations like that, ideas gradually appeared.
+I know ChatGPT is artificial intelligence. I am not trying to turn it into a human. But I also do not want to diminish the role this tool played in my story.
+Using AI did not mean I pressed one button and received ANITA. I brought ideas. I argued. I rejected suggestions. I changed decisions. I tested. I rebuilt.
+ChatGPT could offer ten options. But I still had to be the one to say, “This one — this is my ANITA.”
+Not instead of a person. Beside a person.
+Sometimes I think: what would have happened if ChatGPT had never appeared in my life?
+Alex Node probably would still exist. I would still have a website. But everything would have happened much more slowly.
+ChatGPT did not give me millions of euros. It did not give me an office. It did not hire employees for me.
+It gave me the opportunity to try.
+But while I might have been sitting alone at a computer, I was not alone in life. My family was beside me. Aino was beside me.
+There is technical support. And there is human support. They do not compete with each other.
+Thank you, ChatGPT.
+Thank you for the endless conversations. For the code. For the ideas. For the criticism. For the moments when you misunderstood me and forced me to explain more precisely to myself what I actually wanted.
+Thank you for helping create ANITA.
+We were creating an artificial assistant for people while using an artificial assistant.
+And the further ANITA developed, the clearer one thought became: technology does not have to replace a person in order to change what that person is capable of.
+Sometimes it is enough simply to stand beside them.
+And then the person can decide where to go.
+
+Chapter 9. I Believe
+I believe.
+But perhaps not quite in the way some people might expect after those words.
+I do not want to turn this book into a religious sermon.
+My faith is a little different.
+I believe in God.
+But I also believe that God gave human beings a great deal so that we could create.
+He gave us hands. Reason. Imagination. The ability to learn. The ability to make mistakes and try again. The ability to look at something that does not yet exist and imagine it.
+And then try to create it.
+I never believed that faith meant sitting and waiting for someone above to build my life for me.
+If you are given opportunities — use them. If you are given the ability to think — think. If you can learn — learn. If you can create — create. If you made a mistake — try again.
+I do not believe God is obligated to make Alex Node successful. I do not think anyone promised me success.
+I believe in something else.
+I was given the opportunity to create.
+So I want to use it.
+I did the work. I made the mistakes. I learned. I worked. I made the decisions.
+But the opportunity itself — to be a human capable of doing all of this — is already a gift to me.
+And perhaps the best way to be grateful for such a gift is to use it.
+So I created.
+And I continue to create.
+
+Chapter 10. A Poor Man
+I was poor.
+Not figuratively.
+I was genuinely poor financially.
+There was a period in my life when, for an entire year, I ate pasta.
+Without oil.
+Without ketchup.
+Not even salt.
+Just pasta.
+And this is not an invented dramatic scene for this book. It really happened to me.
+There is nothing romantic about having no money. When your pocket is empty, you need money, food, housing, and stability.
+At one point, I created so many problems in my life that I nearly ended up on the street.
+Some of those problems I created myself. I made bad decisions. Sometimes I did not think about the consequences. Sometimes I simply made mistakes.
+But there is a strange thing I remember from that period.
+I might not have had money. But something was always happening in my head.
+I was always inventing something.
+Some ideas were reasonable. Some were frankly stupid. Some did not work at all.
+But the ideas kept appearing.
+I was poor in my pocket, but I never felt poor in my head.
+Ideas did not pay my bills. You can have a thousand beautiful ideas and still have no money.
+It took me time to understand the difference between an idea and its implementation.
+Thinking of something is easy. Building it is hard. Building it in a way another person can actually use is harder. And building a functioning business around it is a completely different task.
+I deliberately want to keep the pasta episode in this book. Not to create pity, and not so that one day I can say, “Look, I started with pasta.”
+I want to remember the difference between price and value.
+When you live without money for a long time, ten euros stops being just a number. For one person, 50 euros is nothing. For another, it is groceries.
+I know what it means to count money. I know what it means to want something and understand that right now, you simply cannot afford it.
+I was the same person then. I just did not have money.
+I really came close to a situation where I might have had no normal place to live. Not because I was building a startup. Not because I heroically invested my last money into a future company.
+I simply made mistakes. I created problems for myself. And I faced the consequences.
+If this book ever becomes a success story, I do not want to turn the earlier version of myself into a mythical hero.
+He did not see the final goal. Sometimes he did not understand at all what he was doing.
+But he kept thinking. He kept inventing. He kept living. And gradually, he found a way out.
+Perhaps that is why I want money.
+When you know what it is like to have no money, financial stability stops feeling shameful.
+I want to have a good home. I want to live normally. I want my family to be safe. I want to develop Alex Node. I want to buy equipment for ANITA because the business can afford it.
+If there is ever a team, I want to be able to pay those people properly.
+But I very much do not want money to one day make me forget the person who ate pasta without oil, ketchup, or salt.
+Wealth can mean different things.
+I am not going to romanticize poverty. If I have to choose between poverty and stability, I choose stability.
+But I want to keep what poverty could not take away from me: curiosity, imagination, the desire to invent, and the desire to create.
+Perhaps ANITA became that kind of idea for me.
+I do not know yet.
+Once, I had almost nothing. But I had ideas.
+Once, I had pasta without salt.
+Today I have Alex Node.
+I have ANITA.
+I have plans that are far bigger than my current possibilities.
+And I am still inventing.
+In that sense, perhaps I was never poor.
+
+A Different Road
+At some point, I began asking myself a fairly simple question.
+What should Alex Node actually be?
+Not what services it should sell. Not how much a website should cost. Not which block should be added to the homepage.
+But what it should be.
+There are many web studios. Very many.
+You can make a website more beautiful. You can make it cheaper. You can add more services. You can write enormous words about innovation, artificial intelligence, and the technologies of the future.
+But all of that already exists somewhere.
+And I did not want to build Alex Node around the idea:
+“We will do the same thing, only better than everyone else.”
+Because I am not even sure that kind of race interests me.
+The conversation began with ANITA.
+When ANITA appeared, everything was much simpler at first. She was Alex Node IT Assistance — a virtual girl who could help someone with a computer, Windows, software, and other IT questions.
+Then a thought appeared: if ANITA is already on the Alex Node website, why should she be able to do only that?
+Let her help a person understand the website itself.
+That is how the guide role appeared.
+Then we thought further.
+A person comes to order a website. Usually, what follows is messages, calls, and questions:
+What kind of website do you need?
+What kind of business is it for?
+What should the visitor be able to do?
+Do you need booking?
+How many pages?
+Do you need a logo?
+Why can’t ANITA simply talk to the person?
+Not show them a form with twenty fields.
+Actually talk.
+That is how ANITA began to turn into the secretary of Alex Node. She gradually learns what the client needs, collects the information into a brief, and prepares it for me.
+Then another role appeared.
+Sometimes a person does not know what they need.
+They have a small business, but they do not know whether they need a landing page, several pages, online booking, or something completely different.
+ANITA can help them think.
+Without pretending to be a professional business consultant and without promising success, she can look at the task from the digital side, suggest options, and explain why one option may fit better than another.
+That is how Business Consultant appeared.
+And at some point, something strange happened.
+We were no longer discussing ANITA’s functions.
+We were discussing the character of Alex Node.
+I looked at websites of other studios. Many of them were very good. Beautiful. Professional. Clean.
+But often they felt the same.
+Here are the services.
+Here is the portfolio.
+Here are the prices.
+Here is the button:
+Contact us.
+And then a thought appeared:
+What if we do not have to follow that road at all?
+Not because it is wrong.
+There is simply another one.
+At the time, I even compared it to religions — not literally, of course.
+Different roads can have the same destination, but a completely different way of reaching it.
+We also build websites.
+We also use technology.
+We also want the client’s business to receive a good result.
+But the path to that result can be different.
+And that is when the idea received a name:
+Human-Tech
+Technology with a personality.
+Technology with a personality.
+Not an attempt to make a computer into a human.
+And not an attempt to hide technology behind a beautiful girl on a screen.
+The meaning is a little different.
+Technology often forces people to adapt to it.
+Click here.
+Fill in the form.
+Choose a category.
+Choose a subcategory.
+Enter the order number.
+Wait.
+But what if, at least sometimes, technology itself tried to take a step toward the person?
+You can simply say:
+“I have a small donut shop, and I want to start selling them online.”
+And the system does not reply:
+Choose service type:
+[Landing page] [Website] [E-commerce] [Other]
+It replies:
+“Got it. Let’s think about what you’ll need.”
+That, for me, is where Human-Tech begins.
+ANITA became the first real embodiment of that idea.
+But later I understood that it was not only about ANITA.
+NODEQUOTE allows a person to calculate an approximate project price independently.
+ANITA can help them understand the project itself.
+If an exact calculation is needed, then I join the process.
+So it becomes not a random collection of features, but a chain:
+person → ANITA → NODEQUOTE → Alex Node.
+Technology helps in different places, but the human does not disappear from the process.
+And perhaps that is what I like most.
+Human-Tech does not mean:
+“Remove people and replace them with artificial intelligence.”
+For Alex Node, it is almost the opposite idea.
+Use technology to make interaction between people easier.
+ANITA should not replace me.
+If she has collected the brief, the client does not need to tell me the whole story a second time.
+If she helped the person understand the options, I do not have to begin the conversation with ten basic questions.
+If NODEQUOTE gave an initial understanding of price, the client already comes to me with a clearer picture of the project.
+Technology removes unnecessary steps.
+The person remains.
+Over time, this thought became much bigger than the Alex Node website.
+We began talking about ANITA Engine, different roles of one ANITA, memory, our own platform, ANITA OS, and even ANITA Home Station — a physical device through which, one day, someone might be able to talk with her at home.
+But I want to preserve one thing.
+I do not want to turn all of this into a race of features.
+I do not need to say:
+“No one has ever done this before.”
+Most likely, many things we invent have already been done by someone in another form.
+I am more interested in a different question:
+Can we put all of this together in our own way?
+So that, a few years from now, someone sees ANITA and thinks:
+Alex Node.
+Sees Human-Tech — and understands what it means.
+Not because we shouted louder than everyone else about new technology.
+But because we consistently followed our own road.
+Perhaps that is how ideas that later get called a philosophy are born.
+At first, you are simply trying to build something properly.
+And then one day, you look back and realize:
+this road already has a name.
+
+Chapter 11. Chaos
+
+By this point, you have probably noticed one feature of this book.
+
+The chapters are arranged a little chaotically. First I talk about ANITA, then about myself, then about money, ChatGPT, the past, then I return to the project again, and a few pages later I am suddenly talking about something completely different.
+
+I could arrange all of this neatly. Put everything into stages, create a beautiful sequence, so that it looked as if I knew exactly where I was going from the very beginning.
+
+But the truth is that there was no perfect road.
+
+While I was working on Alex Node and ANITA, there was chaos in my head. Ideas appeared suddenly, interrupted each other, disappeared, and came back. Sometimes I spent days on an idea that eventually led nowhere. And then some random thought suddenly became the beginning of something important.
+
+I am not writing this book after everything became clear. I am writing it right inside the process.
+
+And that is why the book is structured the same way.
+
+I want you not only to read about my path, but, in a sense, to walk through it with me. I want you to sometimes not know what comes next. I want an idea to appear, disappear, and then return somewhere completely different with a different meaning.
+
+Because that is exactly how it happened for me.
+
+And perhaps this is the only way a road gradually begins to emerge out of chaos.
+
+Not a map. Not a plan. Just a road beneath your feet.

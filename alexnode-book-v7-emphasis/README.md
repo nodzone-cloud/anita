@@ -66,3 +66,19 @@ To make reviews public/shared for all visitors, set `CONFIG.REVIEWS_API` to a se
 - `POST` JSON review data
 
 The interface is already prepared; only the backend endpoint is still needed for public reviews.
+
+
+## v5 — Russian + English editions and corrected Buy mode
+
+- The main book list now contains two separate editions side by side:
+  - Alex Node & ANITA — RU
+  - Alex Node & ANITA — EN
+- RU / EN on the book cards are static labels, not buttons.
+- `book-ru.txt` is the Russian edition.
+- `book-en.txt` is the English edition.
+- Selecting a language edition loads that edition's text independently from the website UI language.
+- The top RU / EN / FI controls continue to translate the website interface only.
+- Buy mode no longer opens the full reader from the front cover.
+- In Buy mode the user gets the familiar front/back preview, can zoom the back cover, share the edition, and use the center Buy button.
+- Add a separate SumUp link to each edition under `CONFIG.BOOKS[].buyUrl`.
+- The current cover artwork is reused for both editions for now. It can later be replaced with separate English cover images by changing the EN edition's `front` and `back` URLs.
