@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Alex Node & ANITA — AN Book</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<main id="anbook" class="anbook">
+  <div class="anbook-bg" aria-hidden="true"></div>
+  <div class="anbook-shade" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="brand" href="https://alexnode.fi/" aria-label="Alex Node">
+      <span class="brand-an">AN</span>
+      <span class="brand-line"></span>
+      <span class="brand-copy">
+        <span class="brand-name">ALEX NODE</span>
+        <span class="brand-sub">WEBSITES. DESIGN. IT SUPPORT.</span>
+      </span>
+    </a>
+
+    <nav class="nav" aria-label="Book navigation">
+      <a href="https://alexnode.fi/boook" data-i18n="home">Главная</a>
+      <a class="active" href="#book" data-i18n="about">О книге</a>
+      <a href="#gallery" data-i18n="gallery">Галерея</a>
+      <a href="#reviews" data-i18n="reviews">Отзывы</a>
+      <a id="buyLinkTop" href="#" data-i18n="buyShort">Купить</a>
+    </nav>
+
+    <div class="top-actions">
+      <a id="buyButton" class="buy-button" href="#">
+        <span class="cart">🛒</span>
+        <span data-i18n="buy">Купить книгу</span>
+      </a>
+      <div class="languages" aria-label="Language">
+        <button type="button" data-lang="ru" class="active">RU</button>
+        <button type="button" data-lang="en">EN</button>
+        <button type="button" data-lang="fi">FI</button>
+      </div>
+    </div>
+  </header>
+
+  <section id="book" class="hero">
+    <div class="book-dock">
+      <button class="floating-cover" id="floatingCover" type="button" aria-label="Open book preview">
+        <img src="https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp" alt="Alex Node & ANITA front cover">
+      </button>
+    </div>
+
+    <div class="focus-zone" id="focusZone" aria-hidden="true">
+      <button class="focus-cover front" id="focusFront" type="button" aria-label="Open book">
+        <img src="https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp" alt="Front cover">
+      </button>
+
+      <div class="focus-copy">
+        <h1>Alex Node &amp; ANITA</h1>
+        <p data-i18n="focusText">Нажмите на переднюю обложку, чтобы открыть книгу.</p>
+        <button id="openBookButton" class="primary-cta" type="button" data-i18n="openBook">Открыть книгу</button>
+      </div>
+
+      <div class="focus-cover back">
+        <img src="https://optim.tildacdn.net/tild6261-6139-4333-a265-383535373737/-/format/webp/no_bg_book_back.png.webp" alt="Back cover">
+      </div>
+    </div>
+
+    <section class="reader" id="reader" aria-hidden="true">
+      <button class="reader-close" id="closeReader" type="button" aria-label="Close book">×</button>
+      <button class="page-arrow left" id="prevPage" type="button" aria-label="Previous page">‹</button>
+
+      <div class="book-open" id="bookOpen">
+        <article class="page page-left">
+          <div class="page-inner" id="leftPage"></div>
+          <div class="page-num" id="leftNum"></div>
+        </article>
+        <div class="spine"></div>
+        <article class="page page-right">
+          <div class="page-inner" id="rightPage"></div>
+          <div class="page-num" id="rightNum"></div>
+        </article>
+      </div>
+
+      <button class="page-arrow right" id="nextPage" type="button" aria-label="Next page">›</button>
+      <div class="mobile-hint" data-i18n="swipe">Листайте свайпом</div>
+    </section>
+  </section>
+
+  <div class="bottom-left">
+    <button id="contentsBtn" class="round-control" type="button" aria-label="Contents">▦</button>
+    <span data-i18n="contents">Содержание</span>
+  </div>
+
+  <div class="bottom-center hidden" id="pageCounter">1 / 1</div>
+
+  <div class="bottom-right">
+    <button id="zoomBtn" class="bottom-tool" type="button">
+      <span class="tool-icon">⌕</span><span data-i18n="zoom">Увеличить</span>
+    </button>
+    <button id="fullscreenBtn" class="bottom-tool" type="button">
+      <span class="tool-icon">⛶</span><span data-i18n="fullscreen">На весь экран</span>
+    </button>
+    <button id="shareBtn" class="bottom-tool" type="button">
+      <span class="tool-icon">⌯</span><span data-i18n="share">Поделиться</span>
+    </button>
+  </div>
+
+  <button id="exitFullscreen" class="exit-fullscreen" type="button" data-i18n="exitFullscreen">
+    Выйти из полноэкранного режима
+  </button>
+
+  <aside class="contents-panel" id="contentsPanel" aria-hidden="true">
+    <div class="contents-card">
+      <button class="contents-close" id="contentsClose" type="button">×</button>
+      <h2 data-i18n="contents">Содержание</h2>
+      <div id="contentsList"></div>
+    </div>
+  </aside>
+</main>
+<script src="./app.js"></script>
+</body>
+</html>
