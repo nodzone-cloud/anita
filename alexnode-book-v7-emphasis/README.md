@@ -142,3 +142,31 @@ Fixes:
 Important:
 - FI remains an INTERFACE language only.
 - There is no Finnish book edition in CONFIG.BOOKS and no book-fi.txt is required for the two existing RU/EN editions.
+
+
+## v14 — EXACT USER ASSETS
+
+This version keeps the stable code fixes but restores ONLY the exact asset URLs supplied by the user.
+
+RU front:
+https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp
+
+RU back:
+https://optim.tildacdn.net/tild6261-6139-4333-a265-383535373737/-/format/webp/no_bg_book_back.png.webp
+
+EN front:
+https://optim.tildacdn.net/tild3862-6437-4362-b765-636465336337/-/format/webp/ENG_front_cover.png.webp
+
+EN back:
+https://optim.tildacdn.net/tild3239-6138-4031-b861-303865346231/-/format/webp/ENG_back_cover.png.webp
+
+RU background:
+https://optim.tildacdn.net/tild6632-3139-4335-b932-623565363961/-/format/webp/an-book-bg-signature.png.webp
+
+EN background:
+https://optim.tildacdn.net/tild6532-3130-4161-b634-306131663763/-/format/webp/eng_bg.png.webp
+
+Important:
+- Do NOT replace these with generated images.
+- Do NOT use local front/back copies.
+- RU and EN switch both cover pair and background.

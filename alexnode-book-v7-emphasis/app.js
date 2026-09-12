@@ -1,5 +1,6 @@
 (() => {
   "use strict";
+  // v14 — exact user assets + stable fixes. Do not substitute artwork.
   // Alex Node & ANITA Book Hub v13 — stable fix based ONLY on v12 baseline.
 
   const CONFIG = {
@@ -17,8 +18,8 @@
         editionLabel:"RU",
         bookLanguage:"ru",
         textFile:"book-ru.txt",
-        front:"./assets/front-ru.png",
-        back:"./assets/back-ru.png",
+        front:"https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp",
+        back:"https://optim.tildacdn.net/tild6261-6139-4333-a265-383535373737/-/format/webp/no_bg_book_back.png.webp",
         buyUrl:""
       },
       {
@@ -27,8 +28,8 @@
         editionLabel:"EN",
         bookLanguage:"en",
         textFile:"book-en.txt",
-        front:"./assets/front-en.png",
-        back:"./assets/back-en.png",
+        front:"https://optim.tildacdn.net/tild3862-6437-4362-b765-636465336337/-/format/webp/ENG_front_cover.png.webp",
+        back:"https://optim.tildacdn.net/tild3239-6138-4031-b861-303865346231/-/format/webp/ENG_back_cover.png.webp",
         buyUrl:""
       }
     ]
@@ -756,7 +757,7 @@
   }
 
 
-  ["./assets/an-book-bg-signature.png","./assets/eng_bg.png"].forEach(src=>{
+  ["https://optim.tildacdn.net/tild6632-3139-4335-b932-623565363961/-/format/webp/an-book-bg-signature.png.webp","https://optim.tildacdn.net/tild6532-3130-4161-b634-306131663763/-/format/webp/eng_bg.png.webp"].forEach(src=>{
     const img = new Image();
     img.src = src;
   });
@@ -768,8 +769,8 @@
     const bg = document.querySelector(".anbook-bg");
     if(bg){
       const bgFile = lang === "en"
-        ? "./assets/eng_bg.png"
-        : "./assets/an-book-bg-signature.png";
+        ? "https://optim.tildacdn.net/tild6532-3130-4161-b634-306131663763/-/format/webp/eng_bg.png.webp"
+        : "https://optim.tildacdn.net/tild6632-3139-4335-b932-623565363961/-/format/webp/an-book-bg-signature.png.webp";
 
       bg.style.backgroundImage = `url('${bgFile}')`;
       bg.style.backgroundSize = "100% 100%";
