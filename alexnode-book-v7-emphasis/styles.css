@@ -749,3 +749,55 @@ select.hub-field option{color:#111;background:#fff}
     max-height:180px !important;
   }
 }
+
+
+/* =========================================================
+   v12 fixes
+   ========================================================= */
+
+/* Keep the complete background visible on wide screens.
+   This prevents the baked-in signature from being cut off. */
+.anbook-bg{
+  background-image:url('./assets/an-book-bg-signature.png') !important;
+  background-size:100% 100% !important;
+  background-position:center center !important;
+  background-repeat:no-repeat !important;
+}
+
+.anbook.lang-en .anbook-bg{
+  background-image:url('./assets/eng_bg.png') !important;
+  background-size:100% 100% !important;
+  background-position:center center !important;
+}
+
+/* No little share-arrow circles under books on Home. */
+#bookDock .edition-share{
+  display:none !important;
+}
+
+/* =========================================================
+   v13 — stable visibility / input / pagination fixes
+   ========================================================= */
+
+/* IMPORTANT: v11 uses display:flex !important on the dock.
+   Inline display:none could not override it. This class can. */
+#bookDock.is-hidden{
+  display:none !important;
+}
+
+/* Never allow horizontal page drift from trackpads/mice. */
+.anbook,
+.hero,
+.reader,
+.book-open{
+  overscroll-behavior-x:none;
+}
+
+/* Safer text wrapping: long words/URLs must stay inside pages. */
+.page-inner{
+  overflow-wrap:anywhere;
+  word-break:normal;
+  hyphens:auto;
+}
+
+/* Alex Node & ANITA Book Hub v13 — based on v12 stable baseline. */

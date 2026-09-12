@@ -1,5 +1,6 @@
 (() => {
   "use strict";
+  // Alex Node & ANITA Book Hub v13 — stable fix based ONLY on v12 baseline.
 
   const CONFIG = {
     BUY_URL: "#", // add the real purchase URL later
@@ -16,8 +17,8 @@
         editionLabel:"RU",
         bookLanguage:"ru",
         textFile:"book-ru.txt",
-        front:"https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp",
-        back:"https://optim.tildacdn.net/tild6261-6139-4333-a265-383535373737/-/format/webp/no_bg_book_back.png.webp",
+        front:"./assets/front-ru.png",
+        back:"./assets/back-ru.png",
         buyUrl:""
       },
       {
@@ -26,8 +27,8 @@
         editionLabel:"EN",
         bookLanguage:"en",
         textFile:"book-en.txt",
-        front:"https://optim.tildacdn.net/tild3862-6437-4362-b765-636465336337/-/format/webp/ENG_front_cover.png.webp",
-        back:"https://optim.tildacdn.net/tild3239-6138-4031-b861-303865346231/-/format/webp/ENG_back_cover.png.webp",
+        front:"./assets/front-en.png",
+        back:"./assets/back-en.png",
         buyUrl:""
       }
     ]
@@ -143,10 +144,6 @@
 
         <span class="edition-badge">${escapeHtml(book.editionLabel)}</span>
 
-        <button class="edition-share"
-                type="button"
-                data-share-book="${escapeHtml(book.id)}"
-                aria-label="Share ${escapeHtml(book.editionLabel)} edition">↗</button>
       `;
       dock.appendChild(item);
     });
@@ -161,12 +158,6 @@
       el.addEventListener("click",()=>focusBook(el));
     });
 
-    $$("#bookDock [data-share-book]").forEach(btn=>{
-      btn.addEventListener("click",e=>{
-        e.stopPropagation();
-        shareBook(btn.dataset.shareBook);
-      });
-    });
   }
 
   function bookById(id){
@@ -217,6 +208,9 @@
 
     resetFocusToList();
 
+    const homeDock=$("#bookDock");
+    if(homeDock && view!=="home") homeDock.classList.add("is-hidden");
+
     if(view==="gallery"){
       $("#book").style.display="none";
       galleryView.classList.add("show");
@@ -242,6 +236,8 @@
       // HOME = book list. Always rebuild all available editions.
       $("#book").style.display="";
       renderHomeBooks();
+      const dock=$("#bookDock");
+      if(dock) dock.classList.remove("is-hidden");
       floatingCovers.forEach(el=>el.style.visibility="visible");
       focusZone.classList.remove("show","buy-preview-mode");
       focusZone.setAttribute("aria-hidden","true");
@@ -286,9 +282,14 @@
         $("#book").style.display="";
         setActiveNav("buy");
 
+        const dock=$("#bookDock");
+        if(dock) dock.classList.add("is-hidden");
+
         const selected=bookById(currentBookId);
         $("#focusFront img").src=selected.front;
+        $("#focusFront img").alt=`${selected.title} ${selected.editionLabel} front cover`;
         $("#focusBack img").src=selected.back;
+        $("#focusBack img").alt=`${selected.title} ${selected.editionLabel} back cover`;
 
         focusZone.classList.add("buy-preview-mode","show");
         focusZone.setAttribute("aria-hidden","false");
@@ -566,8 +567,15 @@
     const rect = leftPage.getBoundingClientRect();
     const t = document.createElement("div");
     t.className = "page-inner page-tester";
-    t.style.width = `${Math.max(330,rect.width || 480)}px`;
-    t.style.height = `${Math.max(450,rect.height || 610)}px`;
+
+    // v13: paginate against the actual rendered page size.
+    // Forced minimums could make the tester larger than a real phone page,
+    // causing text to be cut off after rendering.
+    const w = rect.width > 0 ? rect.width : 480;
+    const h = rect.height > 0 ? rect.height : 610;
+
+    t.style.width = `${w}px`;
+    t.style.height = `${h}px`;
     document.body.appendChild(t);
     return t;
   }
@@ -759,9 +767,14 @@
 
     const bg = document.querySelector(".anbook-bg");
     if(bg){
-      bg.style.backgroundImage = lang === "en"
-        ? "url('./assets/eng_bg.png')"
-        : "url('./assets/an-book-bg-signature.png')";
+      const bgFile = lang === "en"
+        ? "./assets/eng_bg.png"
+        : "./assets/an-book-bg-signature.png";
+
+      bg.style.backgroundImage = `url('${bgFile}')`;
+      bg.style.backgroundSize = "100% 100%";
+      bg.style.backgroundPosition = "center center";
+      bg.style.backgroundRepeat = "no-repeat";
     }
 
     root.classList.toggle("lang-en", lang === "en");
@@ -801,8 +814,14 @@
     }
 
     const selected=bookById(currentBookId);
+
+    const dock=$("#bookDock");
+    if(dock) dock.classList.add("is-hidden");
+
     $("#focusFront img").src=selected.front;
+    $("#focusFront img").alt=`${selected.title} ${selected.editionLabel} front cover`;
     $("#focusBack img").src=selected.back;
+    $("#focusBack img").alt=`${selected.title} ${selected.editionLabel} back cover`;
     focused = true;
 
     const source = activeFloatingCover || floatingCovers[0];
@@ -858,6 +877,8 @@
     focusZone.classList.remove("buy-preview-mode");
 
     // Restore both language editions.
+    const dock=$("#bookDock");
+    if(dock) dock.classList.remove("is-hidden");
     floatingCovers.forEach(el=>el.style.visibility="visible");
 
     // Animate only the edition that was selected.
@@ -1080,14 +1101,53 @@
   });
 
   let touchX = null;
-  reader.addEventListener("touchstart",e=>{touchX=e.changedTouches[0].clientX},{passive:true});
+  let touchY = null;
+
+  reader.addEventListener("touchstart",e=>{
+    if(!matchMedia("(max-width:900px)").matches) return;
+    if(e.target.closest("button,a,input,textarea,select")) return;
+    const t=e.changedTouches[0];
+    touchX=t.clientX;
+    touchY=t.clientY;
+  },{passive:true});
+
   reader.addEventListener("touchend",e=>{
-    if(touchX==null)return;
-    const dx=e.changedTouches[0].clientX-touchX;
+    if(!matchMedia("(max-width:900px)").matches) return;
+    if(touchX==null || touchY==null) return;
+
+    const t=e.changedTouches[0];
+    const dx=t.clientX-touchX;
+    const dy=t.clientY-touchY;
     touchX=null;
-    if(Math.abs(dx)<45)return;
+    touchY=null;
+
+    // Only a deliberate horizontal swipe turns pages.
+    if(Math.abs(dx)<45) return;
+    if(Math.abs(dx)<=Math.abs(dy)*1.15) return;
+
     dx<0?next():prev();
   },{passive:true});
+
+  // Desktop trackpads can emit horizontal wheel gestures.
+  // Block the browser/page horizontal movement without changing pages.
+  reader.addEventListener("wheel",e=>{
+    if(matchMedia("(max-width:900px)").matches) return;
+    if(Math.abs(e.deltaX)>Math.abs(e.deltaY) && Math.abs(e.deltaX)>8){
+      e.preventDefault();
+    }
+  },{passive:false});
+
+  // Desktop keyboard navigation belongs to the reader only.
+  window.addEventListener("keydown",e=>{
+    if(!opened || matchMedia("(max-width:900px)").matches) return;
+    if(e.key==="ArrowRight"){
+      e.preventDefault();
+      next();
+    }else if(e.key==="ArrowLeft"){
+      e.preventDefault();
+      prev();
+    }
+  });
 
   window.addEventListener("resize",()=>{
     clearTimeout(resizeTimer);

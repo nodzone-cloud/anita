@@ -98,3 +98,47 @@ The interface is already prepared; only the backend endpoint is still needed for
 - Added `assets/eng_bg.png` for the English interface.
 - Selecting **EN** switches the site background to the English image automatically.
 - RU/FI keep the existing `assets/an-book-bg-signature.png` background.
+
+
+## v13 — Stable fix (based strictly on v12)
+
+This version DOES NOT replace the v12 architecture.
+It keeps:
+- app.js / styles.css / index.html
+- RU + EN separate book editions
+- RU / EN / FI website interface controls
+- book-ru.txt and book-en.txt
+- gallery / reviews / buy hub
+- back-cover zoom
+- return-to-book-list behavior
+- v7 emphasis formatting
+- all v12 backgrounds
+
+Fixes:
+1. Mobile duplicate/overlapping books:
+   - v11 had `display:flex !important` on #bookDock.
+   - JavaScript `style.display="none"` could not override it.
+   - v13 uses `#bookDock.is-hidden { display:none !important; }`.
+
+2. Pagination/text clipping:
+   - tester now uses the actual page dimensions.
+   - no forced minimum tester size on small phones.
+   - long words/URLs wrap safely.
+
+3. Desktop input:
+   - page arrows remain normal buttons.
+   - horizontal mouse/trackpad page drift is blocked.
+   - Left/Right keyboard arrows work only while the reader is open.
+
+4. Mobile input:
+   - swipe page turn is mobile-only.
+   - vertical scrolling is not treated as a page turn.
+   - swipes starting on controls are ignored.
+
+5. GitHub assets:
+   - RU and EN front/back covers are now included in /assets.
+   - app.js and index.html use local GitHub assets rather than external Tilda cover URLs.
+
+Important:
+- FI remains an INTERFACE language only.
+- There is no Finnish book edition in CONFIG.BOOKS and no book-fi.txt is required for the two existing RU/EN editions.
