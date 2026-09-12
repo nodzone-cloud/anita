@@ -81,8 +81,8 @@
   const $$ = s => [...document.querySelectorAll(s)];
 
   const root = $("#anbook");
-  const floatingCovers = $$(".floating-cover");
-  let activeFloatingCover = floatingCovers[0] || null;
+  let floatingCovers = [];
+  let activeFloatingCover = null;
   const focusZone = $("#focusZone");
   const returnBooksBtn = $("#returnBooksBtn");
   const reader = $("#reader");
@@ -122,6 +122,52 @@
   document.querySelector(".brand").href = CONFIG.BRAND_URL;
   document.querySelector('[data-i18n="home"]').href = CONFIG.HOME_URL;
 
+
+  function renderHomeBooks(){
+    const dock = $("#bookDock");
+    if(!dock) return;
+
+    dock.innerHTML = "";
+
+    CONFIG.BOOKS.forEach(book=>{
+      const item = document.createElement("div");
+      item.className = "edition-item";
+      item.innerHTML = `
+        <button class="floating-cover edition-cover"
+                type="button"
+                data-book-id="${escapeHtml(book.id)}"
+                aria-label="${escapeHtml(book.title)} ${escapeHtml(book.editionLabel)}">
+          <img src="${book.front}"
+               alt="${escapeHtml(book.title)} ${escapeHtml(book.editionLabel)}">
+        </button>
+
+        <span class="edition-badge">${escapeHtml(book.editionLabel)}</span>
+
+        <button class="edition-share"
+                type="button"
+                data-share-book="${escapeHtml(book.id)}"
+                aria-label="Share ${escapeHtml(book.editionLabel)} edition">↗</button>
+      `;
+      dock.appendChild(item);
+    });
+
+    floatingCovers = $$("#bookDock .floating-cover");
+    activeFloatingCover =
+      $(`#bookDock .floating-cover[data-book-id="${currentBookId}"]`) ||
+      floatingCovers[0] ||
+      null;
+
+    floatingCovers.forEach(el=>{
+      el.addEventListener("click",()=>focusBook(el));
+    });
+
+    $$("#bookDock [data-share-book]").forEach(btn=>{
+      btn.addEventListener("click",e=>{
+        e.stopPropagation();
+        shareBook(btn.dataset.shareBook);
+      });
+    });
+  }
 
   function bookById(id){
     return CONFIG.BOOKS.find(b=>b.id===id) || CONFIG.BOOKS[0];
@@ -193,8 +239,9 @@
         focusBook(activeFloatingCover);
       },80);
     }else{
-      // HOME = book list. Show every available language edition.
+      // HOME = book list. Always rebuild all available editions.
       $("#book").style.display="";
+      renderHomeBooks();
       floatingCovers.forEach(el=>el.style.visibility="visible");
       focusZone.classList.remove("show","buy-preview-mode");
       focusZone.setAttribute("aria-hidden","true");
@@ -749,6 +796,7 @@
     if(sourceEl?.dataset?.bookId){
       currentBookId = sourceEl.dataset.bookId;
       activeFloatingCover = sourceEl;
+      buyMode = false;
       await loadCurrentBook();
     }
 
@@ -928,8 +976,8 @@
     });
   }
 
-  floatingCovers.forEach(el=>el.addEventListener("click",()=>focusBook(el)));
-  $$("[data-share-book]").forEach(btn=>btn.addEventListener("click",e=>{
+  // Home book listeners are attached by renderHomeBooks().
+  $$("[data-share-book]:not(#bookDock [data-share-book])").forEach(btn=>btn.addEventListener("click",e=>{
     e.stopPropagation();
     shareBook(btn.dataset.shareBook);
   }));
@@ -1056,6 +1104,7 @@
   });
 
   setReaderUI(false);
+  renderHomeBooks();
   fillBookSelectors();
 
   const deepBook = new URLSearchParams(location.search).get("book");

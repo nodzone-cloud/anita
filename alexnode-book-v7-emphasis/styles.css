@@ -684,3 +684,68 @@ select.hub-field option{color:#111;background:#fff}
     font-size:12px !important;
   }
 }
+
+
+/* =========================================================
+   v11 — robust two-book home list
+   The list is generated from CONFIG.BOOKS by JS, so stale HTML
+   cannot collapse it back to a single cover.
+   ========================================================= */
+#bookDock.editions-dock{
+  display:flex !important;
+  flex-direction:row !important;
+  flex-wrap:nowrap !important;
+  align-items:flex-start !important;
+  justify-content:flex-start !important;
+  gap:26px !important;
+  width:max-content !important;
+  overflow:visible !important;
+}
+
+#bookDock .edition-item{
+  flex:0 0 168px !important;
+  width:168px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  visibility:visible !important;
+  opacity:1 !important;
+}
+
+#bookDock .edition-cover{
+  position:relative !important;
+  display:block !important;
+  width:158px !important;
+  visibility:visible !important;
+  opacity:1 !important;
+}
+
+#bookDock .edition-cover img{
+  display:block !important;
+  width:158px !important;
+  height:auto !important;
+  max-height:360px !important;
+  object-fit:contain !important;
+}
+
+#bookDock .edition-badge{
+  display:inline-flex !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  pointer-events:none !important;
+}
+
+@media(max-width:900px){
+  #bookDock.editions-dock{
+    gap:8px !important;
+  }
+  #bookDock .edition-item{
+    flex-basis:82px !important;
+    width:82px !important;
+  }
+  #bookDock .edition-cover,
+  #bookDock .edition-cover img{
+    width:78px !important;
+    max-height:180px !important;
+  }
+}
