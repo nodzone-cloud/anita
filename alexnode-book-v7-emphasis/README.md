@@ -27,3 +27,11 @@ alexnode-book-v7-emphasis/
 - Old `an-book-background-clean.jpg` is intentionally NOT included to prevent the wrong background from being loaded.
 
 After upload, remove obsolete files such as `placeholder.txt` if you want; they are not required.
+
+
+## Back cover zoom
+- The front cover still opens the book.
+- The center Open Book button still opens the book.
+- Clicking the back cover now enlarges it in the center of the screen.
+- Clicking the enlarged back cover again restores it to normal size.
+- The zoomed back cover has a dark backdrop and works on desktop and mobile.

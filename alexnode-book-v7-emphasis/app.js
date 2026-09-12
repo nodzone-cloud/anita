@@ -42,6 +42,7 @@
   let opened = false;
   let focused = false;
   let zoomed = false;
+  let backCoverZoomed = false;
   let resizeTimer = null;
 
   document.querySelector(".brand").href = CONFIG.BRAND_URL;
@@ -425,6 +426,22 @@
     loadBook(lang);
   }
 
+  function toggleBackCoverZoom(){
+    const back = $("#focusBack");
+    if(!back) return;
+
+    backCoverZoomed = !backCoverZoomed;
+    focusZone.classList.toggle("back-zoom-active", backCoverZoomed);
+    back.setAttribute("aria-pressed", backCoverZoomed ? "true" : "false");
+  }
+
+  function resetBackCoverZoom(){
+    const back = $("#focusBack");
+    backCoverZoomed = false;
+    focusZone.classList.remove("back-zoom-active");
+    if(back) back.setAttribute("aria-pressed","false");
+  }
+
   function focusBook(){
     if(focused || opened) return;
     focused = true;
@@ -457,6 +474,7 @@
   }
 
   function openReader(){
+    resetBackCoverZoom();
     opened = true;
     focusZone.classList.remove("show");
     focusZone.setAttribute("aria-hidden","true");
@@ -549,6 +567,7 @@
 
   $("#floatingCover").addEventListener("click",focusBook);
   $("#focusFront").addEventListener("click",openReader);
+  $("#focusBack").addEventListener("click",toggleBackCoverZoom);
   $("#openBookButton").addEventListener("click",openReader);
   $("#closeReader").addEventListener("click",closeReader);
   prevPage.addEventListener("click",prev);

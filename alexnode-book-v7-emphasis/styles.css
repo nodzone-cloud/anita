@@ -164,3 +164,60 @@ button{font:inherit}
   .page-arrow{display:none}.mobile-hint{display:block}
   .bottom-right{right:12px;gap:9px}.bottom-left{left:10px}.bottom-tool span:last-child{display:none}.bottom-center{bottom:20px}.languages{gap:9px}.languages button{font-size:11px}
 }
+
+
+/* =========================================================
+   BACK COVER CLICK-TO-ZOOM
+   Click once = enlarge in the center.
+   Click again = return to normal.
+   ========================================================= */
+.focus-cover.back{
+  cursor:zoom-in;
+  transition:filter .22s ease;
+}
+
+.focus-zone.back-zoom-active::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  z-index:9997;
+  background:rgba(0,0,0,.68);
+  backdrop-filter:blur(4px);
+}
+
+.focus-zone.back-zoom-active .focus-cover.back{
+  position:fixed;
+  left:50%;
+  top:50%;
+  width:min(540px,78vw);
+  height:min(86vh,820px);
+  transform:translate(-50%,-50%);
+  z-index:9999;
+  cursor:zoom-out;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:0;
+}
+
+.focus-zone.back-zoom-active .focus-cover.back img{
+  width:auto;
+  height:auto;
+  max-width:100%;
+  max-height:100%;
+  object-fit:contain;
+  filter:drop-shadow(0 30px 45px rgba(0,0,0,.75));
+}
+
+.focus-zone.back-zoom-active .focus-cover.front,
+.focus-zone.back-zoom-active .focus-copy{
+  pointer-events:none;
+}
+
+/* Mobile: keep the enlarged back cover inside the viewport. */
+@media(max-width:900px){
+  .focus-zone.back-zoom-active .focus-cover.back{
+    width:88vw;
+    height:80svh;
+  }
+}
