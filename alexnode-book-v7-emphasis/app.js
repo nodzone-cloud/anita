@@ -7,13 +7,61 @@
     BRAND_URL: "https://alexnode.fi/",
     BOOK_BASE_URL: "https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/alexnode-book-v7-emphasis",
     TEXT_FILES: { ru:"book-ru.txt", en:"book-en.txt", fi:"book-fi.txt" },
-    CHAPTER_1_IMAGE: "https://optim.tildacdn.net/tild3665-6335-4532-b633-636638366462/-/format/webp/picture1.jpg.webp"
+    CHAPTER_1_IMAGE: "https://optim.tildacdn.net/tild3665-6335-4532-b633-636638366462/-/format/webp/picture1.jpg.webp",
+    REVIEWS_API: "", // later: Cloudflare Worker/API endpoint for public shared reviews
+    BOOKS: [
+      {
+        id:"alex-node-anita",
+        title:"Alex Node & ANITA",
+        front:"https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp",
+        back:"https://optim.tildacdn.net/tild6261-6139-4333-a265-383535373737/-/format/webp/no_bg_book_back.png.webp",
+        buyUrl:"" // paste this book's SumUp payment link here later
+      }
+    ]
   };
 
   const I18N = {
-    ru:{home:"Главная",about:"О книге",gallery:"Галерея",reviews:"Отзывы",buyShort:"Купить",buy:"Купить книгу",tagline:"Больше, чем бизнес —<br>это путь.",focusText:"Нажмите на переднюю обложку, чтобы открыть книгу.",openBook:"Открыть книгу",contents:"Содержание",zoom:"Увеличить",fullscreen:"На весь экран",share:"Поделиться",exitFullscreen:"Выйти из полноэкранного режима",swipe:"Листайте свайпом"},
-    en:{home:"Home",about:"About the book",gallery:"Gallery",reviews:"Reviews",buyShort:"Buy",buy:"Buy the book",tagline:"More than business —<br>it's a journey.",focusText:"Click the front cover to open the book.",openBook:"Open book",contents:"Contents",zoom:"Zoom",fullscreen:"Full screen",share:"Share",exitFullscreen:"Exit full screen",swipe:"Swipe to turn pages"},
-    fi:{home:"Etusivu",about:"Tietoa kirjasta",gallery:"Galleria",reviews:"Arvostelut",buyShort:"Osta",buy:"Osta kirja",tagline:"Enemmän kuin bisnes —<br>se on matka.",focusText:"Avaa kirja napsauttamalla etukantta.",openBook:"Avaa kirja",contents:"Sisältö",zoom:"Suurenna",fullscreen:"Koko näyttö",share:"Jaa",exitFullscreen:"Poistu koko näytön tilasta",swipe:"Vaihda sivua pyyhkäisemällä"}
+    ru:{
+      home:"Главная",about:"О книге",gallery:"Галерея",reviews:"Отзывы",buyShort:"Купить",buy:"Купить книгу",
+      focusText:"Нажмите на переднюю обложку, чтобы открыть книгу.",openBook:"Открыть книгу",
+      contents:"Содержание",zoom:"Увеличить",fullscreen:"На весь экран",share:"Поделиться",
+      exitFullscreen:"Выйти из полноэкранного режима",swipe:"Листайте свайпом",
+      galleryEmpty:"Галерея готова. Изображения будут добавлены позже.",
+      reviewsLead:"Выберите книгу, поставьте оценку и оставьте комментарий.",
+      chooseBook:"Книга",rating:"Оценка",yourName:"Ваше имя",yourReview:"Ваш отзыв",
+      publishReview:"Опубликовать отзыв",readerReviews:"Отзывы читателей",
+      buyBooks:"Купить книгу",buyLead:"Выберите книгу. Вы сможете посмотреть её перед покупкой.",
+      preview:"Посмотреть",noReviews:"Пока нет отзывов.",savedLocal:"Отзыв сохранён на этом устройстве.",
+      ratingRequired:"Пожалуйста, поставьте оценку от 1 до 5 звёзд.",
+      buyNotReady:"Ссылка SumUp для этой книги ещё не добавлена."
+    },
+    en:{
+      home:"Home",about:"About the book",gallery:"Gallery",reviews:"Reviews",buyShort:"Buy",buy:"Buy the book",
+      focusText:"Click the front cover to open the book.",openBook:"Open book",
+      contents:"Contents",zoom:"Zoom",fullscreen:"Full screen",share:"Share",
+      exitFullscreen:"Exit full screen",swipe:"Swipe to turn pages",
+      galleryEmpty:"The gallery is ready. Images will be added later.",
+      reviewsLead:"Choose a book, rate it and leave a comment.",
+      chooseBook:"Book",rating:"Rating",yourName:"Your name",yourReview:"Your review",
+      publishReview:"Publish review",readerReviews:"Reader reviews",
+      buyBooks:"Buy a book",buyLead:"Choose a book. You can preview it before purchasing.",
+      preview:"Preview",noReviews:"No reviews yet.",savedLocal:"Review saved on this device.",
+      ratingRequired:"Please select a rating from 1 to 5 stars.",
+      buyNotReady:"The SumUp link for this book has not been added yet."
+    },
+    fi:{
+      home:"Etusivu",about:"Tietoa kirjasta",gallery:"Galleria",reviews:"Arvostelut",buyShort:"Osta",buy:"Osta kirja",
+      focusText:"Avaa kirja napsauttamalla etukantta.",openBook:"Avaa kirja",
+      contents:"Sisältö",zoom:"Suurenna",fullscreen:"Koko näyttö",share:"Jaa",
+      exitFullscreen:"Poistu koko näytön tilasta",swipe:"Vaihda sivua pyyhkäisemällä",
+      galleryEmpty:"Galleria on valmis. Kuvat lisätään myöhemmin.",
+      reviewsLead:"Valitse kirja, anna arvio ja jätä kommentti.",
+      chooseBook:"Kirja",rating:"Arvio",yourName:"Nimesi",yourReview:"Arvostelusi",
+      publishReview:"Julkaise arvostelu",readerReviews:"Lukijoiden arvostelut",
+      buyBooks:"Osta kirja",buyLead:"Valitse kirja. Voit esikatsella sitä ennen ostamista.",
+      preview:"Esikatsele",noReviews:"Ei vielä arvosteluja.",savedLocal:"Arvostelu tallennettiin tälle laitteelle.",
+      ratingRequired:"Valitse 1–5 tähteä.",buyNotReady:"Tämän kirjan SumUp-linkkiä ei ole vielä lisätty."
+    }
   };
 
   const $ = s => document.querySelector(s);
@@ -34,6 +82,13 @@
   const nextPage = $("#nextPage");
   const contentsPanel = $("#contentsPanel");
   const contentsList = $("#contentsList");
+  const galleryView = $("#galleryView");
+  const reviewsView = $("#reviewsView");
+  const buyView = $("#buyView");
+  const reviewBookSelect = $("#reviewBookSelect");
+  const reviewsList = $("#reviewsList");
+  const reviewAverage = $("#reviewAverage");
+  const reviewStatus = $("#reviewStatus");
 
   let language = "ru";
   let rawBook = "";
@@ -45,16 +100,180 @@
   let zoomed = false;
   let backCoverZoomed = false;
   let resizeTimer = null;
+  let currentView = "book";
+  let currentBookId = CONFIG.BOOKS[0].id;
+  let currentRating = 0;
+  let buyMode = false;
 
   document.querySelector(".brand").href = CONFIG.BRAND_URL;
   document.querySelector('[data-i18n="home"]').href = CONFIG.HOME_URL;
 
-  ["#buyButton","#buyLinkTop"].forEach(sel=>{
-    const el = $(sel);
-    if(!el) return;
-    el.href = CONFIG.BUY_URL;
-    if(CONFIG.BUY_URL === "#") el.addEventListener("click",e=>e.preventDefault());
-  });
+
+  function bookById(id){
+    return CONFIG.BOOKS.find(b=>b.id===id) || CONFIG.BOOKS[0];
+  }
+
+  function deepBookUrl(bookId=currentBookId){
+    const base = CONFIG.HOME_URL;
+    return `${base}?book=${encodeURIComponent(bookId)}`;
+  }
+
+  async function shareBook(bookId=currentBookId){
+    const book = bookById(bookId);
+    const shareData = {title:book.title,url:deepBookUrl(book.id)};
+    try{
+      if(navigator.share) await navigator.share(shareData);
+      else{
+        await navigator.clipboard.writeText(shareData.url);
+        alert(language==="ru"?"Ссылка скопирована":language==="fi"?"Linkki kopioitu":"Link copied");
+      }
+    }catch(_e){}
+  }
+
+  function resetFocusToList(){
+    resetBackCoverZoom();
+    reader.classList.remove("show");
+    reader.setAttribute("aria-hidden","true");
+    focusZone.classList.remove("show");
+    focusZone.setAttribute("aria-hidden","true");
+    returnBooksBtn.classList.remove("show");
+    floatingCover.style.visibility="visible";
+    focused=false;
+    opened=false;
+    buyMode=false;
+    setReaderUI(false);
+  }
+
+  function setActiveNav(view){
+    $$("[data-view-link]").forEach(a=>a.classList.toggle("active",a.dataset.viewLink===view));
+  }
+
+  function showView(view){
+    currentView=view;
+    galleryView.classList.remove("show");
+    reviewsView.classList.remove("show");
+    buyView.classList.remove("show");
+    $("#book").style.display = "none";
+    resetFocusToList();
+
+    if(view==="gallery"){
+      galleryView.classList.add("show");
+      galleryView.setAttribute("aria-hidden","false");
+    }else if(view==="reviews"){
+      reviewsView.classList.add("show");
+      reviewsView.setAttribute("aria-hidden","false");
+      renderReviews();
+    }else if(view==="buy"){
+      buyView.classList.add("show");
+      buyView.setAttribute("aria-hidden","false");
+      renderBuyBooks();
+    }else{
+      $("#book").style.display = "";
+      if(view==="book"){
+        setTimeout(()=>focusBook(),80);
+      }
+    }
+
+    setActiveNav(view);
+    try{ history.replaceState(null,"",`#${view==="home"?"home":view}`); }catch(_e){}
+  }
+
+  function fillBookSelectors(){
+    reviewBookSelect.innerHTML = CONFIG.BOOKS.map(b=>`<option value="${escapeHtml(b.id)}">${escapeHtml(b.title)}</option>`).join("");
+    reviewBookSelect.value=currentBookId;
+    $("#reviewBookCover").src=bookById(currentBookId).front;
+  }
+
+  function renderBuyBooks(){
+    const grid=$("#buyBooksGrid");
+    grid.innerHTML="";
+    CONFIG.BOOKS.forEach(book=>{
+      const card=document.createElement("article");
+      card.className="book-card";
+      card.innerHTML=`
+        <button class="book-card-cover" type="button" aria-label="${escapeHtml(book.title)}">
+          <img src="${book.front}" alt="${escapeHtml(book.title)}">
+        </button>
+        <h3>${escapeHtml(book.title)}</h3>
+        <div class="book-card-actions">
+          <button class="secondary-btn preview-btn" type="button">${I18N[language].preview}</button>
+          <button class="secondary-btn share-book-card" type="button">↗ ${I18N[language].share}</button>
+        </div>`;
+      const preview=()=>{
+        currentBookId=book.id;
+        buyMode=true;
+        buyView.classList.remove("show");
+        $("#book").style.display="";
+        setActiveNav("buy");
+        focusBook();
+        const btn=$("#openBookButton");
+        btn.textContent=I18N[language].buy;
+      };
+      card.querySelector(".book-card-cover").addEventListener("click",preview);
+      card.querySelector(".preview-btn").addEventListener("click",preview);
+      card.querySelector(".share-book-card").addEventListener("click",()=>shareBook(book.id));
+      grid.appendChild(card);
+    });
+  }
+
+  function getLocalReviews(bookId){
+    try{
+      return JSON.parse(localStorage.getItem(`anbook-reviews:${bookId}`)||"[]");
+    }catch(_e){ return []; }
+  }
+
+  function saveLocalReview(bookId,review){
+    const list=getLocalReviews(bookId);
+    list.unshift(review);
+    localStorage.setItem(`anbook-reviews:${bookId}`,JSON.stringify(list));
+  }
+
+  async function loadReviews(bookId){
+    if(CONFIG.REVIEWS_API){
+      try{
+        const r=await fetch(`${CONFIG.REVIEWS_API}?book=${encodeURIComponent(bookId)}`,{cache:"no-store"});
+        if(r.ok) return await r.json();
+      }catch(_e){}
+    }
+    return getLocalReviews(bookId);
+  }
+
+  async function renderReviews(){
+    const bookId=reviewBookSelect.value || currentBookId;
+    const items=await loadReviews(bookId);
+    reviewsList.innerHTML="";
+    if(!items.length){
+      reviewsList.innerHTML=`<div class="review-item">${I18N[language].noReviews}</div>`;
+      reviewAverage.textContent="";
+      return;
+    }
+    const avg=items.reduce((a,r)=>a+Number(r.rating||0),0)/items.length;
+    reviewAverage.textContent=`★ ${avg.toFixed(1)} / 5`;
+    items.forEach(r=>{
+      const div=document.createElement("article");
+      div.className="review-item";
+      div.innerHTML=`
+        <div class="review-item-top">
+          <strong>${escapeHtml(r.name||"Reader")}</strong>
+          <span class="review-item-stars">${"★".repeat(Math.max(0,Math.min(5,Number(r.rating)||0)))}</span>
+        </div>
+        <p>${escapeHtml(r.text||"")}</p>`;
+      reviewsList.appendChild(div);
+    });
+  }
+
+  async function submitReview(review){
+    if(CONFIG.REVIEWS_API){
+      const r=await fetch(CONFIG.REVIEWS_API,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(review)
+      });
+      if(!r.ok) throw new Error("Review API error");
+      return;
+    }
+    saveLocalReview(review.bookId,review);
+  }
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
@@ -425,6 +644,8 @@
       if(I18N[lang]?.[key]) el.innerHTML = I18N[lang][key];
     });
     loadBook(lang);
+    if(currentView==="buy") renderBuyBooks();
+    if(currentView==="reviews") renderReviews();
   }
 
   function toggleBackCoverZoom(){
@@ -445,6 +666,9 @@
 
   function focusBook(){
     if(focused || opened) return;
+    const selected=bookById(currentBookId);
+    $("#focusFront img").src=selected.front;
+    $("#focusBack img").src=selected.back;
     focused = true;
     const r = floatingCover.getBoundingClientRect();
     const ghost = floatingCover.cloneNode(true);
@@ -472,6 +696,10 @@
   }
 
   function returnToBookList(){
+    if(currentView==="buy"){
+      showView("buy");
+      return;
+    }
     resetBackCoverZoom();
 
     focusZone.classList.remove("show");
@@ -502,6 +730,8 @@
   }
 
   function openReader(){
+    buyMode=false;
+    $("#openBookButton").textContent=I18N[language].openBook;
     resetBackCoverZoom();
     returnBooksBtn.classList.remove("show");
     opened = true;
@@ -520,6 +750,7 @@
     reader.setAttribute("aria-hidden","true");
     focusZone.classList.add("show");
     focusZone.setAttribute("aria-hidden","false");
+    returnBooksBtn.classList.add("show");
     setReaderUI(false);
   }
 
@@ -598,7 +829,13 @@
   returnBooksBtn.addEventListener("click",returnToBookList);
   $("#focusFront").addEventListener("click",openReader);
   $("#focusBack").addEventListener("click",toggleBackCoverZoom);
-  $("#openBookButton").addEventListener("click",openReader);
+  $("#openBookButton").addEventListener("click",()=>{
+    if(buyMode){
+      const book=bookById(currentBookId);
+      if(book.buyUrl) location.href=book.buyUrl;
+      else alert(I18N[language].buyNotReady);
+    }else openReader();
+  });
   $("#closeReader").addEventListener("click",closeReader);
   prevPage.addEventListener("click",prev);
   nextPage.addEventListener("click",next);
@@ -618,15 +855,7 @@
     bookOpen.classList.toggle("zoomed",zoomed);
   });
 
-  $("#shareBtn").addEventListener("click",async()=>{
-    try{
-      if(navigator.share) await navigator.share({title:document.title,url:location.href});
-      else{
-        await navigator.clipboard.writeText(location.href);
-        alert("Link copied");
-      }
-    }catch(_e){}
-  });
+  $("#shareBtn").addEventListener("click",()=>shareBook(currentBookId));
 
   $("#contentsBtn").addEventListener("click",()=>{
     contentsPanel.classList.add("show");
@@ -635,6 +864,55 @@
   $("#contentsClose").addEventListener("click",()=>{
     contentsPanel.classList.remove("show");
     contentsPanel.setAttribute("aria-hidden","true");
+  });
+
+  $$("[data-view-link]").forEach(a=>a.addEventListener("click",e=>{
+    e.preventDefault();
+    showView(a.dataset.viewLink);
+  }));
+
+  $("#shareBookFromList").addEventListener("click",e=>{
+    e.stopPropagation();
+    shareBook(currentBookId);
+  });
+
+  reviewBookSelect.addEventListener("change",()=>{
+    currentBookId=reviewBookSelect.value;
+    $("#reviewBookCover").src=bookById(currentBookId).front;
+    renderReviews();
+  });
+  $("#shareReviewBook").addEventListener("click",()=>shareBook(reviewBookSelect.value));
+
+  $("#ratingStars").addEventListener("click",e=>{
+    const btn=e.target.closest("[data-rating]");
+    if(!btn) return;
+    currentRating=Number(btn.dataset.rating);
+    $$("#ratingStars [data-rating]").forEach(b=>b.classList.toggle("on",Number(b.dataset.rating)<=currentRating));
+  });
+
+  $("#reviewForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    if(currentRating<1){
+      reviewStatus.textContent=I18N[language].ratingRequired;
+      return;
+    }
+    const review={
+      bookId:reviewBookSelect.value,
+      rating:currentRating,
+      name:$("#reviewName").value.trim(),
+      text:$("#reviewText").value.trim(),
+      createdAt:new Date().toISOString()
+    };
+    try{
+      await submitReview(review);
+      $("#reviewText").value="";
+      currentRating=0;
+      $$("#ratingStars [data-rating]").forEach(b=>b.classList.remove("on"));
+      reviewStatus.textContent=CONFIG.REVIEWS_API ? "" : I18N[language].savedLocal;
+      renderReviews();
+    }catch(_e){
+      reviewStatus.textContent="Error";
+    }
   });
 
   let touchX = null;
@@ -662,5 +940,11 @@
   });
 
   setReaderUI(false);
+  fillBookSelectors();
   applyLanguage("ru");
+
+  const initialHash=(location.hash||"#book").slice(1);
+  if(["home","book","gallery","reviews","buy"].includes(initialHash)){
+    setTimeout(()=>showView(initialHash),40);
+  }
 })();

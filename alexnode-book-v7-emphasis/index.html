@@ -22,15 +22,15 @@
     </a>
 
     <nav class="nav" aria-label="Book navigation">
-      <a href="https://alexnode.fi/boook" data-i18n="home">Главная</a>
-      <a class="active" href="#book" data-i18n="about">О книге</a>
-      <a href="#gallery" data-i18n="gallery">Галерея</a>
-      <a href="#reviews" data-i18n="reviews">Отзывы</a>
-      <a id="buyLinkTop" href="#" data-i18n="buyShort">Купить</a>
+      <a href="#home" data-view-link="home" data-i18n="home">Главная</a>
+      <a class="active" href="#book" data-view-link="book" data-i18n="about">О книге</a>
+      <a href="#gallery" data-view-link="gallery" data-i18n="gallery">Галерея</a>
+      <a href="#reviews" data-view-link="reviews" data-i18n="reviews">Отзывы</a>
+      <a id="buyLinkTop" href="#buy" data-view-link="buy" data-i18n="buyShort">Купить</a>
     </nav>
 
     <div class="top-actions">
-      <a id="buyButton" class="buy-button" href="#">
+      <a id="buyButton" class="buy-button" href="#buy" data-view-link="buy">
         <span class="cart">🛒</span>
         <span data-i18n="buy">Купить книгу</span>
       </a>
@@ -47,6 +47,9 @@
       <button class="floating-cover" id="floatingCover" type="button" aria-label="Open book preview">
         <img src="https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp" alt="Alex Node & ANITA front cover">
       </button>
+      <div class="dock-actions">
+        <button id="shareBookFromList" class="mini-action" type="button">↗ <span data-i18n="share">Поделиться</span></button>
+      </div>
     </div>
 
     <button class="return-books-btn" id="returnBooksBtn" type="button" aria-label="Back to book list">‹</button>
@@ -86,6 +89,65 @@
       <button class="page-arrow right" id="nextPage" type="button" aria-label="Next page">›</button>
       <div class="mobile-hint" data-i18n="swipe">Листайте свайпом</div>
     </section>
+  </section>
+
+
+  <section id="galleryView" class="section-view" aria-hidden="true">
+    <div class="section-card wide">
+      <h1 data-i18n="gallery">Галерея</h1>
+      <p class="section-lead" data-i18n="galleryEmpty">Галерея готова. Изображения будут добавлены позже.</p>
+      <div id="galleryGrid" class="gallery-grid"></div>
+    </div>
+  </section>
+
+  <section id="reviewsView" class="section-view" aria-hidden="true">
+    <div class="section-card reviews-card">
+      <h1 data-i18n="reviews">Отзывы</h1>
+      <p class="section-lead" data-i18n="reviewsLead">Выберите книгу, поставьте оценку и оставьте комментарий.</p>
+
+      <div class="review-book-row">
+        <img id="reviewBookCover" class="review-book-cover" src="https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp" alt="">
+        <div>
+          <label class="field-label" for="reviewBookSelect" data-i18n="chooseBook">Книга</label>
+          <select id="reviewBookSelect" class="hub-field"></select>
+          <button id="shareReviewBook" class="secondary-btn" type="button">↗ <span data-i18n="share">Поделиться</span></button>
+        </div>
+      </div>
+
+      <form id="reviewForm" class="review-form">
+        <label class="field-label" data-i18n="rating">Оценка</label>
+        <div class="stars" id="ratingStars" aria-label="Rating">
+          <button type="button" data-rating="1">★</button>
+          <button type="button" data-rating="2">★</button>
+          <button type="button" data-rating="3">★</button>
+          <button type="button" data-rating="4">★</button>
+          <button type="button" data-rating="5">★</button>
+        </div>
+
+        <label class="field-label" for="reviewName" data-i18n="yourName">Ваше имя</label>
+        <input id="reviewName" class="hub-field" maxlength="60" required>
+
+        <label class="field-label" for="reviewText" data-i18n="yourReview">Ваш отзыв</label>
+        <textarea id="reviewText" class="hub-field review-text" maxlength="1200" required></textarea>
+
+        <button class="primary-cta" type="submit" data-i18n="publishReview">Опубликовать отзыв</button>
+        <div id="reviewStatus" class="review-status" aria-live="polite"></div>
+      </form>
+
+      <div class="review-list-head">
+        <h2 data-i18n="readerReviews">Отзывы читателей</h2>
+        <div id="reviewAverage" class="review-average"></div>
+      </div>
+      <div id="reviewsList" class="reviews-list"></div>
+    </div>
+  </section>
+
+  <section id="buyView" class="section-view" aria-hidden="true">
+    <div class="section-card wide buy-hub-card">
+      <h1 data-i18n="buyBooks">Купить книгу</h1>
+      <p class="section-lead" data-i18n="buyLead">Выберите книгу. Вы сможете посмотреть её перед покупкой.</p>
+      <div id="buyBooksGrid" class="books-grid"></div>
+    </div>
   </section>
 
   <div class="bottom-left">

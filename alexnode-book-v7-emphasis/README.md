@@ -43,3 +43,26 @@ After upload, remove obsolete files such as `placeholder.txt` if you want; they 
 - Back-cover zoom is reset automatically.
 - The arrow disappears while the reader is open.
 - Works on desktop and mobile.
+
+
+## v4 — AN Book Hub
+
+Navigation now works as an in-page book hub:
+
+- **Главная / Home** returns to the book list view.
+- **Alex Node logo** still opens `https://alexnode.fi/`.
+- **О книге / About** selects the current book preview.
+- **Галерея / Gallery** opens a separate empty gallery view on the same background.
+- **Отзывы / Reviews** includes book selection, 1–5 stars, name/comment and review list.
+- **Купить / Buy** shows the book list; selecting a book opens the familiar front/back preview.
+- In Buy mode the center CTA is the purchase button.
+- Each book supports Share from list/reviews/reader using native device sharing or clipboard fallback.
+- Add a SumUp link per book in `CONFIG.BOOKS[].buyUrl`.
+
+### Important about reviews
+When `CONFIG.REVIEWS_API` is empty, reviews are saved only in that browser's `localStorage` for testing.
+To make reviews public/shared for all visitors, set `CONFIG.REVIEWS_API` to a server/Cloudflare Worker endpoint supporting:
+- `GET ?book=<book-id>`
+- `POST` JSON review data
+
+The interface is already prepared; only the backend endpoint is still needed for public reviews.
