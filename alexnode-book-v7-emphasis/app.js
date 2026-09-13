@@ -765,20 +765,9 @@
   function applyLanguage(lang){
     language = lang;
     document.documentElement.lang = lang;
-
-    const bg = document.querySelector(".anbook-bg");
-    if(bg){
-      const bgFile = lang === "en"
-        ? "https://optim.tildacdn.net/tild6532-3130-4161-b634-306131663763/-/format/webp/eng_bg.png.webp"
-        : "https://optim.tildacdn.net/tild6632-3139-4335-b932-623565363961/-/format/webp/an-book-bg-signature.png.webp";
-
-      bg.style.backgroundImage = `url('${bgFile}')`;
-      bg.style.backgroundSize = "100% 100%";
-      bg.style.backgroundPosition = "center center";
-      bg.style.backgroundRepeat = "no-repeat";
-    }
-
-    root.classList.toggle("lang-en", lang === "en");
+    // Background language mapping:
+    // RU uses Russian background; EN and FI use English background.
+    root.classList.toggle("lang-en", lang === "en" || lang === "fi");
     $$(".languages button").forEach(b=>b.classList.toggle("active",b.dataset.lang===lang));
     $$("[data-i18n]").forEach(el=>{
       const key = el.dataset.i18n;

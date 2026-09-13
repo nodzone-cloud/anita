@@ -10,8 +10,8 @@ button,a{-webkit-tap-highlight-color:transparent}
 button{font:inherit}
 
 .anbook{position:relative;min-height:100svh;overflow:hidden}
-.anbook-bg{position:absolute;inset:0;background:url('./assets/an-book-bg-signature.png') center/cover no-repeat;z-index:0}
-.anbook.lang-en .anbook-bg{background-image:url('./assets/eng_bg.png') !important}
+.anbook-bg{position:absolute;inset:0;background:url('./assets/book-bg-ru-support.png') center/cover no-repeat;z-index:0}
+.anbook.lang-en .anbook-bg{background-image:url('./assets/book-bg-eng-support.png') !important}
 .anbook-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.12),rgba(0,0,0,.02) 58%,rgba(0,0,0,.20));z-index:1;pointer-events:none}
 
 /* compact live logo/header, matching the approved reference more closely */
@@ -765,7 +765,7 @@ select.hub-field option{color:#111;background:#fff}
 }
 
 .anbook.lang-en .anbook-bg{
-  background-image:url('./assets/eng_bg.png') !important;
+  background-image:url('./assets/book-bg-eng-support.png') !important;
   background-size:100% 100% !important;
   background-position:center center !important;
 }
