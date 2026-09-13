@@ -756,12 +756,6 @@
     });
   }
 
-
-  ["https://optim.tildacdn.net/tild6632-3139-4335-b932-623565363961/-/format/webp/an-book-bg-signature.png.webp","https://optim.tildacdn.net/tild6532-3130-4161-b634-306131663763/-/format/webp/eng_bg.png.webp"].forEach(src=>{
-    const img = new Image();
-    img.src = src;
-  });
-
   function applyLanguage(lang){
     language = lang;
     document.documentElement.lang = lang;

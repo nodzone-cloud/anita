@@ -10,8 +10,8 @@ button,a{-webkit-tap-highlight-color:transparent}
 button{font:inherit}
 
 .anbook{position:relative;min-height:100svh;overflow:hidden}
-.anbook-bg{position:absolute;inset:0;background:url('./assets/book-bg-ru-support.png') center/cover no-repeat;z-index:0}
-.anbook.lang-en .anbook-bg{background-image:url('./assets/book-bg-eng-support.png') !important}
+.anbook-bg{position:absolute;inset:0;background:url('https://nodzone-cloud.github.io/anita/alexnode-book-v7-emphasis/assets/book-bg-ru-support.png?v=20260913-3') center/cover no-repeat;z-index:0}
+.anbook.lang-en .anbook-bg{background-image:url('https://nodzone-cloud.github.io/anita/alexnode-book-v7-emphasis/assets/book-bg-eng-support.png?v=20260913-3') !important}
 .anbook-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.12),rgba(0,0,0,.02) 58%,rgba(0,0,0,.20));z-index:1;pointer-events:none}
 
 /* compact live logo/header, matching the approved reference more closely */
@@ -758,14 +758,14 @@ select.hub-field option{color:#111;background:#fff}
 /* Keep the complete background visible on wide screens.
    This prevents the baked-in signature from being cut off. */
 .anbook-bg{
-  background-image:url('./assets/book-bg-ru-support.png') !important;
+  background-image:url('https://nodzone-cloud.github.io/anita/alexnode-book-v7-emphasis/assets/book-bg-ru-support.png?v=20260913-3') !important;
   background-size:100% 100% !important;
   background-position:center center !important;
   background-repeat:no-repeat !important;
 }
 
 .anbook.lang-en .anbook-bg{
-  background-image:url('./assets/book-bg-eng-support.png') !important;
+  background-image:url('https://nodzone-cloud.github.io/anita/alexnode-book-v7-emphasis/assets/book-bg-eng-support.png?v=20260913-3') !important;
   background-size:100% 100% !important;
   background-position:center center !important;
 }
@@ -809,14 +809,14 @@ select.hub-field option{color:#111;background:#fff}
    ========================================================= */
 @media (max-width:900px){
   .anbook-bg{
-    background-image:url('./assets/mobile-bg-ru.png') !important;
+    background-image:url('https://nodzone-cloud.github.io/anita/alexnode-book-v7-emphasis/assets/mobile-bg-ru.png?v=20260913-3') !important;
     background-size:cover !important;
     background-position:center top !important;
     background-repeat:no-repeat !important;
   }
 
   .anbook.lang-en .anbook-bg{
-    background-image:url('./assets/mobile-bg-en.png') !important;
+    background-image:url('https://nodzone-cloud.github.io/anita/alexnode-book-v7-emphasis/assets/mobile-bg-en.png?v=20260913-3') !important;
     background-size:cover !important;
     background-position:center top !important;
     background-repeat:no-repeat !important;
