@@ -14,7 +14,7 @@
 if(window.__ANITA50_BOOTSTRAPPED_018__)return;
 window.__ANITA50_BOOTSTRAPPED_018__=true;
 
-const BASE="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/anita/anita50/";
+const BASE="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@7fb458fee2212a3b900672d80753bf43341394ff/anita/anita50/";
 const VERSION="018";
 
 const files=[
