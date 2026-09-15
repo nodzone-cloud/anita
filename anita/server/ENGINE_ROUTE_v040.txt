@@ -1,0 +1,45 @@
+ANITA 0.4.0 — ORDER ENDPOINT INTEGRATION
+
+Frontend expects:
+POST https://anita-api.alexnode.fi/order/submit
+Content-Type: application/json
+
+Server module already prepared:
+anita/server/order_service_v040.py
+
+The live anita_engine.py must import:
+    from order_service_v040 import submit_order
+
+Then its POST router must handle /order/submit BEFORE the normal /chat handler:
+
+    if self.path == "/order/submit":
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            payload = json.loads(self.rfile.read(length).decode("utf-8"))
+            result = submit_order(payload)
+            self.send_json(200, result)   # use the engine's existing JSON-response helper
+        except ValueError as exc:
+            self.send_json(400, {"ok": False, "sent": False, "error": str(exc)})
+        except Exception as exc:
+            print("ORDER SUBMIT ERROR:", repr(exc))
+            self.send_json(500, {"ok": False, "sent": False, "error": "ORDER_SEND_FAILED"})
+        return
+
+CORS / OPTIONS must allow POST and Content-Type from:
+https://alexnode.fi
+https://www.alexnode.fi
+
+Environment variables (do NOT put passwords in GitHub):
+ANITA_SMTP_HOST=posti.zoner.fi
+ANITA_SMTP_PORT=465
+ANITA_SMTP_SSL=1
+ANITA_SMTP_USER=<mailbox login>
+ANITA_SMTP_PASSWORD=<mailbox password>
+ANITA_SMTP_FROM=<sender mailbox>
+ANITA_ORDER_TO=AN@alexnode.fi
+ANITA_ORDER_DB=C:\ProgramData\ANITA\orders.sqlite3
+ANITA_ORDER_PREFIX=AN
+
+Server returns sent=true only after SMTP accepts the email. The order number is generated server-side as #AN-0001, #AN-0002, etc. Existing order numbers can only be appended to by the same browser client_token.
+
+IMPORTANT: Adapt self.send_json(...) to the exact helper already used by the live engine. Do not deploy this snippet blindly until the current anita_engine.py is inspected.
