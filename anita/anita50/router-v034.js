@@ -1,4 +1,4 @@
-/* ANITA 0.3.4 — SINGLE CENTRAL ROUTER + COMPLETION AWARENESS */
+/* ANITA 0.3.5 — SINGLE CENTRAL ROUTER + WEBSITE REQUEST INTENT */
 (function(W){
 "use strict";
 if(!W||!W.state||W.router034)return;
@@ -13,6 +13,7 @@ function reaction(x){return /^(?:thanks|thank you|thx|cool|nice|great|awesome|pe
 function meta(x){const s=norm(x);return /\b(?:are you ai|are you an ai|your ai status|ai status|what model are you|which model are you|what ai are you|who are you|who created you|who made you|are you real|are you human|what can you do|how do you work|your brain)\b/i.test(s)||/(?:ты.*ии|статус.*ии|какая.*модель|кто ты|кто тебя (?:создал|сделал)|ты настоящ|ты человек|что ты умеешь|как ты работаешь)/i.test(s)||/(?:oletko.*tekoäly|mikä.*malli|kuka.*loi sinut|oletko.*ihminen|mitä osaat|miten toimit)/i.test(s);}
 function question(x){const s=norm(x);return /[?？]/.test(String(x||""))||/^(?:what|what's|whats|why|how|who|when|where|which|can|could|would|should|do|does|did|are|is|will|have|has|tell me|explain)\b/i.test(s)||/^(?:что|почему|зачем|как|кто|когда|где|какой|какая|можешь|можно|расскажи|объясни)\b/i.test(s)||/^(?:mitä|miksi|miten|kuka|milloin|missä|mikä|voitko|voiko|oletko|onko|kerro|selitä)\b/i.test(s);}
 function broadWebsite(x){return /^(?:website|web site|site|webpage|web page|сайт|вебсайт|verkkosivu|verkkosivut|kotisivu|kotisivut)$/.test(norm(x));}
+function websiteRequest(x){const s=norm(x);return /\b(?:i|we)\s+(?:need|want|would like|am looking for|are looking for|want to order|would like to order|get me|make me|build me)\s+(?:a\s+|an\s+)?(?:new\s+)?(?:website|web site|site)\b/i.test(s)||/\b(?:need|want|looking for|order|ordering|make|build|create)\s+(?:a\s+|an\s+)?(?:new\s+)?(?:website|web site|site)\b/i.test(s)||/\b(?:website|web site|site)\s+for\s+(?:my|our)\s+business\b/i.test(s)||/(?:мне|нам)?\s*(?:нужен|нужна|нужно|хочу|хотим|ищу|ищем|заказать|сделать)\s+(?:новый\s+)?сайт/i.test(s)||/(?:tarvitsen|tarvitsemme|haluan|haluamme|etsin|etsimme)\s+(?:uuden\s+)?(?:verkkosivun|verkkosivut|kotisivun|kotisivut)/i.test(s);}
 function newBrief(x){const s=norm(x);return /\b(?:new|another|fresh|different|one more)\s+(?:website\s+)?(?:brief|project)\b/i.test(s)||/\b(?:start|make|do|create|restart)\b.{0,25}\b(?:new|another|fresh)\b.{0,20}\b(?:brief|project|website|site)\b/i.test(s)||/^(?:start over|start again|restart|new one|another one|fresh start)$/i.test(s)||/(?:новый|другой|ещ[её] один).{0,20}(?:бриф|проект|сайт)|начать заново|заново/i.test(s)||/(?:uusi|toinen).{0,20}(?:briiffi|projekti|verkkosivu)|aloitetaan alusta/i.test(s);}
 function continueBrief(x){const s=norm(x);return /^(?:continue|continue please|continue it|continue that|continue project|continue brief|go on|carry on|next|what next|what's next|whats next|resume|resume it|contine|contiue|contunue|continie|continuee|same one|same project|old one|previous one|продолжить|продолжай|продолжим|дальше|что дальше|тот же|старый|старый проект|jatka|jatketaan|jatketaan eteenpäin|seuraava|mitä seuraavaksi|sama projekti)$/i.test(s)||/\b(?:continue|resume)\b.{0,20}\b(?:website|project|brief)\b/i.test(s);}
 function chooseNew(x){return /^(?:new|new one|new website|new project|another|another one|start new|start over|новый|другой|начать новый|uusi|toinen)$/i.test(norm(x));}
@@ -26,7 +27,7 @@ function prepareBrief(x){return /\b(?:prepare|make|create|show|give me|review)\b
 function checkoutMode(x){const s=norm(x);return /\b(?:pay|payment|card|checkout|cart|basket|online payment|pay online|pay directly|buy directly|purchase directly|stripe|sumup)\b/i.test(s)||/(?:оплат|корзин|картой|платеж|платёж|купить прямо|покупать прямо)/i.test(s)||/(?:maksaa|maksu|ostoskori|checkout|kortilla|verkkomaksu)/i.test(s);}
 function requestMode(x){const s=norm(x);return /\b(?:send (?:an )?order|order request|request order|order form|send request|inquiry|enquiry|contact me|contact us|message me|manual order|reserve and contact)\b/i.test(s)||/(?:заявк|отправить заказ|форма заказа|связаться|написать мне|ручн.*заказ)/i.test(s)||/(?:tilauspyyntö|lähettää tilaus|yhteydenotto|ota yhteyttä|tilauslomake)/i.test(s);}
 function briefActive(c){return !!(c&&c.topic==="website_consultation"&&(c.pending||String(c.pendingAction||"").startsWith("confirm_need:")||c.pendingAction==="commerce_mode"));}
-W.router034={norm,lang,greeting,smalltalk,statusReply,statusMood,reaction,meta,question,broadWebsite,newBrief,continueBrief,yes,no,sizeAnswer,goalAnswer,behaviour,alexNodeRelevant,briefActive,checkoutMode,requestMode,
+W.router034={norm,lang,greeting,smalltalk,statusReply,statusMood,reaction,meta,question,broadWebsite,websiteRequest,newBrief,continueBrief,yes,no,sizeAnswer,goalAnswer,behaviour,alexNodeRelevant,briefActive,checkoutMode,requestMode,
 classify(text){const c=W.state.context(),l=lang(text,c),pa=String(c.pendingAction||"");
  if(newBrief(text))return{intent:"new_brief",language:l};
  if(pa==="choose_website_context"){if(continueBrief(text))return{intent:"continue_brief",language:l};if(chooseNew(text))return{intent:"new_brief",language:l};return{intent:"choose_website_context_unclear",language:l};}
@@ -38,7 +39,7 @@ classify(text){const c=W.state.context(),l=lang(text,c),pa=String(c.pendingActio
  if(reaction(text))return{intent:"social_reaction",language:l};
  if(statusReply(text))return{intent:"social_status",language:l};
  if(meta(text))return{intent:"meta",language:l};
- if(broadWebsite(text))return{intent:"website_entry",language:l};
+ if(websiteRequest(text)||broadWebsite(text))return{intent:"website_entry",language:l};
  if(prepareBrief(text))return{intent:"prepare_brief",language:l};
  if(briefActive(c)){
   if(pa.startsWith("confirm_need:")){if(yes(text)||no(text))return{intent:"brief_answer",language:l};if(alexNodeRelevant(text))return{intent:"side_question",language:l};return{intent:question(text)?"side_question":"unclear_during_brief",language:l};}
