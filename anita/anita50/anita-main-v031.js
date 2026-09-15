@@ -29,7 +29,12 @@ async function boot(){
     loadCSS(BASE+"anita50.css?v="+VERSION);
     mount();
     if(!document.getElementById("an50-root"))throw new Error("ANITA mount failed: #an50-root was not created");
-    for(const file of files)await loadScript(BASE+file+"?v="+VERSION);
+    for(const file of files){
+      await loadScript(BASE+file+"?v="+VERSION);
+      if(file==="state-v017.js"&&window.ANITA50?.state){
+        window.ANITA50.state.patch({humanTechCasualTurns:0,offtopicTurns030:0,briefSideTurns:0,socialPending:null});
+      }
+    }
     window.__ANITA_BOOT_FILES_031__=files.slice();
     window.__ANITA_READY_031__={
       singleRouter:!!window.ANITA50?.router031,
