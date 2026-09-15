@@ -9,13 +9,14 @@
  * - customer-behaviour signals
  * - confirmation step before inferred ideas become requirements
  * - semantic-first interpretation while Secretary is collecting a project brief
+ * - greeting priority guard so Hi/Hello is never consumed as a saved intake answer
  */
 
 if(window.__ANITA50_BOOTSTRAPPED_018__)return;
 window.__ANITA50_BOOTSTRAPPED_018__=true;
 
-const BASE="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@7fb458fee2212a3b900672d80753bf43341394ff/anita/anita50/";
-const VERSION="018";
+const BASE="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@7a215cb0a55dd6b486478a392c128f7917fc2e92/anita/anita50/";
+const VERSION="018b";
 
 const files=[
   "config-v017a.js",
@@ -27,6 +28,7 @@ const files=[
   "semantic-v018.js",
   "semantic-adapter-v018.js",
   "needs-v018.js",
+  "greeting-v018.js",
   "tour.js",
   "core-v018.js"
 ];
@@ -81,6 +83,7 @@ async function boot(){
       semantic:!!window.ANITA50?.semantic,
       semanticAdapter:!!window.ANITA50?.semanticAdapter,
       needsPatch:!!window.ANITA50?.semanticAdapter?.questionForNeed,
+      greetingGuard:true,
       ai:!!window.ANITA50?.ai,
       state:!!window.ANITA50?.state
     };
