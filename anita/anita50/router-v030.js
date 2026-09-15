@@ -48,21 +48,21 @@ W.router030={
     if(briefActive(c)){
       if(pa.startsWith("confirm_need:")){
         if(yes(text)||no(text))return{intent:"brief_answer",language:l};
-        if(alexNodeRelevant(text))return{intent:"project_side_question",language:l};
+        if(alexNodeRelevant(text))return{intent:"side_question",language:l};
         return{intent:question(text)?"side_question":"unclear_during_brief",language:l};
       }
       if(c.pending==="size"){
         if(sizeAnswer(text))return{intent:"brief_answer",language:l};
-        if(alexNodeRelevant(text))return{intent:"project_side_question",language:l};
+        if(alexNodeRelevant(text))return{intent:"side_question",language:l};
         return{intent:question(text)?"side_question":"unclear_during_brief",language:l};
       }
       if(c.pending==="goal"){
         if(goalAnswer(text)||behaviour(text))return{intent:"brief_answer",language:l};
-        if(alexNodeRelevant(text))return{intent:"project_side_question",language:l};
+        if(alexNodeRelevant(text))return{intent:"side_question",language:l};
         return{intent:question(text)?"side_question":"unclear_during_brief",language:l};
       }
       if(c.pending==="business"){
-        if(alexNodeRelevant(text)&&question(text))return{intent:"project_side_question",language:l};
+        if(alexNodeRelevant(text)&&question(text))return{intent:"side_question",language:l};
         if(question(text))return{intent:"side_question",language:l};
         return{intent:clean(text).length<=120?"brief_answer":"unclear_during_brief",language:l};
       }
