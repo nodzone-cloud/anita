@@ -151,6 +151,10 @@ body:not(.reader-open) #prevPage,
 body:not(.reader-open) #nextPage,
 body:not(.reader-open) #zoomBtn { display:none !important; pointer-events:none !important; }
 </style>
+<style>
+.book-about-text{max-width:760px;margin:14px auto 18px;padding:14px 18px;border-radius:18px;background:rgba(0,0,0,.18);color:rgba(255,255,255,.94);font-size:15px;line-height:1.58;text-align:left}
+@media(max-width:640px){.book-about-text{font-size:14px;line-height:1.5;max-height:245px;overflow:auto;padding:12px 14px;margin:10px auto 14px}}
+</style>
 </head>
 
 <body>
@@ -230,6 +234,7 @@ body:not(.reader-open) #zoomBtn { display:none !important; pointer-events:none !
       <div class="focus-copy">
         <h1>Alex Node &amp; ANITA</h1>
         <p data-i18n="focusText">Нажмите на переднюю обложку, чтобы открыть книгу.</p>
+        <div id="bookAboutText" class="book-about-text" aria-live="polite"></div>
         <button id="openBookButton" class="primary-cta" type="button" data-i18n="openBook">Открыть книгу</button>
       </div>
 
@@ -375,7 +380,7 @@ body:not(.reader-open) #zoomBtn { display:none !important; pointer-events:none !
   </aside>
 </main>
 
-<script src="./app.js?v=20260916-2"></script>
+<script src="./app.js?v=20260916-3"></script>
 <script src="./book-music.js?v=20260913-3"></script>
 
 <script>
