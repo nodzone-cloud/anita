@@ -152,7 +152,7 @@ body:not(.reader-open) #nextPage,
 body:not(.reader-open) #zoomBtn { display:none !important; pointer-events:none !important; }
 </style>
 <style>
-.book-about-text{max-width:760px;margin:14px auto 18px;padding:14px 18px;border-radius:18px;background:rgba(0,0,0,.18);color:rgba(255,255,255,.94);font-size:15px;line-height:1.58;text-align:left}
+.book-about-text{display:block!important;max-width:760px;margin:14px auto 18px;padding:14px 18px;border-radius:18px;background:rgba(0,0,0,.30);color:#fff!important;font-size:15px;line-height:1.58;text-align:left;visibility:visible!important;opacity:1!important}
 @media(max-width:640px){.book-about-text{font-size:14px;line-height:1.5;max-height:245px;overflow:auto;padding:12px 14px;margin:10px auto 14px}}
 </style>
 </head>
@@ -234,7 +234,7 @@ body:not(.reader-open) #zoomBtn { display:none !important; pointer-events:none !
       <div class="focus-copy">
         <h1>Alex Node &amp; ANITA</h1>
         <p data-i18n="focusText">Нажмите на переднюю обложку, чтобы открыть книгу.</p>
-        <div id="bookAboutText" class="book-about-text" aria-live="polite"></div>
+        <div id="bookAboutText" class="book-about-text" aria-live="polite">Alex Node &amp; ANITA — история идеи, которая постепенно становится реальностью. Это не техническое руководство и не история уже состоявшейся большой компании. Книга рассказывает о пути Alex Node и о том, как из небольших экспериментов, разговоров с ChatGPT и желания сделать технологии более человеческими постепенно появилась ANITA — виртуальный персонаж и будущий цифровой помощник. Здесь идеи возникают прямо по ходу истории: некоторые остаются размышлениями, другие превращаются в код, функции и реальные эксперименты. Вместе с ними меняется и сама ANITA — от персонажа на сайте к более широкому представлению о том, какими могут быть отношения человека и технологии. Это книга о создании, сомнениях, неожиданных открытиях, ошибках и моментах, когда вопрос «А что, если сделать вот так?» неожиданно превращается в работающую идею. И эта история ещё не закончена. ANITA продолжает развиваться — а книга развивается вместе с ней.</div>
         <button id="openBookButton" class="primary-cta" type="button" data-i18n="openBook">Открыть книгу</button>
       </div>
 
@@ -380,7 +380,7 @@ body:not(.reader-open) #zoomBtn { display:none !important; pointer-events:none !
   </aside>
 </main>
 
-<script src="./app.js?v=20260916-3"></script>
+<script src="./app.js?v=20260916-4"></script>
 <script src="./book-music.js?v=20260913-3"></script>
 
 <script>
