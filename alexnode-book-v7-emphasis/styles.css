@@ -825,52 +825,66 @@ select.hub-field option{color:#111;background:#fff}
 
 
 /* =========================================================
-   v16 — RESTORE MOBILE BACKGROUND EXACTLY; OVERFLOW EXTENSION
-   Do not resize .anbook, .hero or .anbook-bg at all.
-   About content may overflow below the original hero; a separate
-   pseudo-element paints only the extra area behind that overflow.
+   v17 — MOBILE ABOUT COMPACT LAYOUT
+   Background image rules remain untouched. Only the selected
+   book composition is positioned; extra space is painted below.
    ========================================================= */
 @media(max-width:900px){
-  .anbook{
-    overflow:visible !important;
-  }
-
-  .hero{
-    overflow:visible !important;
-  }
+  .anbook{overflow:visible !important;}
+  .hero{overflow:visible !important;}
 
   .hero:has(.focus-zone.show)::after{
     content:'';
     position:absolute;
-    z-index:-1;
     left:-10px;
     right:-10px;
     top:100%;
-    height:720px;
-    background:linear-gradient(180deg,#2a1309 0%,#180c06 45%,#0e0704 100%);
+    height:360px;
+    z-index:-1;
+    background:linear-gradient(180deg,#251108 0%,#130905 100%);
     pointer-events:none;
   }
 
   .focus-zone.show{
-    top:405px !important;
+    top:245px !important;
     transform:translate(-50%,0) scale(1) !important;
-    grid-template-columns:1fr 1fr;
-    align-items:start;
-    width:94vw;
+    grid-template-columns:1fr 1fr !important;
+    gap:8px !important;
+    align-items:start !important;
+    width:94vw !important;
   }
 
   .focus-zone.show .focus-cover img{
-    max-height:370px !important;
+    max-height:330px !important;
   }
 
   .focus-zone.show .focus-copy{
-    grid-column:1/-1;
-    grid-row:2;
-    margin-top:18px;
-    padding:16px 12px;
+    grid-column:1/-1 !important;
+    grid-row:2 !important;
+    margin-top:10px !important;
+    padding:16px 12px !important;
+  }
+
+  .focus-zone.show .focus-copy p{
+    max-height:none !important;
+    overflow:visible !important;
   }
 
   .return-books-btn.show{
-    top:660px;
+    top:500px !important;
+  }
+}
+
+@media(max-width:640px){
+  .focus-zone.show{
+    top:235px !important;
+  }
+
+  .focus-zone.show .focus-cover img{
+    max-height:315px !important;
+  }
+
+  .return-books-btn.show{
+    top:485px !important;
   }
 }
