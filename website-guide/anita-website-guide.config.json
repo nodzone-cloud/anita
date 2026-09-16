@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "status": "prepared-inactive",
+  "description": "Prepared website-guide capability for ANITA. Not connected to alexnode.fi yet.",
+  "activation": {
+    "enabledByDefault": false,
+    "requiresExplicitHostEnable": true
+  },
+  "tours": [
+    {
+      "id": "alexnode-main-preview",
+      "title": {
+        "ru": "Знакомство с Alex Node",
+        "en": "Meet Alex Node",
+        "fi": "Tutustu Alex Nodeen"
+      },
+      "steps": [
+        {
+          "id": "welcome",
+          "target": "[data-anita-guide='welcome']",
+          "action": "highlight",
+          "message": {
+            "ru": "Давайте я покажу вам Alex Node.",
+            "en": "Let me show you around Alex Node.",
+            "fi": "Voin esitellä sinulle Alex Noden."
+          }
+        },
+        {
+          "id": "services",
+          "target": "[data-anita-guide='services']",
+          "action": "highlight",
+          "message": {
+            "ru": "Здесь находятся услуги Alex Node.",
+            "en": "Here you can find Alex Node services.",
+            "fi": "Täältä löydät Alex Noden palvelut."
+          }
+        },
+        {
+          "id": "contact",
+          "target": "[data-anita-guide='contact']",
+          "action": "highlight",
+          "message": {
+            "ru": "А здесь можно перейти к связи с Alex Node.",
+            "en": "And here you can contact Alex Node.",
+            "fi": "Tästä voit ottaa yhteyttä Alex Nodeen."
+          }
+        }
+      ]
+    }
+  ]
+}
