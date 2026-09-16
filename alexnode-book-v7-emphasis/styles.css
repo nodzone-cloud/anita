@@ -822,3 +822,65 @@ select.hub-field option{color:#111;background:#fff}
     background-repeat:no-repeat !important;
   }
 }
+
+/* =========================================================
+   v11 — ABOUT BOOK MOBILE LAYOUT
+   Give the description its own vertical space instead of
+   pushing the selected book covers under the header.
+   ========================================================= */
+@media(max-width:900px){
+  body:not(.reader-open) .hero{
+    min-height:1450px;
+    height:auto;
+    padding-bottom:130px;
+  }
+
+  body:not(.reader-open) .focus-zone{
+    top:390px !important;
+    transform:translate(-50%,0) scale(.96);
+    align-items:start;
+  }
+
+  body:not(.reader-open) .focus-zone.show{
+    transform:translate(-50%,0) scale(1);
+  }
+
+  body:not(.reader-open) .focus-cover{
+    align-self:start;
+  }
+
+  body:not(.reader-open) .focus-cover img{
+    max-height:390px !important;
+  }
+
+  body:not(.reader-open) .focus-copy{
+    margin-top:12px;
+  }
+
+  body:not(.reader-open) .return-books-btn{
+    top:650px;
+  }
+}
+
+@media(max-width:640px){
+  body:not(.reader-open) .hero{
+    min-height:1500px;
+  }
+
+  body:not(.reader-open) .focus-zone{
+    top:355px !important;
+    width:94vw;
+  }
+
+  body:not(.reader-open) .focus-cover img{
+    max-height:370px !important;
+  }
+
+  body:not(.reader-open) .focus-copy{
+    padding:16px 12px;
+  }
+
+  body:not(.reader-open) .return-books-btn{
+    top:610px;
+  }
+}
