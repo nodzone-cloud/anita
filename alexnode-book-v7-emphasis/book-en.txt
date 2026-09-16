@@ -335,3 +335,180 @@ Because that is exactly how it happened for me.
 And perhaps this is the only way a road gradually begins to emerge out of chaos.
 
 Not a map. Not a plan. Just a road beneath your feet.
+
+
+Chapter 12. ANITA Got Hands
+
+Sometimes big ideas do not arrive when you are deliberately searching for them.
+
+Sometimes they are born in the middle of an ordinary conversation.
+
+That is what happened this time.
+
+ChatGPT and I were simply talking about what could make ANITA genuinely useful to people — what a person actually needs, and what would only be a beautiful but unnecessary feature.
+
+ANITA could already talk. She could answer questions, help visitors on the Alex Node website, act as a virtual secretary, an IT assistant, and a guide.
+
+But all of it still happened inside one world:
+
+a person asks — ANITA answers.
+
+And then, in the middle of the conversation, a question appeared:
+
+What if we gave ANITA hands?
+
+At first, it almost sounded like a joke.
+
+Hands?
+
+But I was not talking about mechanical hands. Not a robot from a science-fiction movie. Not some distant future.
+
+I was talking about an ordinary computer. About Windows.
+
+If ANITA understands a command, why should she always be limited to answering with words?
+
+“ANITA, create a folder called Alex.”
+
+And the folder appears.
+
+“Create a text file inside it.”
+
+The file is created.
+
+“Create an Excel file for expenses.”
+
+Done.
+
+“Open the browser and go to Alex Node.”
+
+And the browser opens.
+
+That was the moment when something clicked in my head.
+
+Wait.
+
+This is actually real.
+
+This is not an idea from Cyberpunk 2077. It is not a promise about technology fifty years from now. The basic principle can already be built today.
+
+ANITA does not need some magical, unrestricted control over a computer. She can be given tools — small software “hands”, each capable of performing a specific action.
+
+One hand works with folders.
+Another works with files.
+Another works with the browser.
+Later there could be documents, applications, spreadsheets, and other permitted actions.
+
+And ANITA remains what she is supposed to be: the character who hears the person, understands their intention, and turns the request into an understandable action.
+
+Then another thought appeared.
+
+We had actually given ANITA small hands once before.
+
+When we created ANITA Guide for the Alex Node website, she was already doing more than talking to a visitor. She could lead someone through the website and show the relevant parts of a page. The person pressed an arrow, and ANITA continued the route.
+
+At the time, we did not call those abilities “hands”.
+
+Looking back, that is exactly what they were.
+
+Just very small and very safe ones.
+
+Now the idea became bigger.
+
+If ANITA eventually becomes a Windows application, a person could say:
+
+“ANITA, create a folder for my new project.”
+
+And she would not explain how to create a folder.
+
+She would create it.
+
+For me, that difference turned out to be enormous.
+
+Until then, technology helped a person understand what to do.
+
+Now it could help the person actually do it.
+
+But the moment we gave her capabilities, another question appeared — control.
+
+If ANITA has hands, they must not become unrestricted power over someone’s computer.
+
+Creating a new folder in an approved location is one thing.
+Deleting important documents is something completely different.
+Opening a website is one thing.
+Sending something in a person’s name is another.
+
+So ANITA’s hands must arrive together with boundaries, permissions, and confirmations.
+
+The more consequential the action, the more control remains with the owner.
+
+That is the path I like.
+
+Not giving an AI a computer and saying, “Do whatever you want.”
+
+Instead, gradually teaching ANITA to act beside a person.
+
+Then the conversation went even further.
+
+ANITA already exists in the browser. But what if, in the future, ANITA Client is already installed on a person’s computer?
+
+They are talking to ANITA on the website and say:
+
+“ANITA, jump over to my computer.”
+
+The browser moves into the background.
+
+The same ANITA appears on the desktop — now as an animated Windows character.
+
+And she says:
+
+“Yes, I’m here.”
+
+Not a new ANITA.
+Not another bot.
+Not another conversation.
+
+The same ANITA. The same context. She simply has access to a different set of permitted capabilities now.
+
+Web.
+PC.
+And perhaps, one day, Home Station.
+
+Not three different characters, but one ANITA that can be wherever the person needs her.
+
+And the longer ChatGPT and I talked about it, the more the project itself began to feel different.
+
+We started with a virtual girl on a website. A character meant to make technology a little more understandable, alive, and human.
+
+But if ANITA can already hear a person, understand them, and answer them — why should it end there?
+
+She does not need metal hands to touch a person’s digital world.
+
+She needs different hands.
+
+Simple.
+Software-based.
+Limited.
+But real.
+
+And I think that conversation was the first time I truly saw another side of Human-Tech.
+
+Technology does not only tell a person what to do.
+It can do something together with them.
+
+But the final word remains with the human.
+
+At the moment I am writing this chapter, that complete version of ANITA does not exist yet.
+
+There is an idea. There are early technical preparations. There is an understanding of how it could be built. And there is one very simple future experiment that, for some reason, makes me incredibly curious.
+
+One day, I want to sit in front of a test computer and say:
+
+“ANITA, create a folder called Alex.”
+
+And watch it appear.
+
+For someone else, it may be nothing more than a folder.
+
+For me, it will be the moment when ANITA did not only answer a person.
+
+She did something.
