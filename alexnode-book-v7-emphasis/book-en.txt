@@ -337,7 +337,7 @@ And perhaps this is the only way a road gradually begins to emerge out of chaos.
 Not a map. Not a plan. Just a road beneath your feet.
 
 
-Chapter 12. ANITA Got Hands
+Chapter 12. Hands
 
 Sometimes big ideas do not arrive when you are deliberately searching for them.
 
@@ -390,6 +390,20 @@ Wait.
 This is actually real.
 
 This is not an idea from Cyberpunk 2077. It is not a promise about technology fifty years from now. The basic principle can already be built today.
+
+And then I realized something else that mattered.
+
+ChatGPT, the same system I was discussing all of this with, can already do more than answer with words. In certain modes and with connected tools, it can work with files, create documents, interact with services, and perform actions instead of merely explaining to a person how to perform them.
+
+There was something almost symbolic about that.
+
+ChatGPT had been helping me create ANITA from the beginning. And now one of its own capabilities was pointing me toward the next step for her.
+
+I thought: if my assistant can already do more than talk to me and can act through tools, why couldn't I give ANITA a similar principle?
+
+Not copy ChatGPT. Not try to turn ANITA into it. But take the underlying idea: intelligence can have tools through which it interacts with the digital world.
+
+Perhaps that was what truly inspired me to give ANITA hands of her own.
 
 ANITA does not need some magical, unrestricted control over a computer. She can be given tools — small software “hands”, each capable of performing a specific action.
 
