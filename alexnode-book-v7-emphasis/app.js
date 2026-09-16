@@ -243,6 +243,7 @@
       focusZone.classList.remove("show","buy-preview-mode");
       focusZone.setAttribute("aria-hidden","true");
       returnBooksBtn.classList.remove("show");
+      setReaderUI(false);
     }
 
     setActiveNav(view);
@@ -935,16 +936,29 @@
     sel.value=String(Math.max(0,Math.min(currentPageIndex(),pages.length-1)));
     if(bm) bm.querySelector(".bookmark-label").textContent=I18N[language].bookmark;
     const saved=getBookmark();
-    if(resume){resume.style.display=saved?"":"none";resume.querySelector(".resume-label").textContent=I18N[language].resume;}
+    if(resume){
+      const canShow=opened && reader.classList.contains("show") && !!saved;
+      resume.hidden=!canShow;
+      resume.style.setProperty("display",canShow?"":"none","important");
+      resume.querySelector(".resume-label").textContent=I18N[language].resume;
+    }
   }
 
   function setReaderUI(active){
-    pageCounter.classList.toggle("hidden",!active);
+    const trulyReading = !!active && opened && reader.classList.contains("show");
+    pageCounter.classList.toggle("hidden",!trulyReading);
     ["#pageJumpSelect","#bookmarkBtn","#resumeBookmarkBtn"].forEach(sel=>{
       const el=$(sel);
-      if(el) el.style.display=active ? "" : "none";
+      if(!el) return;
+      if(!trulyReading){
+        el.hidden=true;
+        el.style.setProperty("display","none","important");
+      }else{
+        el.hidden=false;
+        el.style.removeProperty("display");
+      }
     });
-    if(active) updateReaderTools();
+    if(trulyReading) updateReaderTools();
   }
 
   function openReader(){
