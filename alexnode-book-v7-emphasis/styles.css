@@ -825,37 +825,30 @@ select.hub-field option{color:#111;background:#fff}
 
 
 /* =========================================================
-   v15 — MOBILE ABOUT WITHOUT TOUCHING THE ORIGINAL BACKGROUND
-   Original portrait image keeps its original viewport crop/size.
-   If About needs more room, only the content layer grows and the
-   area below is continued with a neutral dark warm gradient.
+   v16 — RESTORE MOBILE BACKGROUND EXACTLY; OVERFLOW EXTENSION
+   Do not resize .anbook, .hero or .anbook-bg at all.
+   About content may overflow below the original hero; a separate
+   pseudo-element paints only the extra area behind that overflow.
    ========================================================= */
 @media(max-width:900px){
   .anbook{
-    background:
-      linear-gradient(180deg,#211008 0%,#160b06 55%,#0f0805 100%);
+    overflow:visible !important;
   }
 
-  .anbook-bg{
-    position:absolute !important;
-    inset:0 0 auto 0 !important;
-    width:100% !important;
-    height:100svh !important;
-    min-height:0 !important;
-    background-image:url('https://nodzone-cloud.github.io/anita/alexnode-book-v7-emphasis/assets/mobile-bg-ru.png?v=20260913-3') !important;
-    background-size:cover !important;
-    background-position:center top !important;
-    background-repeat:no-repeat !important;
+  .hero{
+    overflow:visible !important;
   }
 
-  .anbook.lang-en .anbook-bg{
-    background-image:url('https://nodzone-cloud.github.io/anita/alexnode-book-v7-emphasis/assets/mobile-bg-en.png?v=20260913-3') !important;
-  }
-
-  .hero:has(.focus-zone.show){
-    min-height:1380px;
-    height:auto;
-    padding-bottom:120px;
+  .hero:has(.focus-zone.show)::after{
+    content:'';
+    position:absolute;
+    z-index:-1;
+    left:-10px;
+    right:-10px;
+    top:100%;
+    height:720px;
+    background:linear-gradient(180deg,#2a1309 0%,#180c06 45%,#0e0704 100%);
+    pointer-events:none;
   }
 
   .focus-zone.show{
@@ -879,11 +872,5 @@ select.hub-field option{color:#111;background:#fff}
 
   .return-books-btn.show{
     top:660px;
-  }
-}
-
-@media(max-width:640px){
-  .hero:has(.focus-zone.show){
-    min-height:1420px;
   }
 }
