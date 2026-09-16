@@ -829,11 +829,6 @@ select.hub-field option{color:#111;background:#fff}
    pushing the selected book covers under the header.
    ========================================================= */
 @media(max-width:900px){
-  body:not(.reader-open) .hero{
-    min-height:1450px;
-    height:auto;
-    padding-bottom:130px;
-  }
 
   body:not(.reader-open) .focus-zone{
     top:390px !important;
@@ -863,9 +858,6 @@ select.hub-field option{color:#111;background:#fff}
 }
 
 @media(max-width:640px){
-  body:not(.reader-open) .hero{
-    min-height:1500px;
-  }
 
   body:not(.reader-open) .focus-zone{
     top:355px !important;
@@ -901,5 +893,21 @@ select.hub-field option{color:#111;background:#fff}
   }
   body:not(.reader-open) .return-books-btn{
     top:660px;
+  }
+}
+
+
+/* v13 — keep library/home background at original viewport height.
+   Extra vertical space exists only while the selected-book About card is visible. */
+@media(max-width:900px){
+  .hero:has(.focus-zone.show){
+    min-height:1450px;
+    height:auto;
+    padding-bottom:130px;
+  }
+}
+@media(max-width:640px){
+  .hero:has(.focus-zone.show){
+    min-height:1500px;
   }
 }
