@@ -895,6 +895,7 @@
     if(!opened || !pages.length) return;
     const data={page:currentPageIndex(),savedAt:new Date().toISOString()};
     localStorage.setItem(bookmarkKey(),JSON.stringify(data));
+    buildContents();
     const b=$("#bookmarkBtn");
     if(b){
       const old=b.querySelector(".bookmark-label").textContent;
@@ -1028,12 +1029,15 @@
       const title = chapter.querySelector(".chapter-title")?.textContent || "";
       const b = document.createElement("button");
       b.className = "content-link";
-      b.textContent = `${label}. ${title}`;
+      b.dataset.pageIndex=String(index);
+      const saved=getBookmark();
+      const isMarked=!!saved && Number(saved.page)===index;
+      b.innerHTML = `<span class="toc-main"><span class="toc-title">${escapeHtml(label)}. ${escapeHtml(title)}</span>${isMarked?'<span class="toc-bookmark" aria-label="Bookmark">🔖</span>':''}</span><span class="toc-page">${escapeHtml(I18N[language].page)} ${index+1}</span>`;
       b.addEventListener("click",()=>{
-        spread = matchMedia("(max-width:900px)").matches ? index : Math.floor(index/2);
         contentsPanel.classList.remove("show");
+        contentsPanel.setAttribute("aria-hidden","true");
         if(!opened) openReader();
-        render();
+        goToPage(index);
       });
       contentsList.appendChild(b);
     });
