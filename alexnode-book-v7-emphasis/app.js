@@ -912,7 +912,7 @@
     const select=document.createElement("select");
     select.id="pageJumpSelect"; select.className="bottom-tool page-jump";
     select.setAttribute("aria-label","Choose page");
-    select.addEventListener("change",()=>{ if(!opened) openReader(); goToPage(Number(select.value)); });
+    select.addEventListener("change",()=>{ if(!opened) return; goToPage(Number(select.value)); });
     br.insertBefore(select,br.firstChild);
     const bm=document.createElement("button");
     bm.id="bookmarkBtn"; bm.className="bottom-tool"; bm.type="button";
@@ -922,9 +922,10 @@
     const resume=document.createElement("button");
     resume.id="resumeBookmarkBtn"; resume.className="bottom-tool"; resume.type="button";
     resume.innerHTML='<span class="tool-icon">↪</span><span class="resume-label"></span>';
-    resume.addEventListener("click",()=>{const x=getBookmark();if(!x)return;if(!opened)openReader();goToPage(x.page)});
+    resume.addEventListener("click",()=>{const x=getBookmark();if(!x || !opened)return;goToPage(x.page)});
     br.insertBefore(resume,bm.nextSibling);
     updateReaderTools();
+    setReaderUI(opened);
   }
   function updateReaderTools(){
     const sel=$("#pageJumpSelect"),bm=$("#bookmarkBtn"),resume=$("#resumeBookmarkBtn");
@@ -939,6 +940,11 @@
 
   function setReaderUI(active){
     pageCounter.classList.toggle("hidden",!active);
+    ["#pageJumpSelect","#bookmarkBtn","#resumeBookmarkBtn"].forEach(sel=>{
+      const el=$(sel);
+      if(el) el.style.display=active ? "" : "none";
+    });
+    if(active) updateReaderTools();
   }
 
   function openReader(){
