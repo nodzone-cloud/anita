@@ -884,3 +884,22 @@ select.hub-field option{color:#111;background:#fff}
     top:610px;
   }
 }
+
+
+/* v12 — mobile About: move the whole selected-book composition lower */
+@media(max-width:900px){
+  body:not(.reader-open) .focus-zone{
+    top:430px !important;
+  }
+  body:not(.reader-open) .return-books-btn{
+    top:690px;
+  }
+}
+@media(max-width:640px){
+  body:not(.reader-open) .focus-zone{
+    top:405px !important;
+  }
+  body:not(.reader-open) .return-books-btn{
+    top:660px;
+  }
+}
