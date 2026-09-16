@@ -823,91 +823,67 @@ select.hub-field option{color:#111;background:#fff}
   }
 }
 
+
 /* =========================================================
-   v11 — ABOUT BOOK MOBILE LAYOUT
-   Give the description its own vertical space instead of
-   pushing the selected book covers under the header.
+   v15 — MOBILE ABOUT WITHOUT TOUCHING THE ORIGINAL BACKGROUND
+   Original portrait image keeps its original viewport crop/size.
+   If About needs more room, only the content layer grows and the
+   area below is continued with a neutral dark warm gradient.
    ========================================================= */
 @media(max-width:900px){
+  .anbook{
+    background:
+      linear-gradient(180deg,#211008 0%,#160b06 55%,#0f0805 100%);
+  }
 
-  body:not(.reader-open) .focus-zone{
-    top:390px !important;
-    transform:translate(-50%,0) scale(.96);
+  .anbook-bg{
+    position:absolute !important;
+    inset:0 0 auto 0 !important;
+    width:100% !important;
+    height:100svh !important;
+    min-height:0 !important;
+    background-image:url('https://nodzone-cloud.github.io/anita/alexnode-book-v7-emphasis/assets/mobile-bg-ru.png?v=20260913-3') !important;
+    background-size:cover !important;
+    background-position:center top !important;
+    background-repeat:no-repeat !important;
+  }
+
+  .anbook.lang-en .anbook-bg{
+    background-image:url('https://nodzone-cloud.github.io/anita/alexnode-book-v7-emphasis/assets/mobile-bg-en.png?v=20260913-3') !important;
+  }
+
+  .hero:has(.focus-zone.show){
+    min-height:1380px;
+    height:auto;
+    padding-bottom:120px;
+  }
+
+  .focus-zone.show{
+    top:405px !important;
+    transform:translate(-50%,0) scale(1) !important;
+    grid-template-columns:1fr 1fr;
     align-items:start;
-  }
-
-  body:not(.reader-open) .focus-zone.show{
-    transform:translate(-50%,0) scale(1);
-  }
-
-  body:not(.reader-open) .focus-cover{
-    align-self:start;
-  }
-
-  body:not(.reader-open) .focus-cover img{
-    max-height:390px !important;
-  }
-
-  body:not(.reader-open) .focus-copy{
-    margin-top:12px;
-  }
-
-  body:not(.reader-open) .return-books-btn{
-    top:650px;
-  }
-}
-
-@media(max-width:640px){
-
-  body:not(.reader-open) .focus-zone{
-    top:355px !important;
     width:94vw;
   }
 
-  body:not(.reader-open) .focus-cover img{
+  .focus-zone.show .focus-cover img{
     max-height:370px !important;
   }
 
-  body:not(.reader-open) .focus-copy{
+  .focus-zone.show .focus-copy{
+    grid-column:1/-1;
+    grid-row:2;
+    margin-top:18px;
     padding:16px 12px;
   }
 
-  body:not(.reader-open) .return-books-btn{
-    top:610px;
-  }
-}
-
-
-/* v12 — mobile About: move the whole selected-book composition lower */
-@media(max-width:900px){
-  body:not(.reader-open) .focus-zone{
-    top:430px !important;
-  }
-  body:not(.reader-open) .return-books-btn{
-    top:690px;
-  }
-}
-@media(max-width:640px){
-  body:not(.reader-open) .focus-zone{
-    top:405px !important;
-  }
-  body:not(.reader-open) .return-books-btn{
+  .return-books-btn.show{
     top:660px;
   }
 }
 
-
-/* v13 — keep library/home background at original viewport height.
-   Extra vertical space exists only while the selected-book About card is visible. */
-@media(max-width:900px){
-  .hero:has(.focus-zone.show){
-    min-height:1450px;
-    height:auto;
-    padding-bottom:130px;
-  }
-}
 @media(max-width:640px){
   .hero:has(.focus-zone.show){
-    min-height:1500px;
+    min-height:1420px;
   }
 }
