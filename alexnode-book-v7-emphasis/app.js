@@ -953,14 +953,11 @@
     ["#pageJumpSelect","#bookmarkBtn","#resumeBookmarkBtn","#contentsBtn","#prevPage","#nextPage","#zoomBtn"].forEach(sel=>{
       const el=$(sel);
       if(!el) return;
-      if(!trulyReading){
-        el.hidden=true;
-        el.style.setProperty("display","none","important");
-      }else{
-        el.hidden=false;
-        el.style.removeProperty("display");
-      }
+      el.hidden=!trulyReading;
+      el.style.setProperty("display",trulyReading ? "" : "none","important");
+      el.style.setProperty("pointer-events",trulyReading ? "auto" : "none","important");
     });
+    document.body.classList.toggle("reader-open",trulyReading);
     if(trulyReading) updateReaderTools();
   }
 
