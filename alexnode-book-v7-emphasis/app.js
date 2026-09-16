@@ -860,6 +860,9 @@
 
     focused = false;
     opened = false;
+    setReaderUI(false);
+    contentsPanel.classList.remove("show");
+    contentsPanel.setAttribute("aria-hidden","true");
 
     focusZone.classList.remove("buy-preview-mode");
 
@@ -947,7 +950,7 @@
   function setReaderUI(active){
     const trulyReading = !!active && opened && reader.classList.contains("show");
     pageCounter.classList.toggle("hidden",!trulyReading);
-    ["#pageJumpSelect","#bookmarkBtn","#resumeBookmarkBtn"].forEach(sel=>{
+    ["#pageJumpSelect","#bookmarkBtn","#resumeBookmarkBtn","#contentsBtn","#prevPage","#nextPage","#zoomBtn"].forEach(sel=>{
       const el=$(sel);
       if(!el) return;
       if(!trulyReading){
@@ -1084,8 +1087,8 @@
     openReader();
   });
   $("#closeReader").addEventListener("click",closeReader);
-  prevPage.addEventListener("click",prev);
-  nextPage.addEventListener("click",next);
+  prevPage.addEventListener("click",()=>{ if(opened && reader.classList.contains("show")) prev(); });
+  nextPage.addEventListener("click",()=>{ if(opened && reader.classList.contains("show")) next(); });
 
   $$(".languages button").forEach(b=>b.addEventListener("click",()=>applyLanguage(b.dataset.lang)));
 
@@ -1105,6 +1108,7 @@
   $("#shareBtn").addEventListener("click",()=>shareBook(currentBookId));
 
   $("#contentsBtn").addEventListener("click",()=>{
+    if(!opened || !reader.classList.contains("show")) return;
     contentsPanel.classList.add("show");
     contentsPanel.setAttribute("aria-hidden","false");
   });
