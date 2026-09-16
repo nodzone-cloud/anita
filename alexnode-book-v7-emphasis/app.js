@@ -20,7 +20,7 @@
         textFile:"book-ru.txt",
         front:"https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp",
         back:"https://optim.tildacdn.net/tild6261-6139-4333-a265-383535373737/-/format/webp/no_bg_book_back.png.webp",
-        buyUrl:""
+        buyUrl:"", descriptions:{ru:"Alex Node & ANITA — история идеи, которая постепенно становится реальностью. Это не техническое руководство и не история уже состоявшейся большой компании. Книга рассказывает о пути Alex Node и о том, как из небольших экспериментов, разговоров с ChatGPT и желания сделать технологии более человеческими постепенно появилась ANITA — виртуальный персонаж и будущий цифровой помощник. Здесь идеи возникают прямо по ходу истории: некоторые остаются размышлениями, другие превращаются в код, функции и реальные эксперименты. Вместе с ними меняется и сама ANITA — от персонажа на сайте к гораздо более широкому представлению о том, какими могут быть отношения человека и технологии. Это книга о создании, сомнениях, неожиданных открытиях, ошибках и моментах, когда обычный вопрос «А что, если сделать вот так?» неожиданно превращается в работающую идею. И эта история ещё не закончена. ANITA продолжает развиваться — а книга развивается вместе с ней.",en:"Alex Node & ANITA is the story of an idea gradually becoming real. It is not a technical manual or the story of an already established large company. The book follows the path of Alex Node and how small experiments, conversations with ChatGPT, and a desire to make technology more human gradually led to ANITA — a virtual character and future digital assistant. Ideas appear as the story unfolds: some remain thoughts, while others become code, features, and real experiments. ANITA changes with them, growing from a website character into a much broader vision of how people and technology can relate to each other. It is a book about creating, doubts, unexpected discoveries, mistakes, and those moments when a simple question — “What if we did it this way?” — suddenly becomes a working idea. And the story is not finished yet. ANITA continues to evolve, and the book evolves with her."}
       },
       {
         id:"alex-node-anita-en",
@@ -30,7 +30,7 @@
         textFile:"book-en.txt",
         front:"https://optim.tildacdn.net/tild3862-6437-4362-b765-636465336337/-/format/webp/ENG_front_cover.png.webp",
         back:"https://optim.tildacdn.net/tild3239-6138-4031-b861-303865346231/-/format/webp/ENG_back_cover.png.webp",
-        buyUrl:""
+        buyUrl:"", descriptions:{ru:"Alex Node & ANITA — история идеи, которая постепенно становится реальностью. Это не техническое руководство и не история уже состоявшейся большой компании. Книга рассказывает о пути Alex Node и о том, как из небольших экспериментов, разговоров с ChatGPT и желания сделать технологии более человеческими постепенно появилась ANITA — виртуальный персонаж и будущий цифровой помощник. Здесь идеи возникают прямо по ходу истории: некоторые остаются размышлениями, другие превращаются в код, функции и реальные эксперименты. Вместе с ними меняется и сама ANITA — от персонажа на сайте к гораздо более широкому представлению о том, какими могут быть отношения человека и технологии. Это книга о создании, сомнениях, неожиданных открытиях, ошибках и моментах, когда обычный вопрос «А что, если сделать вот так?» неожиданно превращается в работающую идею. И эта история ещё не закончена. ANITA продолжает развиваться — а книга развивается вместе с ней.",en:"Alex Node & ANITA is the story of an idea gradually becoming real. It is not a technical manual or the story of an already established large company. The book follows the path of Alex Node and how small experiments, conversations with ChatGPT, and a desire to make technology more human gradually led to ANITA — a virtual character and future digital assistant. Ideas appear as the story unfolds: some remain thoughts, while others become code, features, and real experiments. ANITA changes with them, growing from a website character into a much broader vision of how people and technology can relate to each other. It is a book about creating, doubts, unexpected discoveries, mistakes, and those moments when a simple question — “What if we did it this way?” — suddenly becomes a working idea. And the story is not finished yet. ANITA continues to evolve, and the book evolves with her."}
       }
     ]
   };
@@ -292,6 +292,11 @@
         $("#focusFront img").alt=`${selected.title} ${selected.editionLabel} front cover`;
         $("#focusBack img").src=selected.back;
         $("#focusBack img").alt=`${selected.title} ${selected.editionLabel} back cover`;
+    const aboutBox=$("#bookAboutText");
+    if(aboutBox){
+      const d=selected.descriptions||{};
+      aboutBox.textContent=d[language]||d[selected.bookLanguage]||d.en||"";
+    }
 
         focusZone.classList.add("buy-preview-mode","show");
         focusZone.setAttribute("aria-hidden","false");
@@ -809,6 +814,11 @@
     $("#focusFront img").alt=`${selected.title} ${selected.editionLabel} front cover`;
     $("#focusBack img").src=selected.back;
     $("#focusBack img").alt=`${selected.title} ${selected.editionLabel} back cover`;
+    const aboutBox=$("#bookAboutText");
+    if(aboutBox){
+      const d=selected.descriptions||{};
+      aboutBox.textContent=d[language]||d[selected.bookLanguage]||d.en||"";
+    }
     focused = true;
 
     const source = activeFloatingCover || floatingCovers[0];
