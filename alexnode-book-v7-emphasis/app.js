@@ -48,7 +48,7 @@
       buyBooks:"Купить книгу",buyLead:"Выберите книгу. Вы сможете посмотреть её перед покупкой.",
       preview:"Посмотреть",noReviews:"Пока нет отзывов.",savedLocal:"Отзыв сохранён на этом устройстве.",
       ratingRequired:"Пожалуйста, поставьте оценку от 1 до 5 звёзд.",
-      buyNotReady:"Ссылка SumUp для этой книги ещё не добавлена."
+      buyNotReady:"Ссылка SumUp для этой книги ещё не добавлена.",bookmark:"Закладка",bookmarkSaved:"Место сохранено",resume:"Продолжить",page:"Страница"
     },
     en:{
       home:"Home",about:"About the book",gallery:"Gallery",reviews:"Reviews",buyShort:"Buy",buy:"Buy the book",
@@ -62,7 +62,7 @@
       buyBooks:"Buy a book",buyLead:"Choose a book. You can preview it before purchasing.",
       preview:"Preview",noReviews:"No reviews yet.",savedLocal:"Review saved on this device.",
       ratingRequired:"Please select a rating from 1 to 5 stars.",
-      buyNotReady:"The SumUp link for this book has not been added yet."
+      buyNotReady:"The SumUp link for this book has not been added yet.",bookmark:"Bookmark",bookmarkSaved:"Place saved",resume:"Resume",page:"Page"
     },
     fi:{
       home:"Etusivu",about:"Tietoa kirjasta",gallery:"Galleria",reviews:"Arvostelut",buyShort:"Osta",buy:"Osta kirja",
@@ -75,7 +75,7 @@
       publishReview:"Julkaise arvostelu",readerReviews:"Lukijoiden arvostelut",
       buyBooks:"Osta kirja",buyLead:"Valitse kirja. Voit esikatsella sitä ennen ostamista.",
       preview:"Esikatsele",noReviews:"Ei vielä arvosteluja.",savedLocal:"Arvostelu tallennettiin tälle laitteelle.",
-      ratingRequired:"Valitse 1–5 tähteä.",buyNotReady:"Tämän kirjan SumUp-linkkiä ei ole vielä lisätty."
+      ratingRequired:"Valitse 1–5 tähteä.",buyNotReady:"Tämän kirjan SumUp-linkkiä ei ole vielä lisätty.",bookmark:"Kirjanmerkki",bookmarkSaved:"Kohta tallennettu",resume:"Jatka",page:"Sivu"
     }
   };
 
@@ -752,6 +752,7 @@
       pages = paginate(parsed);
       spread = 0;
       buildContents();
+      updateReaderTools();
       render();
     });
   }
@@ -769,6 +770,7 @@
     });
     if(currentView==="buy") renderBuyBooks();
     if(currentView==="reviews") renderReviews();
+    updateReaderTools();
   }
 
   function toggleBackCoverZoom(){
@@ -880,6 +882,60 @@
     }
   }
 
+  function bookmarkKey(){ return `anbook-bookmark:${currentBookId}`; }
+  function currentPageIndex(){
+    return matchMedia("(max-width:900px)").matches ? spread : spread*2;
+  }
+  function goToPage(pageIndex){
+    const i=Math.max(0,Math.min(Number(pageIndex)||0,pages.length-1));
+    spread=matchMedia("(max-width:900px)").matches ? i : Math.floor(i/2);
+    render();
+  }
+  function saveBookmark(){
+    if(!opened || !pages.length) return;
+    const data={page:currentPageIndex(),savedAt:new Date().toISOString()};
+    localStorage.setItem(bookmarkKey(),JSON.stringify(data));
+    const b=$("#bookmarkBtn");
+    if(b){
+      const old=b.querySelector(".bookmark-label").textContent;
+      b.querySelector(".bookmark-label").textContent=I18N[language].bookmarkSaved;
+      setTimeout(()=>{ if(b.querySelector(".bookmark-label")) b.querySelector(".bookmark-label").textContent=I18N[language].bookmark; },1200);
+    }
+  }
+  function getBookmark(){
+    try{return JSON.parse(localStorage.getItem(bookmarkKey())||"null")}catch(_e){return null}
+  }
+  function installReaderTools(){
+    const br=$(".bottom-right");
+    if(!br || $("#pageJumpSelect")) return;
+    const select=document.createElement("select");
+    select.id="pageJumpSelect"; select.className="bottom-tool page-jump";
+    select.setAttribute("aria-label","Choose page");
+    select.addEventListener("change",()=>{ if(!opened) openReader(); goToPage(Number(select.value)); });
+    br.insertBefore(select,br.firstChild);
+    const bm=document.createElement("button");
+    bm.id="bookmarkBtn"; bm.className="bottom-tool"; bm.type="button";
+    bm.innerHTML='<span class="tool-icon">🔖</span><span class="bookmark-label"></span>';
+    bm.addEventListener("click",saveBookmark);
+    br.insertBefore(bm,select.nextSibling);
+    const resume=document.createElement("button");
+    resume.id="resumeBookmarkBtn"; resume.className="bottom-tool"; resume.type="button";
+    resume.innerHTML='<span class="tool-icon">↪</span><span class="resume-label"></span>';
+    resume.addEventListener("click",()=>{const x=getBookmark();if(!x)return;if(!opened)openReader();goToPage(x.page)});
+    br.insertBefore(resume,bm.nextSibling);
+    updateReaderTools();
+  }
+  function updateReaderTools(){
+    const sel=$("#pageJumpSelect"),bm=$("#bookmarkBtn"),resume=$("#resumeBookmarkBtn");
+    if(!sel)return;
+    const old=Number(sel.value);
+    sel.innerHTML=pages.map((_,i)=>`<option value="${i}">${I18N[language].page} ${i+1}</option>`).join("");
+    sel.value=String(Math.max(0,Math.min(currentPageIndex(),pages.length-1)));
+    if(bm) bm.querySelector(".bookmark-label").textContent=I18N[language].bookmark;
+    const saved=getBookmark();
+    if(resume){resume.style.display=saved?"":"none";resume.querySelector(".resume-label").textContent=I18N[language].resume;}
+  }
+
   function setReaderUI(active){
     pageCounter.classList.toggle("hidden",!active);
   }
@@ -921,6 +977,7 @@
       rightPage.innerHTML = "";
       rightNum.textContent = "";
       pageCounter.textContent = `${i+1} / ${pages.length}`;
+      const jump=$("#pageJumpSelect"); if(jump) jump.value=String(i);
       return;
     }
 
@@ -931,6 +988,7 @@
     leftNum.textContent = li+1;
     rightNum.textContent = ri<pages.length ? ri+1 : "";
     pageCounter.textContent = `${Math.min(ri+1,pages.length)} / ${pages.length}`;
+    const jump=$("#pageJumpSelect"); if(jump) jump.value=String(li);
 
     prevPage.disabled = spread===0;
     nextPage.disabled = false;
@@ -1148,6 +1206,7 @@
   });
 
   setReaderUI(false);
+  installReaderTools();
   renderHomeBooks();
   fillBookSelectors();
 
