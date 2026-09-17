@@ -8,11 +8,11 @@
   window.__ANITA_GROK_V02_LOADER__ = true;
   window.ANITA_USE_ENGINE_EXP = true;
 
-  // Stable existing visual layer may stay on CDN.
   var OLD = "https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/anita/anita50/";
-  // Experimental engine comes directly from GitHub main so fresh Grok fixes are not hidden by jsDelivr branch cache.
-  var EXP = "https://raw.githubusercontent.com/nodzone-cloud/anita/main/anita/grok-v02-test/";
-  var VERSION = "20260917-grokfix-2";
+  // Pin experimental engine to the commit containing the latest Grok fixes.
+  // jsDelivr serves JavaScript with a browser-executable MIME type; raw.githubusercontent.com is not used for scripts.
+  var EXP = "https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@12389a61cedd8c7a23b9e33458c642e053cb5c9d/anita/grok-v02-test/";
+  var VERSION = "20260917-grokfix-3";
 
   function loadCSS(src) {
     if (document.querySelector('link[data-anita-grok-css="1"]')) return;
@@ -63,10 +63,10 @@
         "engine/interpreter.js",
         "engine/ui-bind.js"
       ];
-      for (var i = 0; i < files.length; i++) await loadScript(EXP + files[i] + "?v=" + VERSION);
+      for (var i = 0; i < files.length; i++) await loadScript(EXP + files[i]);
 
       window.__ANITA_GROK_V02_READY__ = true;
-      console.log("[ANITA Grok v0.2] hybrid ready - Grok fixes 20260917-grokfix-2");
+      console.log("[ANITA Grok v0.2] hybrid ready - pinned Grok fixes");
       window.dispatchEvent(new CustomEvent("anita:grok-v02-ready"));
     } catch (err) {
       console.error("[ANITA Grok v0.2 hybrid loader]", err);
