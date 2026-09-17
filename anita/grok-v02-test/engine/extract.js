@@ -1,40 +1,18 @@
-/* ANITA Engine Experiment — multi-fact extraction from natural speech
-   Human-Tech: one message can fill several brief fields at once.
-*/
-(function (root) {
-  "use strict";
-  const W = (root.ANITA50 = root.ANITA50 || {});
-
-  function norm(s) {
-    return String(s || "").toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim();
-  }
-  function extractFacts(text) {
-    const x = norm(text);
-    const out = { business:null, goal:null, size:null, requirements:[], rejected:[] };
-    if (/\b(лендинг|one[- ]?page|single[- ]?page|одна страница|yksi sivu)\b/i.test(x)) out.size="one landing page";
-    else if (/\b(пару|несколько|few|several|muutama|3|4|5)\s*(страниц|pages|sivua)?\b/i.test(x)||/\b(небольш\w*\s+сайт|small\s+site|pieni\s+sivusto)\b/i.test(x)) out.size="a few separate pages";
-    else if (/\b(многостранич|multi[- ]?page|large\s+site|monisivu|больш\w*\s+сайт)\b/i.test(x)) out.size="a larger multi-page site";
-    else { const m=x.match(/\b(\d{1,2})\s*(страниц|pages|sivua)\b/i); if(m){const n=parseInt(m[1],10);if(n===1)out.size="one landing page";else if(n<=5)out.size="a few separate pages";else out.size="a larger multi-page site";} }
-    const reqMap=[{re:/\b(запис\w*|booking|book a|ajanvaraus|записаться)\b/i,value:"online booking"},{re:/\b(цен\w*|price list|pricing|hinnat|прайс)\b/i,value:"price list"},{re:/\b(магазин|shop|store|verkkokauppa|купить|buy)\b/i,value:"online store"},{re:/\b(контакт\w*|позвонить|call|phone|yhteystied|форма связи)\b/i,value:"contact"},{re:/\b(блог|blog)\b/i,value:"blog"},{re:/\b(галере|portfolio|портфолио|examples)\b/i,value:"gallery / portfolio"},{re:/\b(несколько язык|multi[- ]?lang|multilingual|useita kiel)\b/i,value:"multiple languages"},{re:/\b(карта|map|google maps)\b/i,value:"map"}];
-    reqMap.forEach(({re,value})=>{if(re.test(x)&&out.requirements.indexOf(value)===-1)out.requirements.push(value);});
-    if(/\b(не нужен магазин|no shop|no store|без магазина|продажи не нужны|no sales)\b/i.test(x)){out.rejected.push("online store");out.requirements=out.requirements.filter(r=>r!=="online store");}
-    const bizPatterns=[/\b(автомастерск\w*|auto\s*repair|car\s*service|korjaamo)\b/i,/\b(салон\s+красоты|beauty\s+salon|parturi|kampaamo)\b/i,/\b(кафе|ресторан|cafe|restaurant|ravintola)\b/i,/\b(клиник\w*|clinic|lääkäri|стоматолог)\b/i,/\b(магазин\s+\w+|shop\s+for)\b/i,/\b(pet\s*shop|зоомагазин)\b/i];
-    for(const re of bizPatterns){const m=text.match(re);if(m){out.business=m[0];break;}}
-    if(!out.business){const m2=text.match(/(?:у меня|у нас|my business is|i (?:run|own|have)|minulla on)\s+(.{3,60}?)(?:\.|,|чтобы|и |$)/i);if(m2)out.business=m2[1].trim();}
-    if(/\b(записыва\w*|book|varata)\b/i.test(x))out.goal=out.goal||"visitors can book a service";
-    if(/\b(увидев?а?ть цен|see prices|nähdä hinnat)\b/i.test(x))out.goal=out.goal||"visitors can see prices and contact";
-    if(/\b(позвон\w*|call|soittaa)\b/i.test(x)&&!out.goal)out.goal="visitors can contact / call";
-    return out;
-  }
-  function mergeIntoBrief(brief,facts){
-    const confirmed=Object.assign({},(brief&&brief.confirmed)||{}),inferred=Object.assign({suggestions:[]},(brief&&brief.inferred)||{}),rejected=Object.assign({suggestions:[]},(brief&&brief.rejected)||{});
-    if(facts.business&&!confirmed.business)confirmed.business=facts.business;if(facts.goal&&!confirmed.goal)confirmed.goal=facts.goal;if(facts.size&&!confirmed.size)confirmed.size=facts.size;
-    if(facts.requirements&&facts.requirements.length){const req=Array.isArray(confirmed.requirements)?confirmed.requirements.slice():[];facts.requirements.forEach(r=>{if(req.indexOf(r)===-1)req.push(r);});confirmed.requirements=req;}
-    if(facts.rejected&&facts.rejected.length){const rej=Array.isArray(rejected.suggestions)?rejected.suggestions.slice():[];facts.rejected.forEach(r=>{if(rej.indexOf(r)===-1)rej.push(r);confirmed.requirements=(confirmed.requirements||[]).filter(x=>x!==r);});rejected.suggestions=rej;}
-    if(confirmed.size){if(confirmed.size==="one landing page")inferred.recommendedPackage="START / LIGHT";else if(confirmed.size==="a few separate pages")inferred.recommendedPackage="LIGHT / MEDIUM";else if(confirmed.size==="a larger multi-page site")inferred.recommendedPackage="MEDIUM / CODE";}
-    return{confirmed,inferred,rejected};
-  }
-  function missingFields(brief){const c=(brief&&brief.confirmed)||{},miss=[];if(!c.business)miss.push("business");if(!c.goal)miss.push("site_goal");if(!c.size)miss.push("size");return miss;}
-  W.engine=W.engine||{};W.engine.Extract={extractFacts,mergeIntoBrief,missingFields,norm};
-  console.log("[ANITA Engine] extract ready");
-})(typeof window !== "undefined" ? window : globalThis);
+/* ANITA Engine Experiment — multi-fact extraction from natural speech */
+(function(root){
+"use strict";
+const W=(root.ANITA50=root.ANITA50||{});
+function norm(s){return String(s||'').toLowerCase().replace(/ё/g,'е').replace(/\s+/g,' ').trim();}
+function plausibleBusiness(value){const v=String(value||'').trim();if(!v)return null;const words=v.split(/\s+/).filter(Boolean);if(v.length<5)return null;if(words.length===1&&!/(cafe|café|restaurant|salon|clinic|shop|store|studio|agency|garage|korjaamo|ravintola|кафе|ресторан|салон|клиника|магазин|студия|агентство|автомастерская)/i.test(v))return null;if(/^(website|site|business|project|nothing|something|anything|dfd|test|hello|hi)$/i.test(v))return null;return v;}
+function extractFacts(text){const x=norm(text),out={business:null,goal:null,size:null,requirements:[],rejected:[]};
+if(/\b(лендинг|one[- ]?page|single[- ]?page|одна страница|yksi sivu)\b/i.test(x))out.size='one landing page';else if(/\b(пару|несколько|few|several|muutama|3|4|5)\s*(страниц|pages|sivua)?\b/i.test(x)||/\b(небольш\w*\s+сайт|small\s+site|pieni\s+sivusto)\b/i.test(x))out.size='a few separate pages';else if(/\b(многостранич|multi[- ]?page|large\s+site|monisivu|больш\w*\s+сайт)\b/i.test(x))out.size='a larger multi-page site';else{const m=x.match(/\b(\d{1,2})\s*(страниц|pages|sivua)\b/i);if(m){const n=parseInt(m[1],10);out.size=n===1?'one landing page':n<=5?'a few separate pages':'a larger multi-page site';}}
+const reqMap=[{re:/\b(запис\w*|booking|book a|ajanvaraus|записаться)\b/i,value:'online booking'},{re:/\b(цен\w*|price list|pricing|hinnat|прайс)\b/i,value:'price list'},{re:/\b(магазин|shop|store|verkkokauppa|купить|buy)\b/i,value:'online store'},{re:/\b(контакт\w*|позвонить|call|phone|yhteystied|форма связи)\b/i,value:'contact'},{re:/\b(блог|blog)\b/i,value:'blog'},{re:/\b(галере|portfolio|портфолио|examples)\b/i,value:'gallery / portfolio'},{re:/\b(несколько язык|multi[- ]?lang|multilingual|useita kiel)\b/i,value:'multiple languages'},{re:/\b(карта|map|google maps)\b/i,value:'map'}];reqMap.forEach(({re,value})=>{if(re.test(x)&&!out.requirements.includes(value))out.requirements.push(value);});
+if(/\b(не нужен магазин|no shop|no store|без магазина|продажи не нужны|no sales)\b/i.test(x)){out.rejected.push('online store');out.requirements=out.requirements.filter(r=>r!=='online store');}
+const bizPatterns=[/\b(автомастерск\w*|auto\s*repair|car\s*service|korjaamo)\b/i,/\b(салон\s+красоты|beauty\s+salon|parturi|kampaamo)\b/i,/\b(кафе|ресторан|cafe|restaurant|ravintola)\b/i,/\b(клиник\w*|clinic|lääkäri|стоматолог)\b/i,/\b(магазин\s+\w+|shop\s+for)\b/i,/\b(pet\s*shop|зоомагазин)\b/i];for(const re of bizPatterns){const m=text.match(re);if(m){out.business=m[0];break;}}
+if(!out.business){const m2=text.match(/(?:у меня|у нас|my business is|i (?:run|own|have)|minulla on)\s+(.{1,60}?)(?:\.|,|чтобы|\band\b|\bi need\b|$)/i);if(m2)out.business=plausibleBusiness(m2[1]);}
+if(/\b(записыва\w*|book|varata)\b/i.test(x))out.goal=out.goal||'visitors can book a service';if(/\b(увидев?а?ть цен|see prices|nähdä hinnat)\b/i.test(x))out.goal=out.goal||'visitors can see prices and contact';if(/\b(позвон\w*|call|soittaa)\b/i.test(x)&&!out.goal)out.goal='visitors can contact / call';return out;}
+function mergeIntoBrief(brief,facts){const confirmed=Object.assign({},(brief&&brief.confirmed)||{}),inferred=Object.assign({suggestions:[]},(brief&&brief.inferred)||{}),rejected=Object.assign({suggestions:[]},(brief&&brief.rejected)||{});if(facts.business&&!confirmed.business)confirmed.business=facts.business;if(facts.goal&&!confirmed.goal)confirmed.goal=facts.goal;if(facts.size&&!confirmed.size)confirmed.size=facts.size;if(facts.requirements&&facts.requirements.length){const req=Array.isArray(confirmed.requirements)?confirmed.requirements.slice():[];facts.requirements.forEach(r=>{if(!req.includes(r))req.push(r);});confirmed.requirements=req;}if(facts.rejected&&facts.rejected.length){const rej=Array.isArray(rejected.suggestions)?rejected.suggestions.slice():[];facts.rejected.forEach(r=>{if(!rej.includes(r))rej.push(r);confirmed.requirements=(confirmed.requirements||[]).filter(x=>x!==r);});rejected.suggestions=rej;}if(confirmed.size){if(confirmed.size==='one landing page')inferred.recommendedPackage='START / LIGHT';else if(confirmed.size==='a few separate pages')inferred.recommendedPackage='LIGHT / MEDIUM';else if(confirmed.size==='a larger multi-page site')inferred.recommendedPackage='MEDIUM / CODE';}return{confirmed,inferred,rejected};}
+function missingFields(brief){const c=(brief&&brief.confirmed)||{},miss=[];if(!c.business)miss.push('business');if(!c.goal)miss.push('site_goal');if(!c.size)miss.push('size');return miss;}
+function deterministicStrength(facts){let n=0;if(facts&&facts.business)n++;if(facts&&facts.goal)n++;if(facts&&facts.size)n++;if(facts&&facts.requirements&&facts.requirements.length)n++;return n;}
+W.engine=W.engine||{};W.engine.Extract={extractFacts,mergeIntoBrief,missingFields,norm,deterministicStrength,plausibleBusiness};console.log('[ANITA Engine] extract ready + weak-input guard');
+})(typeof window!=='undefined'?window:globalThis);
