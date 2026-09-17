@@ -1,77 +1,12 @@
-/* ANITA Grok v0.2 Hybrid Test Loader
-   Existing ANITA visual shell + Grok experimental dialogue engine.
-   For /antest only. Does NOT load old core/router/roles/brief logic.
-*/
-(function () {
-  "use strict";
-  if (window.__ANITA_GROK_V02_LOADER__) return;
-  window.__ANITA_GROK_V02_LOADER__ = true;
-  window.ANITA_USE_ENGINE_EXP = true;
-
-  var OLD = "https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/anita/anita50/";
-  // Pin experimental engine to the commit containing the latest Grok fixes.
-  // jsDelivr serves JavaScript with a browser-executable MIME type; raw.githubusercontent.com is not used for scripts.
-  var EXP = "https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@12389a61cedd8c7a23b9e33458c642e053cb5c9d/anita/grok-v02-test/";
-  var VERSION = "20260917-grokfix-3";
-
-  function loadCSS(src) {
-    if (document.querySelector('link[data-anita-grok-css="1"]')) return;
-    var l = document.createElement("link"); l.rel = "stylesheet"; l.href = src;
-    l.dataset.anitaGrokCss = "1"; document.head.appendChild(l);
-  }
-  function loadScript(src) {
-    return new Promise(function (resolve, reject) {
-      var s = document.createElement("script"); s.src = src; s.async = false;
-      s.onload = function () { resolve(src); };
-      s.onerror = function () { reject(new Error("Failed to load " + src)); };
-      document.head.appendChild(s);
-    });
-  }
-  function waitForBody() {
-    if (document.body) return Promise.resolve();
-    return new Promise(function (resolve) { document.addEventListener("DOMContentLoaded", resolve, { once: true }); });
-  }
-  function mountVisualShell() {
-    if (document.getElementById("an50-root")) return;
-    var r = document.createElement("div");
-    r.id = "an50-root"; r.className = "mode-chat";
-    r.innerHTML = '<img id="an50-img" alt="ANITA"><div id="an50-bubble" class="show">Привет! Я ANITA. Чем могу помочь?</div><div id="an50-chat"><input id="an50-input" placeholder="Спросите ANITA..." autocomplete="off"><button id="an50-send" type="button" aria-label="Send">➜</button></div>';
-    document.body.appendChild(r);
-  }
-
-  async function boot() {
-    try {
-      await waitForBody();
-      loadCSS(OLD + "anita50.css?v=" + VERSION);
-      mountVisualShell();
-      await loadScript(OLD + "config-v017a.js?v=" + VERSION);
-      await loadScript(OLD + "ui.js?v=" + VERSION);
-      if (window.ANITA50 && window.ANITA50.ui) {
-        window.ANITA50.ui.ready();
-        window.ANITA50.ui.bubbleText("Привет! Я ANITA. Чем могу помочь?");
-      }
-
-      var files = [
-        "bootstrap-exp.js",
-        "engine/dialogue-state.js",
-        "engine/pending.js",
-        "engine/turn-guard.js",
-        "engine/extract.js",
-        "engine/human.js",
-        "engine/ai-bridge.js",
-        "engine/brief-flow.js",
-        "engine/interpreter.js",
-        "engine/ui-bind.js"
-      ];
-      for (var i = 0; i < files.length; i++) await loadScript(EXP + files[i]);
-
-      window.__ANITA_GROK_V02_READY__ = true;
-      console.log("[ANITA Grok v0.2] hybrid ready - pinned Grok fixes");
-      window.dispatchEvent(new CustomEvent("anita:grok-v02-ready"));
-    } catch (err) {
-      console.error("[ANITA Grok v0.2 hybrid loader]", err);
-      window.__ANITA_GROK_V02_ERROR__ = String(err && err.message || err);
-    }
-  }
-  boot();
-})();
+/* ANITA Grok v0.2 Hybrid Test Loader — diagnostic build */
+(function(){"use strict";if(window.__ANITA_GROK_V02_LOADER__)return;window.__ANITA_GROK_V02_LOADER__=true;window.ANITA_USE_ENGINE_EXP=true;
+var OLD="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/anita/anita50/";
+var EXP="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@cf0ea50d192c23d713c3a4a05f1903b271e6353c/anita/grok-v02-test/";
+var VERSION="20260917-diagnostic-1";
+function loadCSS(src){if(document.querySelector('link[data-anita-grok-css="1"]'))return;var l=document.createElement("link");l.rel="stylesheet";l.href=src;l.dataset.anitaGrokCss="1";document.head.appendChild(l);}
+function loadScript(src){return new Promise(function(resolve,reject){var s=document.createElement("script");s.src=src;s.async=false;s.onload=function(){resolve(src)};s.onerror=function(){reject(new Error("Failed to load "+src))};document.head.appendChild(s);});}
+function waitForBody(){if(document.body)return Promise.resolve();return new Promise(function(resolve){document.addEventListener("DOMContentLoaded",resolve,{once:true});});}
+function mountVisualShell(){if(document.getElementById("an50-root"))return;var r=document.createElement("div");r.id="an50-root";r.className="mode-chat";r.innerHTML='<img id="an50-img" alt="ANITA"><div id="an50-bubble" class="show">Привет! Я ANITA. Чем могу помочь?</div><div id="an50-chat"><input id="an50-input" placeholder="Спросите ANITA..." autocomplete="off"><button id="an50-send" type="button" aria-label="Send">➜</button></div>';document.body.appendChild(r);}
+async function boot(){try{await waitForBody();loadCSS(OLD+"anita50.css?v="+VERSION);mountVisualShell();await loadScript(OLD+"config-v017a.js?v="+VERSION);await loadScript(OLD+"ui.js?v="+VERSION);if(window.ANITA50&&window.ANITA50.ui){window.ANITA50.ui.ready();window.ANITA50.ui.bubbleText("Привет! Я ANITA. Чем могу помочь?");}
+var files=["bootstrap-exp.js","engine/dialogue-state.js","engine/pending.js","engine/turn-guard.js","engine/extract.js","engine/human.js","engine/ai-bridge.js","engine/brief-flow.js","engine/interpreter.js","engine/ui-bind.js"];for(var i=0;i<files.length;i++)await loadScript(EXP+files[i]);window.__ANITA_GROK_V02_READY__=true;console.log("[ANITA Grok v0.2] diagnostic build ready");window.dispatchEvent(new CustomEvent("anita:grok-v02-ready"));}catch(err){console.error("[ANITA Grok loader]",err);window.__ANITA_GROK_V02_ERROR__=String(err&&err.message||err);var b=document.getElementById("an50-bubble");if(b)b.textContent="TEST LOADER ERROR: "+window.__ANITA_GROK_V02_ERROR__;}}
+boot();})();
