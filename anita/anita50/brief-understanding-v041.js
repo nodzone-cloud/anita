@@ -32,6 +32,13 @@ function goalSignals(text){
   if(quote){req.push("quote request");goals.push("request a quote");}
   return {requirements:uniq(req),goals:uniq(goals),matched:req.length>0,ru,fi};
 }
+function sizeSignal(text){
+  const x=norm(text);
+  if(/\b(?:one|single|1)\s*(?:landing\s*)?page\b|\b(?:landing page|one-page|single-page)\b|(?:одна|1)\s+страниц|лендинг|yksi sivu/i.test(x))return"one landing page";
+  if(/\b(?:few|several|couple|some|multiple)\s+(?:separate\s+)?pages?\b|\b(?:separate pages?|more than one page)\b|\b(?:2|3|4|5)\s*pages?\b|несколько\s+(?:отдельных\s+)?страниц|отдельные страницы|пару\s+страниц|(?:2|3|4|5)\s*страниц|muutama sivu|erilliset sivut|useita sivuja/i.test(x))return"a few separate pages";
+  if(/\b(?:larger?|big|multi-page|multipage)\s*(?:website|site)?\b|больш(?:ой|ого).*многостранич|многостранич|suurempi monisivuinen|monisivuinen/i.test(x))return"a larger multi-page site";
+  return null;
+}
 function looksLikeGoalAnswer(text){
   const x=norm(text);if(!x)return false;
   if(goalSignals(x).matched)return true;
@@ -41,13 +48,10 @@ function looksLikeGoalAnswer(text){
   return false;
 }
 
-/* Natural confirmations: visitors do not have to type one exact yes/no token. */
 const oldYes=R.yes.bind(R),oldNo=R.no.bind(R);
 R.yes=function(text){const x=norm(text);return oldYes(text)||/^(?:yes[, ]|yeah[, ]|sure[, ]|of course|absolutely|sounds good|that works|i do|i would|да[, ]|ага[, ]|конечно|точно|нужно|да это нужно|да хочу|хочу|подходит|согласен|согласна|kyllä[, ]|joo[, ]|tottakai|sopii)/i.test(x);};
 R.no=function(text){const x=norm(text);return oldNo(text)||/^(?:no[, ]|no thanks|not for now|i don't|i do not|rather not|нет[, ]|не надо|не нужно|не хочу|не сейчас|не обязательно|ei[, ]|ei kiitos|en halua|ei tarvitse)/i.test(x);};
 
-/* Context-first router. A word like "prices" inside the answer to the GOAL
- * question is an answer to the brief, not a request for Alex Node's price list. */
 const oldClassify=R.classify.bind(R);
 R.classify=function(text){
   const c=W.state.context(),base=oldClassify(text),l=R.lang(text,c),pa=String(c.pendingAction||"");
@@ -66,9 +70,6 @@ R.classify=function(text){
 };
 W.router038=R;W.router034=R;
 
-/* Augment the existing AI semantic interpreter with strong local meaning.
- * The AI remains the main semantic brain; this fallback prevents simple natural
- * phrases from collapsing into a scripted price/service route. */
 const oldInterpret=S.interpret.bind(S);
 S.interpret=async function(text,language){
   let out;
@@ -79,7 +80,12 @@ S.interpret=async function(text,language){
     const g=goalSignals(text);
     if(g.matched){
       out.intent="website_requirements";
-      out.confirmed_requirements=uniq([...(out.confirmed_requirements||[]),...g.requirements]);
+      let confirmed=uniq([...(out.confirmed_requirements||[]),...g.requirements]);
+      /* Never promote product sales to CONFIRMED unless the visitor actually
+       * expressed a buying/selling signal in this answer. AI may suggest it,
+       * but suggestions must stay inferred until the visitor confirms them. */
+      if(!g.requirements.includes("product sales"))confirmed=confirmed.filter(v=>v!=="product sales");
+      out.confirmed_requirements=confirmed;
       const existing=clean(out.goal);
       const local=g.goals.join(" and ");
       out.goal=existing||local;
@@ -87,13 +93,21 @@ S.interpret=async function(text,language){
     }else if(looksLikeGoalAnswer(text)){
       out.intent="website_goal";
       out.goal=clean(out.goal)||clean(text);
+      out.confirmed_requirements=uniq(out.confirmed_requirements||[]).filter(v=>v!=="product sales");
       out.confidence=Math.max(Number(out.confidence||0),0.84);
+    }
+  }
+  if(c&&c.topic==="website_consultation"&&c.pending==="size"){
+    const sz=sizeSignal(text);
+    if(sz){
+      out.intent="website_size";
+      out.size=sz;
+      out.confidence=Math.max(Number(out.confidence||0),0.99);
     }
   }
   return out;
 };
 
-/* Ask an open question, not a vocabulary menu. */
 const oldRoute=A.routeToSecretary.bind(A);
 A.routeToSecretary=function(h){
   const r=oldRoute(h);if(!r||r.kind!=="answer"||r.pending!=="goal")return r;
@@ -106,7 +120,6 @@ A.routeToSecretary=function(h){
   return r;
 };
 
-/* Natural Russian wording for booking suggestions. */
 const oldQuestionForNeed=A.questionForNeed.bind(A);
 A.questionForNeed=function(k,l,b){
   if(k==="booking"&&l==="ru")return"Похоже, выбор времени — часть пути клиента. Хотите, чтобы посетитель мог выбрать и забронировать подходящее время прямо на сайте?";
@@ -114,6 +127,6 @@ A.questionForNeed=function(k,l,b){
   return oldQuestionForNeed(k,l,b);
 };
 
-window.__ANITA_V041__={openBriefLanguage:true,contextFirstRouting:true,semanticGoalUnderstanding:true,naturalConfirmations:true,noGoalMenu:true};
+window.__ANITA_V041__={openBriefLanguage:true,contextFirstRouting:true,semanticGoalUnderstanding:true,naturalConfirmations:true,noGoalMenu:true,sizeUnderstanding:true,confirmedSalesGuard:true};
 console.log("[ANITA 0.4.1 OPEN BRIEF UNDERSTANDING]",window.__ANITA_V041__);
 })(window.ANITA50=window.ANITA50||{});
