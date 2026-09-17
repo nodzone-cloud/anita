@@ -8,9 +8,11 @@
   window.__ANITA_GROK_V02_LOADER__ = true;
   window.ANITA_USE_ENGINE_EXP = true;
 
+  // Stable existing visual layer may stay on CDN.
   var OLD = "https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/anita/anita50/";
-  var EXP = "https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/anita/grok-v02-test/";
-  var VERSION = "20260917-hybrid-1";
+  // Experimental engine comes directly from GitHub main so fresh Grok fixes are not hidden by jsDelivr branch cache.
+  var EXP = "https://raw.githubusercontent.com/nodzone-cloud/anita/main/anita/grok-v02-test/";
+  var VERSION = "20260917-grokfix-2";
 
   function loadCSS(src) {
     if (document.querySelector('link[data-anita-grok-css="1"]')) return;
@@ -42,8 +44,6 @@
       await waitForBody();
       loadCSS(OLD + "anita50.css?v=" + VERSION);
       mountVisualShell();
-
-      // Existing ANITA visual/config layer only.
       await loadScript(OLD + "config-v017a.js?v=" + VERSION);
       await loadScript(OLD + "ui.js?v=" + VERSION);
       if (window.ANITA50 && window.ANITA50.ui) {
@@ -51,7 +51,6 @@
         window.ANITA50.ui.bubbleText("Привет! Я ANITA. Чем могу помочь?");
       }
 
-      // Grok v0.2 brain only. No old core/router/roles/brief modules.
       var files = [
         "bootstrap-exp.js",
         "engine/dialogue-state.js",
@@ -67,7 +66,7 @@
       for (var i = 0; i < files.length; i++) await loadScript(EXP + files[i] + "?v=" + VERSION);
 
       window.__ANITA_GROK_V02_READY__ = true;
-      console.log("[ANITA Grok v0.2] hybrid ready: ANITA visuals + Grok engine");
+      console.log("[ANITA Grok v0.2] hybrid ready - Grok fixes 20260917-grokfix-2");
       window.dispatchEvent(new CustomEvent("anita:grok-v02-ready"));
     } catch (err) {
       console.error("[ANITA Grok v0.2 hybrid loader]", err);
