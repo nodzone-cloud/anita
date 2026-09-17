@@ -1,44 +1,78 @@
-/* ANITA Grok v0.2 Test Loader
-   Isolated experimental loader for /antest.
-   Loads only the Grok experimental engine files in the required order.
+/* ANITA Grok v0.2 Hybrid Test Loader
+   Existing ANITA visual shell + Grok experimental dialogue engine.
+   For /antest only. Does NOT load old core/router/roles/brief logic.
 */
 (function () {
   "use strict";
-
   if (window.__ANITA_GROK_V02_LOADER__) return;
   window.__ANITA_GROK_V02_LOADER__ = true;
   window.ANITA_USE_ENGINE_EXP = true;
 
-  var BASE = "https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/anita/grok-v02-test/";
-  var files = [
-    "bootstrap-exp.js",
-    "engine/dialogue-state.js",
-    "engine/pending.js",
-    "engine/turn-guard.js",
-    "engine/extract.js",
-    "engine/human.js",
-    "engine/ai-bridge.js",
-    "engine/brief-flow.js",
-    "engine/interpreter.js",
-    "engine/ui-bind.js"
-  ];
+  var OLD = "https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/anita/anita50/";
+  var EXP = "https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/anita/grok-v02-test/";
+  var VERSION = "20260917-hybrid-1";
 
-  function loadNext(index) {
-    if (index >= files.length) {
-      console.log("[ANITA Grok v0.2] experimental engine loaded");
-      window.dispatchEvent(new CustomEvent("anita:grok-v02-ready"));
-      return;
-    }
-
-    var script = document.createElement("script");
-    script.src = BASE + files[index] + "?v=20260917-1";
-    script.async = false;
-    script.onload = function () { loadNext(index + 1); };
-    script.onerror = function () {
-      console.error("[ANITA Grok v0.2] failed to load:", files[index]);
-    };
-    document.head.appendChild(script);
+  function loadCSS(src) {
+    if (document.querySelector('link[data-anita-grok-css="1"]')) return;
+    var l = document.createElement("link"); l.rel = "stylesheet"; l.href = src;
+    l.dataset.anitaGrokCss = "1"; document.head.appendChild(l);
+  }
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement("script"); s.src = src; s.async = false;
+      s.onload = function () { resolve(src); };
+      s.onerror = function () { reject(new Error("Failed to load " + src)); };
+      document.head.appendChild(s);
+    });
+  }
+  function waitForBody() {
+    if (document.body) return Promise.resolve();
+    return new Promise(function (resolve) { document.addEventListener("DOMContentLoaded", resolve, { once: true }); });
+  }
+  function mountVisualShell() {
+    if (document.getElementById("an50-root")) return;
+    var r = document.createElement("div");
+    r.id = "an50-root"; r.className = "mode-chat";
+    r.innerHTML = '<img id="an50-img" alt="ANITA"><div id="an50-bubble" class="show">Привет! Я ANITA. Чем могу помочь?</div><div id="an50-chat"><input id="an50-input" placeholder="Спросите ANITA..." autocomplete="off"><button id="an50-send" type="button" aria-label="Send">➜</button></div>';
+    document.body.appendChild(r);
   }
 
-  loadNext(0);
+  async function boot() {
+    try {
+      await waitForBody();
+      loadCSS(OLD + "anita50.css?v=" + VERSION);
+      mountVisualShell();
+
+      // Existing ANITA visual/config layer only.
+      await loadScript(OLD + "config-v017a.js?v=" + VERSION);
+      await loadScript(OLD + "ui.js?v=" + VERSION);
+      if (window.ANITA50 && window.ANITA50.ui) {
+        window.ANITA50.ui.ready();
+        window.ANITA50.ui.bubbleText("Привет! Я ANITA. Чем могу помочь?");
+      }
+
+      // Grok v0.2 brain only. No old core/router/roles/brief modules.
+      var files = [
+        "bootstrap-exp.js",
+        "engine/dialogue-state.js",
+        "engine/pending.js",
+        "engine/turn-guard.js",
+        "engine/extract.js",
+        "engine/human.js",
+        "engine/ai-bridge.js",
+        "engine/brief-flow.js",
+        "engine/interpreter.js",
+        "engine/ui-bind.js"
+      ];
+      for (var i = 0; i < files.length; i++) await loadScript(EXP + files[i] + "?v=" + VERSION);
+
+      window.__ANITA_GROK_V02_READY__ = true;
+      console.log("[ANITA Grok v0.2] hybrid ready: ANITA visuals + Grok engine");
+      window.dispatchEvent(new CustomEvent("anita:grok-v02-ready"));
+    } catch (err) {
+      console.error("[ANITA Grok v0.2 hybrid loader]", err);
+      window.__ANITA_GROK_V02_ERROR__ = String(err && err.message || err);
+    }
+  }
+  boot();
 })();
