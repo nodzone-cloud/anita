@@ -1,8 +1,8 @@
 /* ANITA 51 — clean Human-Tech test loader */
 (function(){"use strict";if(window.__ANITA51_LOADER__)return;window.__ANITA51_LOADER__=true;
 var OLD="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/anita/anita50/";
-var BASE="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@708c1f77ae20e4267ab7a69d6aabe2b4881fd9e9/anita/anita51/";
-var V="20260918-anita51-free-chat-intro-13";
+var BASE="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@bdeb0e83b5f313e1e30538b1e27d8ebcf787adc4/anita/anita51/";
+var V="20260918-anita51-low-dialogue-14";
 function css(src,key){key=key||"core";if(document.querySelector('link[data-anita51-css="'+key+'"]'))return;var l=document.createElement("link");l.rel="stylesheet";l.href=src;l.dataset.anita51Css=key;document.head.appendChild(l)}
 function js(src){return new Promise(function(ok,bad){var s=document.createElement("script");s.src=src+"?v="+V;s.async=false;s.onload=ok;s.onerror=function(){bad(new Error("Failed to load "+src))};document.head.appendChild(s)})}
 function body(){if(document.body)return Promise.resolve();return new Promise(function(ok){document.addEventListener("DOMContentLoaded",ok,{once:true})})}
