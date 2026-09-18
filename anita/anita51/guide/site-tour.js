@@ -1,25 +1,22 @@
-/* ANITA 51 — autonomous multi-page Guide test. Isolated from Secretary/brief. */
-(function(root){"use strict";const A=root.ANITA51=root.ANITA51||{},KEY="anita51_tour_v1";
+/* ANITA 51 — in-page multi-view demo site + autonomous Guide. No Secretary changes. */
+(function(root){"use strict";const A=root.ANITA51=root.ANITA51||{},KEY="anita51_tour_v2";
 const pages=[
-{id:"home",file:"index.html",title:"Home",text:"Welcome to the Alex Node guide test. This is the starting point."},
-{id:"about",file:"about.html",title:"About",text:"This page explains Alex Node and the Human-Tech idea."},
-{id:"services",file:"services.html",title:"Services",text:"Here you can see the kinds of website and IT services Alex Node offers."},
-{id:"prices",file:"prices.html",title:"Prices",text:"Here are the website package prices and positioning."},
-{id:"info",file:"info.html",title:"Info",text:"This is the final information page of the guide test."}
+{id:"home",title:"Home",lead:"Welcome to Alex Node",body:"Human-Tech websites, IT support and virtual characters designed around people.",guide:"Welcome. This is the home page — a quick introduction to Alex Node."},
+{id:"about",title:"About",lead:"Technology with a personality.",body:"Alex Node develops practical digital services with a more human way of interacting with technology.",guide:"About explains Alex Node and the Human-Tech direction."},
+{id:"services",title:"Services",lead:"Websites · IT · Virtual Characters",body:"Website creation, practical IT support, and character-based digital experiences.",guide:"Services shows the main areas Alex Node can help with."},
+{id:"prices",title:"Prices",lead:"Clear starting points",body:"START 250 € · LIGHT 450 € · MEDIUM 620 € · CODE from 700 €.",guide:"Prices gives clear starting points for website packages."},
+{id:"info",title:"Info",lead:"Ready for the next step?",body:"Explore the demo, talk with ANITA, or prepare a website brief.",guide:"Info is the last stop. From here you can keep exploring or talk with me."}
 ];
-function read(){try{return JSON.parse(sessionStorage.getItem(KEY)||"null")}catch(_){return null}}
-function write(v){try{sessionStorage.setItem(KEY,JSON.stringify(v))}catch(_){}}
-function clear(){try{sessionStorage.removeItem(KEY)}catch(_){}}
-function current(){return document.body&&document.body.dataset.guidePage||"home"}
-function url(file){return new URL(file,location.href).href}
-function bubble(){return document.getElementById("an50-bubble")}
-function choice(label,fn){const b=document.createElement("button");b.type="button";b.textContent=label;b.onclick=fn;return b}
+let timer=null;
+function read(){try{return JSON.parse(sessionStorage.getItem(KEY)||"null")}catch(_){return null}}function write(v){try{sessionStorage.setItem(KEY,JSON.stringify(v))}catch(_){}}function clear(){try{sessionStorage.removeItem(KEY)}catch(_){}if(timer)clearTimeout(timer);timer=null}
+function site(){let el=document.getElementById("anita51-demo-site");if(el)return el;el=document.createElement("div");el.id="anita51-demo-site";el.innerHTML='<header><div class="an51-brand">ALEX NODE</div><nav></nav></header><main><div class="an51-kicker">ANITA 51 GUIDE TEST</div><h1></h1><h2></h2><p></p><div class="an51-panel"></div></main>';const rootEl=document.getElementById("an50-root");document.body.insertBefore(el,rootEl||document.body.firstChild);const nav=el.querySelector("nav");pages.forEach((p,i)=>{const b=document.createElement("button");b.type="button";b.textContent=p.title;b.onclick=()=>showPage(i,false);nav.appendChild(b)});return el}
+function showPage(i,fromTour){const el=site(),p=pages[i];el.dataset.page=p.id;el.querySelector("h1").textContent=p.title;el.querySelector("h2").textContent=p.lead;el.querySelector("p").textContent=p.body;el.querySelector(".an51-panel").textContent="Separate demo view: "+p.title;[...el.querySelectorAll("nav button")].forEach((b,n)=>b.classList.toggle("active",n===i));history.replaceState(null,"","#"+p.id);if(fromTour)write({active:true,index:i});}
+function bubble(){return document.getElementById("an50-bubble")}function choice(label,fn){const b=document.createElement("button");b.type="button";b.textContent=label;b.onclick=fn;return b}
 function controls(text,buttons){const b=bubble();if(!b)return;b.innerHTML="";const d=document.createElement("div");d.textContent=text;b.appendChild(d);if(buttons&&buttons.length){const box=document.createElement("div");box.className="anita51-tour-controls";buttons.forEach(x=>box.appendChild(x));b.appendChild(box)}b.classList.add("show")}
 function pose(name){if(root.ANITA50&&root.ANITA50.ui){root.ANITA50.ui.mode(name==="hello"?"intro":"guide-intro");root.ANITA50.ui.pose(name)}}
-function stop(){clear();controls("Tour stopped. I’ll stay here if you need me.");}
-function go(i){write({active:true,index:i});location.href=url(pages[i].file)}
-function begin(){write({active:true,index:0});pose("guide");controls("I’m ANITA — Alex Node IT Assistance, and I’ll be your guide. Let me show you around automatically.",[choice("Stop tour",stop)]);setTimeout(()=>go(1),5500)}
-function welcome(){pose("hello");controls("Hi, I’m ANITA 😊 Would you like a quick guided tour of this site?",[choice("Yes, show me",begin),choice("No thanks",()=>{clear();controls("No problem 😊 Explore at your own pace. I’m here if you need me.");})])}
-function resume(){const s=read();if(!s||!s.active)return welcome();let i=pages.findIndex(p=>p.id===current());if(i<0)i=s.index||0;write({active:true,index:i});pose("guide");const last=i>=pages.length-1;controls(pages[i].text,[choice(last?"Finish":"Stop tour",()=>{clear();controls(last?"That’s the end of the tour 😊 You can keep exploring or ask me anything.":"Tour stopped. I’ll stay here if you need me.")})]);if(!last)setTimeout(()=>{const now=read();if(now&&now.active)go(i+1)},6500);else clear()}
-function boot(){if(!document.body||document.body.dataset.anita51Guide!=="1")return;setTimeout(resume,350)}
-A.SiteTour={boot,welcome,begin,stop,pages};})(window);
+function step(i){if(i>=pages.length){clear();controls("That’s the end of the tour 😊 You can keep exploring or ask me anything.");return}showPage(i,true);pose("guide");controls(pages[i].guide,[choice("Stop tour",stop)]);timer=setTimeout(()=>{const s=read();if(s&&s.active)step(i+1)},i===0?5500:6500)}
+function begin(){clear();write({active:true,index:0});step(0)}
+function stop(){clear();controls("Tour stopped. Explore at your own pace — I’ll stay here if you need me.")}
+function welcome(){clear();showPage(0,false);pose("hello");controls("Hi, I’m ANITA 😊 I’m the Alex Node site guide. Would you like me to show you around?",[choice("Yes, show me",begin),choice("No thanks",()=>{clear();controls("No problem 😊 Explore at your own pace. I’m here if you need me.")})])}
+function boot(){site();const hash=location.hash.replace("#",""),i=pages.findIndex(p=>p.id===hash);showPage(i>=0?i:0,false);setTimeout(welcome,250)}
+A.SiteTour={boot,welcome,begin,stop,pages,showPage};})(window);
