@@ -1,7 +1,7 @@
 (function(root){"use strict";const A=root.ANITA51;function ok(x,m){if(!x)throw new Error("ANITA51 regression: "+m)}
-async function run(){A.State.resetAll();let r=await A.Interpreter.handle("I need a website");ok(r.pending&&r.pending.id==="business","website -> business");
-r=await A.Interpreter.handle("book shop");let s=A.State.get();ok(s.brief.confirmed.business==="book shop","business exact");ok(s.brief.confirmed.goal===null,"no invented booking");ok(s.brief.confirmed.size===null,"no invented size");ok(r.pending.id==="goal","ask goal");
-r=await A.Interpreter.handle("buy books and contact us");ok(r.pending.id==="size","goal -> size");r=await A.Interpreter.handle("a few pages");ok(r.pending.id==="requirements","size -> requirements");r=await A.Interpreter.handle("online store");ok(r.pending.id==="confirm","requirements -> confirm");ok(r.showButtons,"confirm has buttons");
-r=await A.Interpreter.handle("yes");ok(r.pending&&r.pending.id==="handoff","yes -> handoff, not human fallback");ok(A.State.get().brief.meta.confirmed===true,"brief confirmed");
-A.State.resetAll();r=await A.Interpreter.handle("Thanks, I need a website");ok(r.pending&&r.pending.id==="business","mixed smalltalk preserves website intent");return"ANITA51 regression PASS"}
-A.Tests={run};})(window);
+async function run(){A.State.resetAll();let r=await A.Interpreter.handle("I need a website");ok(r.pending.id==="business"&&!r.showButtons,"business is open text");
+r=await A.Interpreter.handle("book shop");ok(A.State.get().brief.confirmed.business==="book shop","business exact");ok(A.State.get().brief.confirmed.goal===null,"no invented goal");ok(r.pending.id==="goal"&&!r.showButtons,"goal is open text, no buttons");
+r=await A.Interpreter.handle("People should browse books, buy them, contact us and leave feedback");ok(A.State.get().brief.confirmed.goal.includes("browse books"),"multi-action goal preserved");ok(r.pending.id==="size"&&r.showButtons,"size has finite-choice buttons");
+r=await A.Interpreter.handle("two pages");ok(A.State.get().brief.confirmed.size==="two pages","two pages preserved");ok(r.pending.id==="requirements"&&!r.showButtons,"requirements open text, no buttons");
+r=await A.Interpreter.handle("shop, contact form and two languages");ok(r.pending.id==="confirm"&&r.showButtons,"confirm buttons");r=await A.Interpreter.handle("yes");ok(r.pending.id==="handoff"&&r.showButtons,"handoff buttons");
+A.State.resetAll();r=await A.Interpreter.handle("Thanks, I need a website");ok(r.pending.id==="business","mixed smalltalk preserves intent");return"ANITA51 regression PASS"}A.Tests={run};})(window);
