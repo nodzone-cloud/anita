@@ -65,7 +65,26 @@ const BriefFlow={
    if(/страниц|size|размер|siv/i.test(x)&&facts.size)confirmed.size=facts.size;if(/бизнес|business|проект/i.test(x)&&(facts.business||value))confirmed.business=facts.business||String(value).trim();if(/цел|goal|tehtäv/i.test(x)&&(facts.goal||value))confirmed.goal=facts.goal||String(value).trim();if(facts.requirements.length)confirmed.requirements=facts.requirements;if(facts.rejected.length)confirmed.requirements=(confirmed.requirements||[]).filter(r=>facts.rejected.indexOf(r)===-1);if(!facts.business&&!facts.size&&!facts.goal&&!facts.requirements.length)confirmed.business=String(value).trim();
    const merged=Extract.mergeIntoBrief({confirmed,inferred:brief.inferred,rejected:brief.rejected},facts);DS.update({websiteBrief:merged});const q=Pending.get("confirm_brief");DS.setPending(q);DS.setConversationState("confirming");return{role:"business_consultant",replies:[{text:say(language,"Updated 😊\n\n","Обновила 😊\n\n","Päivitetty 😊\n\n")+formatSummary(DS.get().websiteBrief,language),pose:"professional"}],pendingQuestion:q,showButtons:true};
   }
-  const textVal=Array.isArray(value)?value.join(", "):String(value),facts=Extract.extractFacts(textVal),confirmed=Object.assign({},DS.get().websiteBrief.confirmed);if(pending.id==="website_business")confirmed.business=facts.business||textVal;if(pending.id==="website_goal")confirmed.goal=facts.goal||textVal;if(pending.id==="website_size")confirmed.size=facts.size||textVal;if(pending.id==="website_requirements")confirmed.requirements=facts.requirements.length?facts.requirements:(/ничего|nothing|not sure|не знаю/i.test(textVal)?[]:[textVal]);let merged=Extract.mergeIntoBrief({confirmed,inferred:DS.get().websiteBrief.inferred,rejected:DS.get().websiteBrief.rejected},facts);if(pending.id==="website_business")merged.confirmed.business=confirmed.business;if(pending.id==="website_goal")merged.confirmed.goal=confirmed.goal;if(pending.id==="website_size")merged.confirmed.size=confirmed.size;DS.update({websiteBrief:merged});return nextMissingQuestion(language);
+  const textVal=Array.isArray(value)?value.join(", "):String(value),brief=DS.get().websiteBrief,confirmed=Object.assign({},brief.confirmed),inferred=Object.assign({},brief.inferred),rejected=Object.assign({},brief.rejected);
+  // Human-Tech rule: an answer to a targeted question confirms ONLY that field.
+  // Example: "book shop" is a business description; "book" must not become booking
+  // and "shop" must not silently become an online-store requirement.
+  let merged={confirmed,inferred,rejected};
+  if(pending.id==="website_business"){
+   merged.confirmed.business=textVal.trim();
+  }else{
+   const facts=Extract.extractFacts(textVal);
+   if(pending.id==="website_goal")merged.confirmed.goal=facts.goal||textVal.trim();
+   if(pending.id==="website_size")merged.confirmed.size=facts.size||textVal.trim();
+   if(pending.id==="website_requirements")merged.confirmed.requirements=facts.requirements.length?facts.requirements:(/ничего|nothing|not sure|не знаю/i.test(textVal)?[]:[textVal.trim()]);
+   // Merge extra facts only after the business-name question, where ordinary words
+   // such as "book" or "shop" can otherwise be mistaken for requested features.
+   merged=Extract.mergeIntoBrief(merged,facts);
+   if(pending.id==="website_goal")merged.confirmed.goal=confirmed.goal=facts.goal||textVal.trim();
+   if(pending.id==="website_size")merged.confirmed.size=confirmed.size=facts.size||textVal.trim();
+  }
+  DS.update({role:"business_consultant",topic:"website_order",conversationState:"brief",flags:{briefStarted:true,askedGoal:true},websiteBrief:merged});
+  return nextMissingQuestion(language);
  }
 };
 W.engine=W.engine||{};W.engine.BriefFlow=BriefFlow;console.log("[ANITA Engine] briefFlow ready (AI extract fallback)");
