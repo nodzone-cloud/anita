@@ -1,12 +1,14 @@
-(function(root){"use strict";const A=root.ANITA51=root.ANITA51||{};
-function lang(t){if(/[А-Яа-яЁё]/.test(t))return"ru";if(/\b(hei|moi|sivusto|hinnat|kiitos)\b/i.test(t))return"fi";return"en"}
-A.Interpreter={async handle(text){const turn=A.State.nextTurn(),s=A.State.get();if(!s.language||s.phase==="idle")A.State.update({language:lang(text)});A.State.update({lastUser:text});const state=A.State.get(),intent=A.IntentRouter.classify(text,state);
-let out;
-if(intent.primary==="pending_answer")out=A.Secretary.answer(text);
+(function(root){"use strict";const A=root.ANITA51=root.ANITA51||{},HANDOFF="https://anita-brief.nodzone.workers.dev/";
+function detectLang(t,current){if(current)return current;if(/[А-Яа-яЁё]/.test(t))return"ru";if(/\b(hei|moi|sivusto|hinnat|kiitos)\b/i.test(t))return"fi";return"en"}
+async function sendBrief(brief){try{const r=await fetch(HANDOFF,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({brief})});let d=null;try{d=await r.json()}catch(_){}return{ok:r.ok&&d&&d.ok,status:r.status,data:d}}catch(e){return{ok:false,error:String(e)}}}
+A.Interpreter={async handle(raw){const text=String(raw||"").trim(),turn=A.State.nextTurn();A.State.update({language:detectLang(text,A.State.get().language),lastUser:text});let state=A.State.get(),intent=A.IntentRouter.classify(text,state),out;
+if(intent.primary==="new_brief")out=A.Secretary.start();
+else if(intent.primary==="pending")out=A.Secretary.answer(text);
+else if(state.phase==="confirmed"&&/send|pass|перед|отправ|lähet/i.test(text)){A.State.update({phase:"handoff_requested"});out={text:"",sector:"secretary",action:{type:"send_brief"}}}
 else if(intent.primary==="website")out=A.Secretary.start();
 else if(intent.primary==="guide"){const g=A.Guide.answer(text,state.language);out={text:g||A.Human.fallback(state.language),sector:"guide"}}
-else if(intent.primary==="it")out={text:state.language==="ru"?"Опишите, что происходит с устройством.":"Tell me what is happening with the device.",sector:"it"};
-else if(intent.primary==="human")out={text:A.Human.fallback(state.language),sector:"human"};
-else{const semantic=await A.AI.interpret({text,state:A.State.get(),pending:A.State.get().pending});out=semantic&&semantic.reply?{text:semantic.reply,sector:semantic.sector||"human"}:{text:A.Human.fallback(state.language),sector:"human"}}
-A.State.update({lastReply:out.text,sector:out.sector||A.State.get().sector});return Object.assign({turnId:turn,intent},out)}};
-})(window);
+else if(intent.primary==="it")out={text:state.language==="ru"?"Конечно. Опишите, что происходит с устройством и что вы уже пробовали.":"Sure. Tell me what is happening with the device and what you have already tried.",sector:"it"};
+else if(intent.primary==="human")out={text:A.Human.reply(text,state.language),sector:"human"};
+else{const ai=await A.AI.understand(text,state);out={text:ai||A.Human.fallback(state.language),sector:"human",usedAI:!!ai}}
+if(out&&out.action&&out.action.type==="send_brief"){const sent=await sendBrief(A.State.get().brief);if(sent.ok){const b=A.State.get().brief;b.meta=Object.assign({},b.meta,{sent:true});A.State.update({brief:b,phase:"handoff_complete"});out={text:state.language==="ru"?"Готово 😊 Я передала бриф Alex.":"Done 😊 I sent the brief to Alex.",sector:"secretary",handoff:"sent"}}else{A.State.update({phase:"confirmed"});out={text:state.language==="ru"?"Сейчас отправить не получилось. Бриф не отмечен как отправленный. Можно попробовать ещё раз.":"I couldn’t send it right now. The brief has not been marked as sent. You can try again.",sector:"secretary",handoff:"failed"}}}
+A.State.update({lastReply:out.text,sector:out.sector||A.State.get().sector});return Object.assign({turnId:turn,intent,language:A.State.get().language},out)}};})(window);
