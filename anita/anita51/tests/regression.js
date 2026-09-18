@@ -1,16 +1,7 @@
-/* Run after ANITA51 core files are loaded. Throws on regression. */
-(function(root){"use strict";const A=root.ANITA51;
-function assert(ok,msg){if(!ok)throw new Error("ANITA51 regression: "+msg)}
-async function run(){
-A.State.resetAll();
-let r=await A.Interpreter.handle("I need a website");assert(r.pending&&r.pending.id==="business","website request must ask business");
-r=await A.Interpreter.handle("book shop");
-const s=A.State.get();
-assert(s.brief.confirmed.business==="book shop","book shop must be confirmed as business");
-assert(s.brief.confirmed.goal===null,"book shop must not invent goal/booking");
-assert(!s.brief.confirmed.requirements.includes("online store"),"book shop must not invent online store");
-assert(s.brief.confirmed.size===null,"book shop must not invent size");
-assert(r.pending&&r.pending.id==="goal","after business ANITA must ask visitor goal");
-return true}
-A.Tests={run};
-})(window);
+(function(root){"use strict";const A=root.ANITA51;function ok(x,m){if(!x)throw new Error("ANITA51 regression: "+m)}
+async function run(){A.State.resetAll();let r=await A.Interpreter.handle("I need a website");ok(r.pending&&r.pending.id==="business","website -> business");
+r=await A.Interpreter.handle("book shop");let s=A.State.get();ok(s.brief.confirmed.business==="book shop","business exact");ok(s.brief.confirmed.goal===null,"no invented booking");ok(s.brief.confirmed.size===null,"no invented size");ok(r.pending.id==="goal","ask goal");
+r=await A.Interpreter.handle("buy books and contact us");ok(r.pending.id==="size","goal -> size");r=await A.Interpreter.handle("a few pages");ok(r.pending.id==="requirements","size -> requirements");r=await A.Interpreter.handle("online store");ok(r.pending.id==="confirm","requirements -> confirm");ok(r.showButtons,"confirm has buttons");
+r=await A.Interpreter.handle("yes");ok(r.pending&&r.pending.id==="handoff","yes -> handoff, not human fallback");ok(A.State.get().brief.meta.confirmed===true,"brief confirmed");
+A.State.resetAll();r=await A.Interpreter.handle("Thanks, I need a website");ok(r.pending&&r.pending.id==="business","mixed smalltalk preserves website intent");return"ANITA51 regression PASS"}
+A.Tests={run};})(window);
