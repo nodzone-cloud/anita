@@ -3,6 +3,7 @@ function detectLang(t,current){if(current)return current;if(/[А-Яа-яЁё]/.t
 async function sendBrief(brief){try{const r=await fetch(HANDOFF,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({brief})});let d=null;try{d=await r.json()}catch(_){}return{ok:r.ok&&d&&d.ok,status:r.status,data:d}}catch(e){return{ok:false,error:String(e)}}}
 A.Interpreter={async handle(raw){const text=String(raw||"").trim(),turn=A.State.nextTurn();A.State.update({language:detectLang(text,A.State.get().language),lastUser:text});let state=A.State.get(),intent=A.IntentRouter.classify(text,state),out;
 if(intent.primary==="new_brief")out=A.Secretary.start();
+else if(state.phase==="confirmed"&&state.brief&&state.brief.meta&&state.brief.meta.confirmed&&/^(also\b|and\b|i also\b|also i\b|plus\b|ещ[её]\b|а ещё\b|также\b|lisäksi\b)/i.test(text))out=A.Secretary.amend(text.replace(/^(also\s+i\s+need|i\s+also\s+need|also|and|plus|ещ[её]|а ещё|также|lisäksi)\s*/i,"").trim()||text);
 else if(intent.primary==="pending")out=A.Secretary.answer(text);
 else if(state.phase==="confirmed"&&/send|pass|перед|отправ|lähet/i.test(text)){A.State.update({phase:"handoff_requested"});out={text:"",sector:"secretary",action:{type:"send_brief"}}}
 else if(intent.primary==="website")out=A.Secretary.start();
