@@ -20,9 +20,9 @@ function disarmHello(){const box=rootBox();armed=false;if(!box)return;box.classL
 function openInvitation(){if(!armed)return;disarmHello();pose("guide");controls("I’m ANITA — Alex Node IT Assistance 😊 I’m your guide around Alex Node. Tap me once more and I’ll show you around automatically.",[]);armGuide()}
 function armGuide(){const box=rootBox();if(!box)return;armed=true;box.classList.add("anita51-guide-trigger");const fire=e=>{if(!armed)return;if(e){e.preventDefault();e.stopPropagation()}disarmHello();begin()};box.onclick=fire;box.ontouchend=fire;box.onpointerup=fire;box.oncontextmenu=e=>e.preventDefault()}
 function readyToTalk(message){disarmHello();clear();if(root.ANITA50&&root.ANITA50.ui)root.ANITA50.ui.ready();const chat=document.getElementById("an50-chat");if(chat)chat.style.display="";controls(message||"Ready to talk 😊 Ask me anything, or tell me you need a website and I can prepare a brief with you.");const i=document.getElementById("an50-input");if(i)i.focus()}
-function step(i){if(i>=pages.length){readyToTalk("Tour complete 😊 I’m ready to talk. You can ask me something, get help, or tell me you need a website and I’ll prepare the brief with you.");return}showPage(i,true);pose("guide");controls(pages[i].guide,[choice("Stop tour",stop)]);timer=setTimeout(()=>{const s=read();if(s&&s.active)step(i+1)},i===0?5500:6500)}
+function step(i){if(i>=pages.length){readyToTalk("How can I help you?");return}showPage(i,true);pose("guide");controls(pages[i].guide,[choice("Stop tour",stop)]);timer=setTimeout(()=>{const s=read();if(s&&s.active)step(i+1)},i===0?5500:6500)}
 function begin(){disarmHello();clear();write({active:true,index:0});step(0)}
-function stop(){readyToTalk("Tour stopped. I’m ready to talk whenever you are.")}
+function stop(){readyToTalk("How can I help you?")}
 function welcome(){clear();showPage(0,false);pose("hello");const b=bubble();if(b){b.innerHTML="";b.classList.remove("show")}armHello()}
 function boot(){site();const hash=location.hash.replace("#",""),i=pages.findIndex(p=>p.id===hash);showPage(i>=0?i:0,false);setTimeout(welcome,250)}
 A.SiteTour={boot,welcome,openInvitation,begin,stop,readyToTalk,pages,showPage};})(window);
