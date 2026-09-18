@@ -22,3 +22,27 @@
     z-index:2147483001;
   }
 }
+
+/* ANITA 51 mobile conversation layout: dialogue stays low and beside ANITA, never across her face/body. */
+@media(max-width:640px){
+  #an50-root #an50-bubble.show{
+    position:fixed !important;
+    left:18px !important;
+    right:auto !important;
+    top:auto !important;
+    bottom:92px !important;
+    width:min(68vw,390px) !important;
+    max-width:390px !important;
+    max-height:44vh !important;
+    overflow-y:auto !important;
+    overscroll-behavior:contain;
+    z-index:2147483001 !important;
+  }
+  #an50-root #an50-bubble.show > div:first-child{
+    max-height:34vh;
+    overflow-y:auto;
+  }
+  #an50-root #an50-chat{
+    z-index:2147483002 !important;
+  }
+}
