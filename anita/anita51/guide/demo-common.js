@@ -1,0 +1,1 @@
+(function(){const base="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/anita/anita51/";const s=document.createElement("script");s.src=base+"loader.js";document.head.appendChild(s);const poll=setInterval(()=>{if(window.__ANITA51_READY__&&window.ANITA51&&ANITA51.SiteTour){clearInterval(poll);ANITA51.SiteTour.boot()}},100)})();
