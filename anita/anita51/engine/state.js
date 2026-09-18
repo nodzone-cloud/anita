@@ -1,7 +1,7 @@
-(function(root){"use strict";
-const A=root.ANITA51=root.ANITA51||{};
-function emptyBrief(){return{confirmed:{business:null,goal:null,size:null,requirements:[]},inferred:{suggestions:[],recommendedPackage:null},rejected:{suggestions:[]}}}
-function empty(){return{turnId:0,language:"en",sector:"human",topic:null,pending:null,brief:emptyBrief(),phase:"idle",lastUser:null,lastReply:null}}
-let s=empty();
-A.State={get:()=>s,update(p){s=Object.assign({},s,p||{});if(p&&p.brief)s.brief=Object.assign({},s.brief,p.brief);return s},nextTurn(){s.turnId++;return s.turnId},setPending(q){s.pending=q;return s},clearPending(){s.pending=null;return s},resetBrief(){s.brief=emptyBrief();s.phase="brief";s.sector="secretary";s.topic="website";s.pending=null;return s},resetAll(){s=empty();return s},emptyBrief};
+(function(root){"use strict";const A=root.ANITA51=root.ANITA51||{},KEY="anita51_state_v2";
+function emptyBrief(){return{confirmed:{business:null,goal:null,size:null,requirements:[]},inferred:{suggestions:[],recommendedPackage:null},rejected:{suggestions:[]},meta:{confirmed:false,sent:false}}}
+function empty(){return{turnId:0,language:null,sector:"human",topic:null,pending:null,brief:emptyBrief(),phase:"idle",lastUser:null,lastReply:null}}
+function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null");return x?Object.assign(empty(),x,{brief:Object.assign(emptyBrief(),x.brief||{})}):empty()}catch(_){return empty()}}
+let s=load();function save(){try{localStorage.setItem(KEY,JSON.stringify(s))}catch(_){}}
+A.State={get:()=>s,update(p){s=Object.assign({},s,p||{});if(p&&p.brief)s.brief=Object.assign({},s.brief,p.brief);save();return s},nextTurn(){s.turnId++;save();return s.turnId},setPending(q){s.pending=q;save();return s},clearPending(){s.pending=null;save();return s},resetBrief(){const keep={turnId:s.turnId,language:s.language};s=Object.assign(empty(),keep,{sector:"secretary",topic:"website",phase:"brief"});save();return s},resetAll(){s=empty();save();return s},emptyBrief};
 })(window);
