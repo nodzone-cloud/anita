@@ -1,5 +1,6 @@
 (function(root){"use strict";const A=root.ANITA51=root.ANITA51||{},KEY="anita51_state_v2";
-function emptyBrief(){return{confirmed:{business:null,goal:null,size:null,requirements:[]},inferred:{suggestions:[],recommendedPackage:null},rejected:{suggestions:[]},meta:{confirmed:false,sent:false}}}
+function orderNumber(){try{const a=new Uint32Array(1);crypto.getRandomValues(a);return"AN"+String(a[0]%10000).padStart(4,"0")}catch(_){return"AN"+String(Math.floor(Math.random()*10000)).padStart(4,"0")}}
+function emptyBrief(){return{confirmed:{business:null,goal:null,size:null,requirements:[],contact:{firstName:null,lastName:null,phone:null,email:null}},inferred:{suggestions:[],recommendedPackage:null},rejected:{suggestions:[]},meta:{orderNumber:orderNumber(),confirmed:false,sent:false}}}
 function empty(){return{turnId:0,language:null,sector:"human",topic:null,pending:null,brief:emptyBrief(),phase:"idle",lastUser:null,lastReply:null}}
 function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null");return x?Object.assign(empty(),x,{brief:Object.assign(emptyBrief(),x.brief||{})}):empty()}catch(_){return empty()}}
 let s=load();function save(){try{localStorage.setItem(KEY,JSON.stringify(s))}catch(_){}}
