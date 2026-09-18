@@ -1,12 +1,12 @@
 /* ANITA 51 — clean Human-Tech test loader */
 (function(){"use strict";if(window.__ANITA51_LOADER__)return;window.__ANITA51_LOADER__=true;
 var OLD="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/anita/anita50/";
-var BASE="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@73639b8c57eeb46819946ea22ef51ebef3b7f0e2/anita/anita51/";
-var V="20260918-anita51-guide-1";
-function css(src){if(document.querySelector('link[data-anita51-css]'))return;var l=document.createElement("link");l.rel="stylesheet";l.href=src;l.dataset.anita51Css="1";document.head.appendChild(l)}
+var BASE="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@d065941f4f725f3bfa0e78d4153c4c29216906ed/anita/anita51/";
+var V="20260918-anita51-guide-site-2";
+function css(src,key){key=key||"core";if(document.querySelector('link[data-anita51-css="'+key+'"]'))return;var l=document.createElement("link");l.rel="stylesheet";l.href=src;l.dataset.anita51Css=key;document.head.appendChild(l)}
 function js(src){return new Promise(function(ok,bad){var s=document.createElement("script");s.src=src+"?v="+V;s.async=false;s.onload=ok;s.onerror=function(){bad(new Error("Failed to load "+src))};document.head.appendChild(s)})}
 function body(){if(document.body)return Promise.resolve();return new Promise(function(ok){document.addEventListener("DOMContentLoaded",ok,{once:true})})}
 function shell(){if(document.getElementById("an50-root"))return;var r=document.createElement("div");r.id="an50-root";r.className="mode-chat";r.innerHTML='<img id="an50-img" alt="ANITA"><div id="an50-bubble" class="show">Hi! I’m ANITA. How can I help?</div><div id="an50-chat"><input id="an50-input" placeholder="Ask ANITA..." autocomplete="off"><button id="an50-send" type="button" aria-label="Send">➜</button></div>';document.body.appendChild(r)}
-(async function(){try{await body();css(OLD+"anita50.css?v="+V);shell();await js(OLD+"config-v017a.js");await js(OLD+"ui.js");if(window.ANITA50&&window.ANITA50.ui){window.ANITA50.ui.ready();window.ANITA50.ui.bubbleText("Hi! I’m ANITA. How can I help?")}
-var f=["engine/state.js","engine/questions.js","engine/intent-router.js","sectors/human.js","sectors/guide.js","sectors/secretary.js","engine/ai-layer.js","engine/interpreter.js","engine/ui-bind.js","guide/site-tour.js"];for(var i=0;i<f.length;i++)await js(BASE+f[i]);window.ANITA51.UIBind.bind();window.__ANITA51_READY__=true;console.log("[ANITA 51] Guide test build 20260918-1 ready")}catch(e){console.error("[ANITA 51 loader]",e);var b=document.getElementById("an50-bubble");if(b)b.textContent="ANITA 51 LOADER ERROR: "+(e&&e.message||e)}})();
+(async function(){try{await body();css(OLD+"anita50.css?v="+V,"core");css(BASE+"guide/tour.css?v="+V,"guide");shell();await js(OLD+"config-v017a.js");await js(OLD+"ui.js");if(window.ANITA50&&window.ANITA50.ui){window.ANITA50.ui.ready();window.ANITA50.ui.bubbleText("Hi! I’m ANITA. How can I help?")}
+var f=["engine/state.js","engine/questions.js","engine/intent-router.js","sectors/human.js","sectors/guide.js","sectors/secretary.js","engine/ai-layer.js","engine/interpreter.js","engine/ui-bind.js","guide/site-tour.js"];for(var i=0;i<f.length;i++)await js(BASE+f[i]);window.ANITA51.UIBind.bind();window.__ANITA51_READY__=true;if(window.ANITA51.SiteTour)window.ANITA51.SiteTour.boot();console.log("[ANITA 51] Guide site build 20260918-2 ready")}catch(e){console.error("[ANITA 51 loader]",e);var b=document.getElementById("an50-bubble");if(b)b.textContent="ANITA 51 LOADER ERROR: "+(e&&e.message||e)}})();
 })();
