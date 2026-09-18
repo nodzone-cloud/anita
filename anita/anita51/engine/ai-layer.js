@@ -1,9 +1,6 @@
-(function(root){"use strict";const A=root.ANITA51=root.ANITA51||{};
-/* AI is advisory, never authoritative over state.
-Expected adapter contract:
-interpret({text,state,pending}) -> semantic interpretation
-phrase({facts,state,draft}) -> natural wording
-The adapter may be attached later as A.AI.adapter.
-*/
-A.AI={adapter:null,async interpret(ctx){if(!this.adapter||!this.adapter.interpret)return null;return this.adapter.interpret(ctx)},async phrase(ctx){if(!this.adapter||!this.adapter.phrase)return ctx.draft;return this.adapter.phrase(ctx)}};
+(function(root){"use strict";const A=root.ANITA51=root.ANITA51||{},C=root.ANITA50_CONFIG||{};
+function endpoint(){return C.engineUrl||""}
+A.AI={async ask(text,state,purpose){const url=endpoint();if(!url)return null;try{const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:text,session_id:"anita51",current_page:location.href,client_context:{language:state.language,sector:state.sector,topic:state.topic,phase:state.phase,pending_question:state.pending&&state.pending.id,website_brief:state.brief,purpose:purpose||"understand_and_phrase",rules:["ANITA is a warm Alex Node virtual character.","Do not invent prices, contacts, actions, or confirmed brief facts.","Confirmed facts may only come from user evidence.","If uncertain, ask a clarification question.","Return a natural concise reply."]}})});const d=await r.json();return r.ok&&d&&d.ok?String(d.answer||"").trim():null}catch(_){return null}},
+async phrase(draft,state,userText){const ans=await this.ask("User: "+userText+"\nDeterministic draft: "+draft,state,"phrase_without_changing_facts");return ans||draft},
+async understand(text,state){return this.ask(text,state,"understand_ambiguous_intent_only")}};
 })(window);
