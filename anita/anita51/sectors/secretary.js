@@ -1,14 +1,23 @@
 (function(root){"use strict";const A=root.ANITA51=root.ANITA51||{};
-function reply(text,pending){return{text,pending,sector:"secretary"}}
-function next(){const s=A.State.get(),c=s.brief.confirmed;let id=!c.business?"business":!c.goal?"goal":!c.size?"size":null;if(!id)return reply("BRIEF_READY",A.Questions.get("confirm"));const q=A.Questions.get(id);A.State.setPending(q);return reply(A.Questions.prompt(q,s.language),q)}
+function say(l,en,ru,fi){return l==="ru"?ru:l==="fi"?(fi||en):en}function result(text,q,extra){return Object.assign({text,pending:q||null,sector:"secretary",showButtons:!!(q&&q.options&&q.options.length)},extra||{})}
+function missing(){const c=A.State.get().brief.confirmed;if(!c.business)return"business";if(!c.goal)return"goal";if(!c.size)return"size";if(!Array.isArray(c.requirements)||!c.requirements.length)return"requirements";return null}
+function summary(){const s=A.State.get(),c=s.brief.confirmed,l=s.language;return say(l,
+"Great 😊 Here’s the brief I’ve built from what you told me:\n• Business / project: "+c.business+"\n• Website goal: "+c.goal+"\n• Size: "+c.size+"\n• Needs: "+c.requirements.join(", ")+"\n\nDoes everything look correct?",
+"Отлично 😊 Вот бриф, который я составила из того, что вы рассказали:\n• Бизнес / проект: "+c.business+"\n• Цель сайта: "+c.goal+"\n• Размер: "+c.size+"\n• Нужно: "+c.requirements.join(", ")+"\n\nВсё правильно?",
+"Hienoa 😊 Tässä brief: \n• Yritys: "+c.business+"\n• Tavoite: "+c.goal+"\n• Koko: "+c.size+"\n• Tarpeet: "+c.requirements.join(", ")+"\n\nOnko kaikki oikein?")}
+function next(){const id=missing();if(!id){const q=A.Questions.get("confirm");A.State.update({phase:"confirming"});A.State.setPending(q);return result(summary(),q)}const q=A.Questions.get(id);A.State.setPending(q);return result(A.Questions.prompt(q,A.State.get().language),q)}
 function start(){A.State.resetBrief();return next()}
-function answer(text){const s=A.State.get(),q=s.pending;if(!q)return next();const value=String(text||"").trim();if(!value)return reply(A.Questions.prompt(q,s.language),q);
-const c=Object.assign({},s.brief.confirmed);
-// Critical rule: targeted answers confirm only the field that was asked.
-if(q.id==="business")c.business=value;
-else if(q.id==="goal")c.goal=value;
-else if(q.id==="size")c.size=value;
-else if(q.id==="requirements")c.requirements=[value];
+function sizeValue(v){const x=String(v).toLowerCase(),m=x.match(/\b(\d{1,2})\b/);if(m){const n=+m[1];return n===1?"one page":n<=5?"a few pages":"larger multi-page"}if(/one|одна|yksi|landing|лендинг/.test(x))return"one page";if(/few|several|несколько|пару|muutama/.test(x))return"a few pages";if(/large|multi|больш|многостранич|laaja|monisivu/.test(x))return"larger multi-page";return String(v).trim()}
+function explainSize(){const l=A.State.get().language;return say(l,"One page is a single landing page. A few pages means separate pages such as About, Services and Contact. Larger multi-page is for a broader structure with many separate pages. Your size question is still open 😊","Одна страница — это лендинг. Несколько страниц — отдельные страницы вроде «О нас», «Услуги», «Контакты». Большой многостраничный — более широкая структура с множеством отдельных страниц. Вопрос о размере остаётся открытым 😊","Yksi sivu on landing page. Muutama sivu tarkoittaa erillisiä sivuja. Laaja monisivuinen sisältää useita erillisiä sivuja.")}
+function answer(text){const s=A.State.get(),q=s.pending,v=String(text||"").trim(),x=v.toLowerCase();if(!q)return next();
+if(q.id==="size"&&(v==="clarify_size"||/difference|разниц|отлич|mitä eroa/.test(x)))return result(explainSize(),q);
+if(q.id==="confirm"){if(/^(yes|да|верно|correct|ok|okay|kyllä|joo)/.test(x)){const b=Object.assign({},s.brief,{meta:Object.assign({},s.brief.meta,{confirmed:true})}),h=A.Questions.get("handoff");A.State.update({brief:b,phase:"ready_handoff"});A.State.setPending(h);return result(say(s.language,"Perfect 😊 The brief is confirmed. Would you like me to pass it to Alex?","Отлично 😊 Бриф подтверждён. Передать его Alex?","Hienoa 😊 Brief on vahvistettu. Välitänkö sen Alexille?"),h)}
+if(v==="prices"||/price|цен|hinn/.test(x))return result(A.Guide.prices(s.language)+"\n\n"+A.Questions.prompt(q,s.language),q);
+if(v==="change"||/change|измен|muut/.test(x)){const e=A.Questions.get("edit");A.State.update({phase:"editing"});A.State.setPending(e);return result(A.Questions.prompt(e,s.language),e)}return result(A.Questions.prompt(q,s.language),q)}
+if(q.id==="handoff"){if(v==="send"||/send|pass|перед|отправ|lähet/.test(x)){A.State.clearPending();A.State.update({phase:"handoff_requested"});return result("",null,{action:{type:"send_brief"}})}
+if(v==="change"){const e=A.Questions.get("edit");A.State.update({phase:"editing"});A.State.setPending(e);return result(A.Questions.prompt(e,s.language),e)}
+A.State.clearPending();A.State.update({phase:"confirmed"});return result(say(s.language,"No problem 😊 The brief stays confirmed. You can ask me to send it later.","Хорошо 😊 Бриф останется подтверждённым. Можете попросить отправить его позже.","Selvä 😊 Brief pysyy vahvistettuna."),null)}
+if(q.id==="edit"){const b=A.State.emptyBrief();A.State.update({brief:Object.assign({},s.brief,{meta:Object.assign({},s.brief.meta,{confirmed:false})}),phase:"brief"});A.State.clearPending();return result(say(s.language,"Got it. I won’t guess what you meant. Let’s update it carefully. Which part should change: business, goal, size, or requirements?","Поняла. Я не буду додумывать. Что именно меняем: бизнес, цель сайта, размер или пожелания?","Selvä. Mitä muutetaan: yritys, tavoite, koko vai tarpeet?"),A.Questions.get("edit"))}
+const c=Object.assign({},s.brief.confirmed);if(q.id==="business")c.business=v;else if(q.id==="goal"){const map={contact:"visitors can contact the business",buy:"visitors can buy online",book:"visitors can book a service",learn:"visitors can learn about the business"};c.goal=map[v]||v}else if(q.id==="size")c.size=sizeValue(v);else if(q.id==="requirements"){if(v==="none"||/nothing|ничего|ei mitään/.test(x))c.requirements=["nothing special"];else c.requirements=[v]}
 A.State.update({brief:Object.assign({},s.brief,{confirmed:c}),sector:"secretary",topic:"website",phase:"brief"});A.State.clearPending();return next()}
-A.Secretary={start,answer,next};
-})(window);
+A.Secretary={start,answer,next,summary};})(window);
