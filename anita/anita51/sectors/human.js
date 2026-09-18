@@ -1,3 +1,2 @@
-(function(root){"use strict";const A=root.ANITA51=root.ANITA51||{};
-A.Human={fallback(lang){return lang==="ru"?"Я здесь 😊 Расскажите, что вам нужно.":lang==="fi"?"Olen täällä 😊 Kerro, mitä tarvitset.":"I'm here 😊 Tell me what you need."}};
-})(window);
+(function(root){"use strict";const A=root.ANITA51=root.ANITA51||{};function say(l,en,ru,fi){return l==="ru"?ru:l==="fi"?fi:en}
+A.Human={reply(t,l){const x=String(t||"").toLowerCase();if(/thanks|thank you|спасибо|kiitos/.test(x))return say(l,"You’re welcome 😊 What would you like to do next?","Пожалуйста 😊 Что хотите сделать дальше?","Ole hyvä 😊 Mitä haluat tehdä seuraavaksi?");if(/hi|hello|hey|привет|здравств|hei|moi/.test(x))return say(l,"Hi 😊 I’m ANITA. I can help with Alex Node, IT questions, or a website project. What do you need?","Привет 😊 Я ANITA. Могу помочь с Alex Node, IT-вопросами или проектом сайта. Что вам нужно?","Hei 😊 Olen ANITA. Voin auttaa Alex Noden, IT:n tai verkkosivuprojektin kanssa.");return say(l,"I’m here 😊 Tell me what you need.","Я здесь 😊 Расскажите, что вам нужно.","Olen täällä 😊 Kerro, mitä tarvitset.")},fallback(l){return this.reply("",l)}};})(window);
