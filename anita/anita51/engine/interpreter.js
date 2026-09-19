@@ -80,6 +80,13 @@ A.Interpreter={
     }
 
     if(out){/* recovered unfinished brief above */}
+    else if(state.topic==="website"&&state.brief&&state.brief.meta&&!state.brief.meta.sent&&state.brief.meta.status!=="cancelled"&&state.phase==="brief"&&!state.pending){
+      /* A website brief owns the conversation until it is complete. Never let a
+         free-form business answer fall through to AI just because pending was lost. */
+      out=A.Secretary.next();
+      state=A.State.get();
+      if(state.pending)out=A.Secretary.answer(text);
+    }
     else if(intent.primary==="new_brief")out=A.Secretary.start();
     else if(state.phase==="brief_amended"&&/^(ok|okay|done|that'?s done|thats done|finished|all done|готов|всё|все|закончил|готово|valmis)/i.test(text))out=A.Secretary.finishAmendments();
     else if(state.brief&&state.brief.confirmed&&state.brief.meta&&!state.brief.meta.sent&&state.brief.confirmed.business&&/^(also\b|and\b|i also\b|also i\b|plus\b|we also\b|add\b|include\b|actually\b|ещ[её]\b|а ещё\b|также\b|добав\b|lisäksi\b)/i.test(text))out=A.Secretary.amend(text.replace(/^(also\s+i\s+need|i\s+also\s+need|we\s+also\s+need|also|and|plus|add|include|ещ[её]|а ещё|также|добав(?:ь|ить)?|lisäksi)\s*/i,"").trim()||text);
