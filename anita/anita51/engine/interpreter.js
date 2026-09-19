@@ -116,6 +116,12 @@ A.Interpreter={
         out=A.Secretary.cancel();
       }
     }
+    else if(state.phase==="updated"&&state.brief&&state.brief.meta&&!state.brief.meta.sent&&/^(?:in|через|kuluttua)\s*\d{1,3}\s*(?:min|minute|minutes|мин|минут|minuutt)/i.test(text)){
+      const m=text.match(/\d{1,3}/),dm=m?+m[0]:null;
+      if(dm!==null&&dm>=1&&dm<=60){
+        out={text:state.language==="ru"?"Хорошо 😊 Я отправлю обновлённый бриф "+state.brief.meta.orderNumber+" Alex через "+dm+" мин.":"Got it 😊 I’ll send the updated brief "+state.brief.meta.orderNumber+" to Alex in "+dm+" minute"+(dm===1?"":"s")+".",sector:"secretary",action:{type:"schedule_brief",minutes:dm}};
+      }else out={text:state.language==="ru"?"Я могу запланировать отправку через 1–60 минут.":"I can schedule the brief for 1–60 minutes from now.",sector:"secretary"};
+    }
     else if((state.phase==="confirmed"||state.phase==="waiting"||state.phase==="updated")&&/send|pass|перед|отправ|lähet/i.test(text)){
       const dm=A.Secretary.delayedMinutes(text);
 
