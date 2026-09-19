@@ -436,5 +436,26 @@ body:not(.reader-open) #zoomBtn { display:none !important; pointer-events:none !
 })();
 </script>
 
+<script>
+/* Emergency interaction bridge for embedded GitHub Pages build. */
+(function(){
+  const SUMUP_URL="https://pay.sumup.com/b2c/QMKU95FF";
+  document.addEventListener("click",function(e){
+    const nav=e.target.closest("[data-view-link]");
+    if(nav && nav.dataset.viewLink==="buy"){
+      e.preventDefault();
+      const buyView=document.getElementById("buyView");
+      const book=document.getElementById("book");
+      document.querySelectorAll(".section-view").forEach(x=>x.classList.remove("show"));
+      if(book) book.style.display="none";
+      if(buyView){buyView.classList.add("show");buyView.setAttribute("aria-hidden","false");}
+      return;
+    }
+    const buy=e.target.closest(".direct-buy-btn");
+    if(buy){e.preventDefault();window.top.location.href=SUMUP_URL;}
+  },true);
+})();
+</script>
+
 </body>
 </html>
