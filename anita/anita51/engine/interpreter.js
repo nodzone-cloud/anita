@@ -11,7 +11,7 @@ function detectLang(t,current){
 
 function timerBrief(brief){
   const c=brief&&brief.confirmed||{};
-  const contact=brief&&brief.contact||{};
+  const contact=brief&&brief.confirmed&&brief.confirmed.contact||{};
   return{
     business:c.business||"",
     goal:c.goal||"",
