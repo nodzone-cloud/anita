@@ -156,15 +156,7 @@ body:not(.reader-open) #zoomBtn { display:none !important; pointer-events:none !
 @media(max-width:640px){.book-about-text{font-size:14px;line-height:1.5;max-height:245px;overflow:auto;padding:12px 14px;margin:10px auto 14px}}
 </style>
 
-<style id="mobile-click-fix">
-/* Keep interactive UI above decorative/content layers inside embedded mobile view. */
-#anbook .topbar{position:relative!important;z-index:10000!important;pointer-events:auto!important}
-#anbook .topbar .nav,#anbook .topbar .nav a,#anbook .languages,#anbook .languages button,#anbook .brand{pointer-events:auto!important}
-#anbook .hero{z-index:100!important;pointer-events:auto!important}
-#anbook #bookDock,#anbook #bookDock .edition-item,#anbook #bookDock .edition-cover{pointer-events:auto!important}
-#anbook .bottom-left,#anbook .bottom-right,#anbook .bottom-tool,#anbook .round-control{position:relative;z-index:10001!important;pointer-events:auto!important}
-#anbook .anbook-bg,#anbook .anbook-shade{pointer-events:none!important}
-</style>
+
 </head>
 
 <body>
@@ -446,26 +438,7 @@ body:not(.reader-open) #zoomBtn { display:none !important; pointer-events:none !
 })();
 </script>
 
-<script>
-/* Emergency interaction bridge for embedded GitHub Pages build. */
-(function(){
-  const SUMUP_URL="https://pay.sumup.com/b2c/QMKU95FF";
-  document.addEventListener("click",function(e){
-    const nav=e.target.closest("[data-view-link]");
-    if(nav && nav.dataset.viewLink==="buy"){
-      e.preventDefault();
-      const buyView=document.getElementById("buyView");
-      const book=document.getElementById("book");
-      document.querySelectorAll(".section-view").forEach(x=>x.classList.remove("show"));
-      if(book) book.style.display="none";
-      if(buyView){buyView.classList.add("show");buyView.setAttribute("aria-hidden","false");}
-      return;
-    }
-    const buy=e.target.closest(".direct-buy-btn");
-    if(buy){e.preventDefault();window.top.location.href=SUMUP_URL;}
-  },true);
-})();
-</script>
+
 
 </body>
 </html>
