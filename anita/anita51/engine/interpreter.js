@@ -46,13 +46,16 @@ async function timerRequest(path,brief,extra){
 
 async function timerCancel(orderNumber){
   try{
-    const r=await fetch(TIMER+"/cancel?order="+encodeURIComponent(orderNumber),{
-      method:"POST",
-      headers:{"Content-Type":"application/json"}
+    const order=String(orderNumber||"").trim().toUpperCase();
+    if(!/^AN\\d{4}$/.test(order))return{ok:false,error:"Invalid order number"};
+    /* /cancel needs no JSON body. Keeping this a simple POST avoids an
+       unnecessary browser CORS preflight while the order stays in the URL. */
+    const r=await fetch(TIMER+"/cancel?order="+encodeURIComponent(order),{
+      method:"POST"
     });
     let d=null;
     try{d=await r.json()}catch(_){}
-    return{ok:!!(r.ok&&d&&d.ok),status:r.status,data:d};
+    return{ok:!!(r.ok&&d&&d.ok&&d.status==="cancelled"),status:r.status,data:d};
   }catch(e){
     return{ok:false,error:String(e)};
   }
