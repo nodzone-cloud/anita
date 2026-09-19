@@ -64,7 +64,23 @@ A.Interpreter={
     A.State.update({language:detectLang(text,A.State.get().language),lastUser:text});
     let state=A.State.get(),intent=A.IntentRouter.classify(text,state),out;
 
-    if(intent.primary==="new_brief")out=A.Secretary.start();
+    /* Recover an unfinished website brief if its active question was lost.
+       This keeps free-form answers (e.g. "I own a chair shop") inside the
+       deterministic Secretary flow instead of letting AI invent a new topic. */
+    if(state.topic==="website"&&state.brief&&state.brief.meta&&!state.brief.meta.sent&&state.brief.meta.status!=="cancelled"&&!state.pending&&["brief","confirmed"].includes(state.phase)){
+      const c=state.brief.confirmed||{},k=c.contact||{};
+      const incomplete=!c.business||!c.goal||!c.size||!Array.isArray(c.requirements)||!c.requirements.length||!k.firstName||!k.lastName||!k.phone||!k.email;
+      if(incomplete){
+        A.State.update({sector:"secretary",phase:"brief"});
+        out=A.Secretary.next();
+        state=A.State.get();
+        intent=A.IntentRouter.classify(text,state);
+        if(state.pending)out=A.Secretary.answer(text);
+      }
+    }
+
+    if(out){/* recovered unfinished brief above */}
+    else if(intent.primary==="new_brief")out=A.Secretary.start();
     else if(state.phase==="brief_amended"&&/^(ok|okay|done|that'?s done|thats done|finished|all done|готов|всё|все|закончил|готово|valmis)/i.test(text))out=A.Secretary.finishAmendments();
     else if(state.brief&&state.brief.confirmed&&state.brief.meta&&!state.brief.meta.sent&&state.brief.confirmed.business&&/^(also\b|and\b|i also\b|also i\b|plus\b|we also\b|add\b|include\b|actually\b|ещ[её]\b|а ещё\b|также\b|добав\b|lisäksi\b)/i.test(text))out=A.Secretary.amend(text.replace(/^(also\s+i\s+need|i\s+also\s+need|we\s+also\s+need|also|and|plus|add|include|ещ[её]|а ещё|также|добав(?:ь|ить)?|lisäksi)\s*/i,"").trim()||text);
     else if(intent.primary==="pending")out=A.Secretary.answer(text);
