@@ -155,6 +155,16 @@ body:not(.reader-open) #zoomBtn { display:none !important; pointer-events:none !
 .book-about-text{display:block!important;max-width:760px;margin:14px auto 18px;padding:14px 18px;border-radius:18px;background:rgba(0,0,0,.30);color:#fff!important;font-size:15px;line-height:1.58;text-align:left;visibility:visible!important;opacity:1!important}
 @media(max-width:640px){.book-about-text{font-size:14px;line-height:1.5;max-height:245px;overflow:auto;padding:12px 14px;margin:10px auto 14px}}
 </style>
+
+<style id="mobile-click-fix">
+/* Keep interactive UI above decorative/content layers inside embedded mobile view. */
+#anbook .topbar{position:relative!important;z-index:10000!important;pointer-events:auto!important}
+#anbook .topbar .nav,#anbook .topbar .nav a,#anbook .languages,#anbook .languages button,#anbook .brand{pointer-events:auto!important}
+#anbook .hero{z-index:100!important;pointer-events:auto!important}
+#anbook #bookDock,#anbook #bookDock .edition-item,#anbook #bookDock .edition-cover{pointer-events:auto!important}
+#anbook .bottom-left,#anbook .bottom-right,#anbook .bottom-tool,#anbook .round-control{position:relative;z-index:10001!important;pointer-events:auto!important}
+#anbook .anbook-bg,#anbook .anbook-shade{pointer-events:none!important}
+</style>
 </head>
 
 <body>
