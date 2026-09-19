@@ -1,6 +1,9 @@
 <!doctype html>
 <html lang="ru">
 <head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Alex Node & ANITA — AN Book</title>
@@ -382,7 +385,1271 @@ body:not(.reader-open) #zoomBtn { display:none !important; pointer-events:none !
   </aside>
 </main>
 
-<script src="./app.js?v=20260919-3"></script>
+<script>
+(() => {
+  "use strict";
+  // v14 — exact user assets + stable fixes. Do not substitute artwork.
+  // Alex Node & ANITA Book Hub v13 — stable fix based ONLY on v12 baseline.
+
+  const CONFIG = {
+    BUY_URL: "https://pay.sumup.com/b2c/QMKU95FF", // SumUp payment link
+    HOME_URL: "https://alexnode.fi/boook",
+    BRAND_URL: "https://alexnode.fi/",
+    BOOK_BASE_URL: "https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/alexnode-book-v7-emphasis",
+    TEXT_FILES: { ru:"book-ru.txt", en:"book-en.txt", fi:"book-fi.txt" },
+    CHAPTER_1_IMAGE: "https://optim.tildacdn.net/tild3665-6335-4532-b633-636638366462/-/format/webp/picture1.jpg.webp",
+    REVIEWS_API: "", // later: Cloudflare Worker/API endpoint for public shared reviews
+    BOOKS: [
+      {
+        id:"alex-node-anita-ru",
+        title:"Alex Node & ANITA",
+        editionLabel:"RU",
+        bookLanguage:"ru",
+        textFile:"book-ru.txt",
+        front:"https://optim.tildacdn.net/tild3164-3934-4132-a663-643965316233/-/format/webp/no_bg_book_front.png.webp",
+        back:"https://optim.tildacdn.net/tild6261-6139-4333-a265-383535373737/-/format/webp/no_bg_book_back.png.webp",
+        buyUrl:"https://pay.sumup.com/b2c/QMKU95FF", descriptions:{ru:"Alex Node & ANITA — история идеи, которая постепенно становится реальностью. Это не техническое руководство и не история уже состоявшейся большой компании. Книга рассказывает о пути Alex Node и о том, как из небольших экспериментов, разговоров с ChatGPT и желания сделать технологии более человеческими постепенно появилась ANITA — виртуальный персонаж и будущий цифровой помощник. Здесь идеи возникают прямо по ходу истории: некоторые остаются размышлениями, другие превращаются в код, функции и реальные эксперименты. Вместе с ними меняется и сама ANITA — от персонажа на сайте к гораздо более широкому представлению о том, какими могут быть отношения человека и технологии. Это книга о создании, сомнениях, неожиданных открытиях, ошибках и моментах, когда обычный вопрос «А что, если сделать вот так?» неожиданно превращается в работающую идею. И эта история ещё не закончена. ANITA продолжает развиваться — а книга развивается вместе с ней.",en:"Alex Node & ANITA is the story of an idea gradually becoming real. It is not a technical manual or the story of an already established large company. The book follows the path of Alex Node and how small experiments, conversations with ChatGPT, and a desire to make technology more human gradually led to ANITA — a virtual character and future digital assistant. Ideas appear as the story unfolds: some remain thoughts, while others become code, features, and real experiments. ANITA changes with them, growing from a website character into a much broader vision of how people and technology can relate to each other. It is a book about creating, doubts, unexpected discoveries, mistakes, and those moments when a simple question — “What if we did it this way?” — suddenly becomes a working idea. And the story is not finished yet. ANITA continues to evolve, and the book evolves with her."}
+      },
+      {
+        id:"alex-node-anita-en",
+        title:"Alex Node & ANITA",
+        editionLabel:"EN",
+        bookLanguage:"en",
+        textFile:"book-en.txt",
+        front:"https://optim.tildacdn.net/tild3862-6437-4362-b765-636465336337/-/format/webp/ENG_front_cover.png.webp",
+        back:"https://optim.tildacdn.net/tild3239-6138-4031-b861-303865346231/-/format/webp/ENG_back_cover.png.webp",
+        buyUrl:"https://pay.sumup.com/b2c/QMKU95FF", descriptions:{ru:"Alex Node & ANITA — история идеи, которая постепенно становится реальностью. Это не техническое руководство и не история уже состоявшейся большой компании. Книга рассказывает о пути Alex Node и о том, как из небольших экспериментов, разговоров с ChatGPT и желания сделать технологии более человеческими постепенно появилась ANITA — виртуальный персонаж и будущий цифровой помощник. Здесь идеи возникают прямо по ходу истории: некоторые остаются размышлениями, другие превращаются в код, функции и реальные эксперименты. Вместе с ними меняется и сама ANITA — от персонажа на сайте к гораздо более широкому представлению о том, какими могут быть отношения человека и технологии. Это книга о создании, сомнениях, неожиданных открытиях, ошибках и моментах, когда обычный вопрос «А что, если сделать вот так?» неожиданно превращается в работающую идею. И эта история ещё не закончена. ANITA продолжает развиваться — а книга развивается вместе с ней.",en:"Alex Node & ANITA is the story of an idea gradually becoming real. It is not a technical manual or the story of an already established large company. The book follows the path of Alex Node and how small experiments, conversations with ChatGPT, and a desire to make technology more human gradually led to ANITA — a virtual character and future digital assistant. Ideas appear as the story unfolds: some remain thoughts, while others become code, features, and real experiments. ANITA changes with them, growing from a website character into a much broader vision of how people and technology can relate to each other. It is a book about creating, doubts, unexpected discoveries, mistakes, and those moments when a simple question — “What if we did it this way?” — suddenly becomes a working idea. And the story is not finished yet. ANITA continues to evolve, and the book evolves with her."}
+      }
+    ]
+  };
+
+  const I18N = {
+    ru:{
+      home:"Главная",about:"О книге",gallery:"Галерея",reviews:"Отзывы",buyShort:"Купить",buy:"Купить книгу",
+      focusText:"Нажмите на переднюю обложку, чтобы открыть книгу.",openBook:"Открыть книгу",
+      contents:"Содержание",zoom:"Увеличить",fullscreen:"На весь экран",share:"Поделиться",
+      exitFullscreen:"Выйти из полноэкранного режима",swipe:"Листайте свайпом",
+      galleryEmpty:"Галерея готова. Изображения будут добавлены позже.",
+      reviewsLead:"Выберите книгу, поставьте оценку и оставьте комментарий.",
+      chooseBook:"Книга",rating:"Оценка",yourName:"Ваше имя",yourReview:"Ваш отзыв",
+      publishReview:"Опубликовать отзыв",readerReviews:"Отзывы читателей",
+      buyBooks:"Купить книгу",buyLead:"Выберите книгу. Вы сможете посмотреть её перед покупкой.",
+      preview:"Посмотреть",noReviews:"Пока нет отзывов.",savedLocal:"Отзыв сохранён на этом устройстве.",
+      ratingRequired:"Пожалуйста, поставьте оценку от 1 до 5 звёзд.",
+      buyNotReady:"Ссылка SumUp для этой книги ещё не добавлена.",bookmark:"Закладка",bookmarkSaved:"Место сохранено",resume:"Продолжить",page:"Страница"
+    },
+    en:{
+      home:"Home",about:"About the book",gallery:"Gallery",reviews:"Reviews",buyShort:"Buy",buy:"Buy the book",
+      focusText:"Click the front cover to open the book.",openBook:"Open book",
+      contents:"Contents",zoom:"Zoom",fullscreen:"Full screen",share:"Share",
+      exitFullscreen:"Exit full screen",swipe:"Swipe to turn pages",
+      galleryEmpty:"The gallery is ready. Images will be added later.",
+      reviewsLead:"Choose a book, rate it and leave a comment.",
+      chooseBook:"Book",rating:"Rating",yourName:"Your name",yourReview:"Your review",
+      publishReview:"Publish review",readerReviews:"Reader reviews",
+      buyBooks:"Buy a book",buyLead:"Choose a book. You can preview it before purchasing.",
+      preview:"Preview",noReviews:"No reviews yet.",savedLocal:"Review saved on this device.",
+      ratingRequired:"Please select a rating from 1 to 5 stars.",
+      buyNotReady:"The SumUp link for this book has not been added yet.",bookmark:"Bookmark",bookmarkSaved:"Place saved",resume:"Resume",page:"Page"
+    },
+    fi:{
+      home:"Etusivu",about:"Tietoa kirjasta",gallery:"Galleria",reviews:"Arvostelut",buyShort:"Osta",buy:"Osta kirja",
+      focusText:"Avaa kirja napsauttamalla etukantta.",openBook:"Avaa kirja",
+      contents:"Sisältö",zoom:"Suurenna",fullscreen:"Koko näyttö",share:"Jaa",
+      exitFullscreen:"Poistu koko näytön tilasta",swipe:"Vaihda sivua pyyhkäisemällä",
+      galleryEmpty:"Galleria on valmis. Kuvat lisätään myöhemmin.",
+      reviewsLead:"Valitse kirja, anna arvio ja jätä kommentti.",
+      chooseBook:"Kirja",rating:"Arvio",yourName:"Nimesi",yourReview:"Arvostelusi",
+      publishReview:"Julkaise arvostelu",readerReviews:"Lukijoiden arvostelut",
+      buyBooks:"Osta kirja",buyLead:"Valitse kirja. Voit esikatsella sitä ennen ostamista.",
+      preview:"Esikatsele",noReviews:"Ei vielä arvosteluja.",savedLocal:"Arvostelu tallennettiin tälle laitteelle.",
+      ratingRequired:"Valitse 1–5 tähteä.",buyNotReady:"Tämän kirjan SumUp-linkkiä ei ole vielä lisätty.",bookmark:"Kirjanmerkki",bookmarkSaved:"Kohta tallennettu",resume:"Jatka",page:"Sivu"
+    }
+  };
+
+  const $ = s => document.querySelector(s);
+  const $ = s => [...document.querySelectorAll(s)];
+
+  const root = $("#anbook");
+  let floatingCovers = [];
+  let activeFloatingCover = null;
+  const focusZone = $("#focusZone");
+  const returnBooksBtn = $("#returnBooksBtn");
+  const reader = $("#reader");
+  const bookOpen = $("#bookOpen");
+  const leftPage = $("#leftPage");
+  const rightPage = $("#rightPage");
+  const leftNum = $("#leftNum");
+  const rightNum = $("#rightNum");
+  const pageCounter = $("#pageCounter");
+  const prevPage = $("#prevPage");
+  const nextPage = $("#nextPage");
+  const contentsPanel = $("#contentsPanel");
+  const contentsList = $("#contentsList");
+  const galleryView = $("#galleryView");
+  const reviewsView = $("#reviewsView");
+  const buyView = $("#buyView");
+  const reviewBookSelect = $("#reviewBookSelect");
+  const reviewsList = $("#reviewsList");
+  const reviewAverage = $("#reviewAverage");
+  const reviewStatus = $("#reviewStatus");
+
+  let language = "ru";
+  let rawBook = "";
+  let parsed = null;
+  let pages = [];
+  let spread = 0;
+  let opened = false;
+  let focused = false;
+  let zoomed = false;
+  let backCoverZoomed = false;
+  let resizeTimer = null;
+  let currentView = "book";
+  let currentBookId = "alex-node-anita-ru";
+  let currentRating = 0;
+  let buyMode = false;
+
+  document.querySelector(".brand").href = CONFIG.BRAND_URL;
+  document.querySelector('[data-i18n="home"]').href = CONFIG.HOME_URL;
+
+
+  function renderHomeBooks(){
+    const dock = $("#bookDock");
+    if(!dock) return;
+
+    dock.innerHTML = "";
+
+    CONFIG.BOOKS.forEach(book=>{
+      const item = document.createElement("div");
+      item.className = "edition-item";
+      item.innerHTML = `
+        <button class="floating-cover edition-cover"
+                type="button"
+                data-book-id="${escapeHtml(book.id)}"
+                aria-label="${escapeHtml(book.title)} ${escapeHtml(book.editionLabel)}">
+          <img src="${book.front}"
+               alt="${escapeHtml(book.title)} ${escapeHtml(book.editionLabel)}">
+        </button>
+
+        <span class="edition-badge">${escapeHtml(book.editionLabel)}</span>
+
+      `;
+      dock.appendChild(item);
+    });
+
+    floatingCovers = $("#bookDock .floating-cover");
+    activeFloatingCover =
+      $(`#bookDock .floating-cover[data-book-id="${currentBookId}"]`) ||
+      floatingCovers[0] ||
+      null;
+
+    floatingCovers.forEach(el=>{
+      el.addEventListener("click",()=>focusBook(el));
+    });
+
+  }
+
+  function bookById(id){
+    return CONFIG.BOOKS.find(b=>b.id===id) || CONFIG.BOOKS[0];
+  }
+
+  function deepBookUrl(bookId=currentBookId){
+    const base = CONFIG.HOME_URL;
+    return `${base}?book=${encodeURIComponent(bookId)}`;
+  }
+
+  async function shareBook(bookId=currentBookId){
+    const book = bookById(bookId);
+    const shareData = {title:book.title,url:deepBookUrl(book.id)};
+    try{
+      if(navigator.share) await navigator.share(shareData);
+      else{
+        await navigator.clipboard.writeText(shareData.url);
+        alert(language==="ru"?"Ссылка скопирована":language==="fi"?"Linkki kopioitu":"Link copied");
+      }
+    }catch(_e){}
+  }
+
+  function resetFocusToList(){
+    resetBackCoverZoom();
+    reader.classList.remove("show");
+    reader.setAttribute("aria-hidden","true");
+    focusZone.classList.remove("show");
+    focusZone.setAttribute("aria-hidden","true");
+    returnBooksBtn.classList.remove("show");
+    floatingCovers.forEach(el=>el.style.visibility="visible");
+    focused=false;
+    opened=false;
+    buyMode=false;
+    setReaderUI(false);
+  }
+
+  function setActiveNav(view){
+    $("[data-view-link]").forEach(a=>a.classList.toggle("active",a.dataset.viewLink===view));
+  }
+
+  function showView(view){
+    currentView=view;
+
+    galleryView.classList.remove("show");
+    reviewsView.classList.remove("show");
+    buyView.classList.remove("show");
+
+    resetFocusToList();
+
+    const homeDock=$("#bookDock");
+    if(homeDock && view!=="home") homeDock.classList.add("is-hidden");
+
+    if(view==="gallery"){
+      $("#book").style.display="none";
+      galleryView.classList.add("show");
+      galleryView.setAttribute("aria-hidden","false");
+    }else if(view==="reviews"){
+      $("#book").style.display="none";
+      reviewsView.classList.add("show");
+      reviewsView.setAttribute("aria-hidden","false");
+      renderReviews();
+    }else if(view==="buy"){
+      $("#book").style.display="none";
+      buyView.classList.add("show");
+      buyView.setAttribute("aria-hidden","false");
+      renderBuyBooks();
+    }else if(view==="book"){
+      $("#book").style.display="";
+      setTimeout(()=>{
+        const cover=$(`.floating-cover[data-book-id="${currentBookId}"]`);
+        if(cover) activeFloatingCover=cover;
+        focusBook(activeFloatingCover);
+      },80);
+    }else{
+      // HOME = book list. Always rebuild all available editions.
+      $("#book").style.display="";
+      renderHomeBooks();
+      const dock=$("#bookDock");
+      if(dock) dock.classList.remove("is-hidden");
+      floatingCovers.forEach(el=>el.style.visibility="visible");
+      focusZone.classList.remove("show","buy-preview-mode");
+      focusZone.setAttribute("aria-hidden","true");
+      returnBooksBtn.classList.remove("show");
+      setReaderUI(false);
+    }
+
+    setActiveNav(view);
+    try{ history.replaceState(null,"",`#${view}`); }catch(_e){}
+  }
+
+  function fillBookSelectors(){
+    reviewBookSelect.innerHTML = CONFIG.BOOKS.map(b=>`<option value="${escapeHtml(b.id)}">${escapeHtml(b.title)} — ${escapeHtml(b.editionLabel)}</option>`).join("");
+    reviewBookSelect.value=currentBookId;
+    $("#reviewBookCover").src=bookById(currentBookId).front;
+  }
+
+  function renderBuyBooks(){
+    const grid=$("#buyBooksGrid");
+    grid.innerHTML="";
+
+    CONFIG.BOOKS.forEach(book=>{
+      const card=document.createElement("article");
+      card.className="book-card";
+      card.innerHTML=`
+        <button class="book-card-cover" type="button" aria-label="${escapeHtml(book.title)} ${escapeHtml(book.editionLabel)}">
+          <img src="${book.front}" alt="${escapeHtml(book.title)} ${escapeHtml(book.editionLabel)}">
+        </button>
+        <span class="book-language-badge">${escapeHtml(book.editionLabel)}</span>
+        <h3>${escapeHtml(book.title)}</h3>
+        <div class="book-card-actions">
+          <button class="secondary-btn preview-btn" type="button">${I18N[language].preview}</button>
+          <button class="primary-cta direct-buy-btn" type="button">${I18N[language].buy}</button>
+          <button class="secondary-btn share-book-card" type="button">↗ ${I18N[language].share}</button>
+        </div>`;
+
+      const openBuyPreview=async()=>{
+        currentBookId=book.id;
+        buyMode=true;
+        await loadCurrentBook();
+
+        buyView.classList.remove("show");
+        $("#book").style.display="";
+        setActiveNav("buy");
+
+        const dock=$("#bookDock");
+        if(dock) dock.classList.add("is-hidden");
+
+        const selected=bookById(currentBookId);
+        $("#focusFront img").src=selected.front;
+        $("#focusFront img").alt=`${selected.title} ${selected.editionLabel} front cover`;
+        $("#focusBack img").src=selected.back;
+        $("#focusBack img").alt=`${selected.title} ${selected.editionLabel} back cover`;
+    const aboutBox=$("#bookAboutText");
+    if(aboutBox){
+      const d=selected.descriptions||{};
+      aboutBox.textContent=d[language]||d[selected.bookLanguage]||d.en||"";
+    }
+
+        focusZone.classList.add("buy-preview-mode","show");
+        focusZone.setAttribute("aria-hidden","false");
+        returnBooksBtn.classList.add("show");
+        focused=true;
+
+        // In Buy preview the center CTA always remains BUY.
+        $("#openBookButton").textContent=I18N[language].buy;
+      };
+
+      card.querySelector(".book-card-cover").addEventListener("click",openBuyPreview);
+      card.querySelector(".preview-btn").addEventListener("click",openBuyPreview);
+
+      card.querySelector(".direct-buy-btn").addEventListener("click",()=>{
+        window.top.location.href="https://pay.sumup.com/b2c/QMKU95FF";
+      });
+
+      card.querySelector(".share-book-card").addEventListener("click",()=>shareBook(book.id));
+      grid.appendChild(card);
+    });
+  }
+
+  function getLocalReviews(bookId){
+    try{
+      return JSON.parse(localStorage.getItem(`anbook-reviews:${bookId}`)||"[]");
+    }catch(_e){ return []; }
+  }
+
+  function saveLocalReview(bookId,review){
+    const list=getLocalReviews(bookId);
+    list.unshift(review);
+    localStorage.setItem(`anbook-reviews:${bookId}`,JSON.stringify(list));
+  }
+
+  async function loadReviews(bookId){
+    if(CONFIG.REVIEWS_API){
+      try{
+        const r=await fetch(`${CONFIG.REVIEWS_API}?book=${encodeURIComponent(bookId)}`,{cache:"no-store"});
+        if(r.ok) return await r.json();
+      }catch(_e){}
+    }
+    return getLocalReviews(bookId);
+  }
+
+  async function renderReviews(){
+    const bookId=reviewBookSelect.value || currentBookId;
+    const items=await loadReviews(bookId);
+    reviewsList.innerHTML="";
+    if(!items.length){
+      reviewsList.innerHTML=`<div class="review-item">${I18N[language].noReviews}</div>`;
+      reviewAverage.textContent="";
+      return;
+    }
+    const avg=items.reduce((a,r)=>a+Number(r.rating||0),0)/items.length;
+    reviewAverage.textContent=`★ ${avg.toFixed(1)} / 5`;
+    items.forEach(r=>{
+      const div=document.createElement("article");
+      div.className="review-item";
+      div.innerHTML=`
+        <div class="review-item-top">
+          <strong>${escapeHtml(r.name||"Reader")}</strong>
+          <span class="review-item-stars">${"★".repeat(Math.max(0,Math.min(5,Number(r.rating)||0)))}</span>
+        </div>
+        <p>${escapeHtml(r.text||"")}</p>`;
+      reviewsList.appendChild(div);
+    });
+  }
+
+  async function submitReview(review){
+    if(CONFIG.REVIEWS_API){
+      const r=await fetch(CONFIG.REVIEWS_API,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(review)
+      });
+      if(!r.ok) throw new Error("Review API error");
+      return;
+    }
+    saveLocalReview(review.bookId,review);
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+  }
+
+  function fmtInline(text){
+    let safe = escapeHtml(String(text || ""));
+
+    // Spoken lines / thoughts in Russian quotes are bold + italic,
+    // but stay exactly the same body-text size.
+    safe = safe.replace(
+      /«([^»]+)»/g,
+      '<span class="spoken">«$1»</span>'
+    );
+
+    // Straight double quotes too.
+    safe = safe.replace(
+      /&quot;([^&]+?)&quot;/g,
+      '<span class="spoken">&quot;$1&quot;</span>'
+    );
+
+    return safe;
+  }
+
+  function normalizeBookSource(raw){
+    let text = String(raw || "").replace(/\r/g,"");
+
+    /*
+      "Другая дорога" is a real chapter in this edition.
+      The source TXT currently has it without a number, while the following
+      chapter is still called Chapter 11. Normalize the visible edition here
+      without requiring the source book-ru.txt to be rewritten.
+    */
+    text = text.replace(
+      /(^|\n)Другая дорога(?=\n)/,
+      '$1Глава 11. Другая дорога'
+    );
+    text = text.replace(
+      /(^|\n)Глава 11\. Сумбур(?=\n|$)/,
+      '$1Глава 12. Сумбур'
+    );
+
+    text = text.replace(
+      /(^|\n)A Different Road(?=\n)/,
+      '$1Chapter 11. A Different Road'
+    );
+    text = text.replace(
+      /(^|\n)Chapter 11\. Chaos(?=\n|$)/,
+      '$1Chapter 12. Chaos'
+    );
+
+    return text;
+  }
+
+  function isSpecialEmphasisLine(line){
+    const exact = [
+      "И именно тогда у идеи появилось имя:",
+      "Ты можешь просто сказать:",
+      "А система не отвечает:",
+      "Выберите тип услуги:",
+      "[Landing page] [Website] [E-commerce] [Other]",
+      "Она отвечает:",
+      "And that is when the idea received a name:",
+      "You can simply say:",
+      "And the system does not reply:",
+      "Choose service type:",
+      "It replies:"
+    ];
+    return exact.includes(line);
+  }
+
+  function parseBook(raw){
+    const normalized = normalizeBookSource(raw);
+    const lines = normalized.split("\n").map(s=>s.trim());
+
+    const firstChapter = lines.findIndex(x =>
+      /^Глава\s+\d+\./i.test(x) ||
+      /^Chapter\s+\d+\./i.test(x)
+    );
+
+    const introLines = (firstChapter >= 0 ? lines.slice(0,firstChapter) : lines)
+      .filter(Boolean);
+
+    const title = introLines[0] || "Alex Node & ANITA";
+    const subtitle = introLines[1] || "";
+
+    const blocks = [];
+    const chapters = [];
+    let paragraphBuffer = [];
+
+    function flushParagraph(){
+      if(!paragraphBuffer.length) return;
+
+      // Source TXT often places every sentence on a new physical line.
+      // Join those lines into a normal flowing book paragraph.
+      const text = paragraphBuffer.join(" ").replace(/\s+/g," ").trim();
+
+      if(text){
+        blocks.push({
+          type:"p",
+          text,
+          html:`<p>${fmtInline(text)}</p>`
+        });
+      }
+      paragraphBuffer = [];
+    }
+
+    const rest = firstChapter >= 0 ? lines.slice(firstChapter) : lines;
+
+    for(const rawLine of rest){
+      const line = rawLine.trim();
+
+      if(!line){
+        flushParagraph();
+        continue;
+      }
+
+      const chapterMatch =
+        line.match(/^Глава\s+(\d+)\.\s*(.+)$/i) ||
+        line.match(/^Chapter\s+(\d+)\.\s*(.+)$/i);
+
+      if(chapterMatch){
+        flushParagraph();
+
+        const number = chapterMatch[1];
+        const chapterTitle = chapterMatch[2].trim();
+        const id = `chapter-${number}`;
+
+        chapters.push({number,title:chapterTitle,id});
+
+        blocks.push({
+          type:"chapter",
+          number,
+          title:chapterTitle,
+          id,
+          html:
+            `<div class="chapter-head" id="${id}">`+
+              `<div class="chapter-label">`+
+                `${bookById(currentBookId).bookLanguage==="en"?"Chapter":"Глава"} ${escapeHtml(number)}`+
+              `</div>`+
+              `<h1 class="chapter-title">${escapeHtml(chapterTitle)}</h1>`+
+            `</div>`
+        });
+        continue;
+      }
+
+      if(isSpecialEmphasisLine(line)){
+        flushParagraph();
+        blocks.push({
+          type:"emphasis",
+          text:line,
+          html:`<p class="emphasis-line">${fmtInline(line)}</p>`
+        });
+        continue;
+      }
+
+      // A whole line that is direct speech / thought stays on its own,
+      // and becomes bold+italic at normal story-text size.
+      if(/^«.*»[.!?…]?$/u.test(line)){
+        flushParagraph();
+        blocks.push({
+          type:"spoken",
+          text:line,
+          html:`<p class="spoken-block">${fmtInline(line)}</p>`
+        });
+        continue;
+      }
+
+      /*
+        IMPORTANT:
+        Do NOT guess headings from "short lines".
+        That old heuristic caused ordinary story lines such as
+        "И мне не хотелось строить Alex Node вокруг идеи:"
+        to become huge fake headings.
+      */
+      paragraphBuffer.push(line);
+    }
+
+    flushParagraph();
+
+    return {title,subtitle,blocks,chapters};
+  }
+
+  function makeIntroPage(data){
+    return `
+      <div class="book-title">${escapeHtml(data.title)}</div>
+      <div class="book-subtitle">${escapeHtml(data.subtitle)}</div>
+      <div class="chapter-hero-wrap">
+        <img class="chapter-hero-image" src="${CONFIG.CHAPTER_1_IMAGE}" alt="Chapter 1 illustration">
+      </div>`;
+  }
+
+  function makeTester(){
+    const rect = leftPage.getBoundingClientRect();
+    const t = document.createElement("div");
+    t.className = "page-inner page-tester";
+
+    // v13: paginate against the actual rendered page size.
+    // Forced minimums could make the tester larger than a real phone page,
+    // causing text to be cut off after rendering.
+    const w = rect.width > 0 ? rect.width : 480;
+    const h = rect.height > 0 ? rect.height : 610;
+
+    t.style.width = `${w}px`;
+    t.style.height = `${h}px`;
+    document.body.appendChild(t);
+    return t;
+  }
+
+  function fits(tester){
+    return tester.scrollHeight <= tester.clientHeight + 1;
+  }
+
+  function splitWords(text){
+    return String(text || "").trim().split(/\s+/).filter(Boolean);
+  }
+
+  function findLargestFittingChunk(words,prefixHtml,tester){
+    if(!words.length) return {html:"", used:0};
+
+    let low = 1, high = words.length, best = 0;
+
+    while(low <= high){
+      const mid = Math.floor((low + high) / 2);
+      const chunk = words.slice(0,mid).join(" ");
+      tester.innerHTML = prefixHtml + `<p>${fmtInline(chunk)}</p>`;
+
+      if(fits(tester)){
+        best = mid;
+        low = mid + 1;
+      }else{
+        high = mid - 1;
+      }
+    }
+
+    if(best === 0) return {html:"", used:0};
+
+    const chunk = words.slice(0,best).join(" ");
+    return {
+      html:`<p>${fmtInline(chunk)}</p>`,
+      used:best
+    };
+  }
+
+  function paginateParagraph(text,current,tester,out){
+    let words = splitWords(text);
+
+    while(words.length){
+      // First try the whole remaining paragraph.
+      const whole = `<p>${fmtInline(words.join(" "))}</p>`;
+      tester.innerHTML = current + whole;
+
+      if(fits(tester)){
+        current += whole;
+        words = [];
+        break;
+      }
+
+      // Put the largest possible part into the remaining space
+      // on the CURRENT page. This is the key fix for chapter pages:
+      // chapter heading + beginning of first paragraph stay together.
+      const part = findLargestFittingChunk(words,current,tester);
+
+      if(part.used > 0){
+        current += part.html;
+        words = words.slice(part.used);
+      }
+
+      // The current page is now full enough; commit it.
+      if(current.trim()){
+        out.push(current);
+        current = "";
+      }
+
+      // Safety: if somehow not even one word fitted, force a fresh-page attempt.
+      if(part.used === 0){
+        const fresh = findLargestFittingChunk(words,"",tester);
+        if(fresh.used > 0){
+          current = fresh.html;
+          words = words.slice(fresh.used);
+        }else{
+          // pathological ultra-long token fallback
+          current = `<p>${fmtInline(words.shift())}</p>`;
+        }
+      }
+    }
+
+    return current;
+  }
+
+  function paginate(data){
+    const tester = makeTester();
+    const out = [makeIntroPage(data)];
+    let current = "";
+
+    for(let i=0;i<data.blocks.length;i++){
+      const block = data.blocks[i];
+
+      /*
+        Chapters always begin on a clean page.
+        IMPORTANT v1.4 FIX:
+        We do NOT leave a chapter title alone anymore.
+        The following paragraph is allowed to split, so the chapter page
+        gets as much readable story text as can actually fit.
+      */
+      if(block.type === "chapter"){
+        if(current.trim()){
+          out.push(current);
+          current = "";
+        }
+
+        current = block.html;
+
+        const nextBlock = data.blocks[i+1];
+
+        if(nextBlock && nextBlock.type === "p"){
+          current = paginateParagraph(nextBlock.text,current,tester,out);
+          i += 1; // consumed the paragraph, fully or across pages
+        }
+
+        continue;
+      }
+
+      if(block.type === "p"){
+        current = paginateParagraph(block.text,current,tester,out);
+        continue;
+      }
+
+      // Emphasis/spoken blocks remain body-sized.
+      tester.innerHTML = current + block.html;
+
+      if(fits(tester)){
+        current += block.html;
+      }else{
+        if(current.trim()){
+          out.push(current);
+          current = "";
+        }
+
+        tester.innerHTML = block.html;
+
+        if(fits(tester)){
+          current = block.html;
+        }else{
+          // Rare fallback: strip to plain flowing text and paginate it.
+          const tmp = document.createElement("div");
+          tmp.innerHTML = block.html;
+          current = paginateParagraph(tmp.textContent || block.text || "",current,tester,out);
+        }
+      }
+    }
+
+    if(current.trim()){
+      out.push(current);
+    }
+
+    tester.remove();
+    return out.length ? out : [makeIntroPage(data)];
+  }
+
+  async function loadCurrentBook(){
+    const selected = bookById(currentBookId);
+    const file = selected.textFile || "book-ru.txt";
+    const url = `${CONFIG.BOOK_BASE_URL}/${file}`;
+
+    try{
+      const r = await fetch(url,{cache:"no-store"});
+      if(!r.ok) throw new Error("book file missing");
+      rawBook = await r.text();
+    }catch(_e){
+      const fallback = await fetch(`${CONFIG.BOOK_BASE_URL}/book-ru.txt`,{cache:"no-store"});
+      rawBook = await fallback.text();
+    }
+
+    parsed = parseBook(rawBook);
+
+    requestAnimationFrame(()=>{
+      pages = paginate(parsed);
+      spread = 0;
+      buildContents();
+      updateReaderTools();
+      render();
+    });
+  }
+
+  function applyLanguage(lang){
+    language = lang;
+    document.documentElement.lang = lang;
+    // Background language mapping:
+    // RU uses Russian background; EN and FI use English background.
+    root.classList.toggle("lang-en", lang === "en" || lang === "fi");
+    $(".languages button").forEach(b=>b.classList.toggle("active",b.dataset.lang===lang));
+    $("[data-i18n]").forEach(el=>{
+      const key = el.dataset.i18n;
+      if(I18N[lang]?.[key]) el.innerHTML = I18N[lang][key];
+    });
+    if(currentView==="buy") renderBuyBooks();
+    if(currentView==="reviews") renderReviews();
+    updateReaderTools();
+  }
+
+  function toggleBackCoverZoom(){
+    const back = $("#focusBack");
+    if(!back) return;
+
+    backCoverZoomed = !backCoverZoomed;
+    focusZone.classList.toggle("back-zoom-active", backCoverZoomed);
+    back.setAttribute("aria-pressed", backCoverZoomed ? "true" : "false");
+  }
+
+  function resetBackCoverZoom(){
+    const back = $("#focusBack");
+    backCoverZoomed = false;
+    focusZone.classList.remove("back-zoom-active");
+    if(back) back.setAttribute("aria-pressed","false");
+  }
+
+  async function focusBook(sourceEl=null){
+    if(focused || opened) return;
+
+    if(sourceEl?.dataset?.bookId){
+      currentBookId = sourceEl.dataset.bookId;
+      activeFloatingCover = sourceEl;
+      buyMode = false;
+      await loadCurrentBook();
+    }
+
+    const selected=bookById(currentBookId);
+
+    const dock=$("#bookDock");
+    if(dock) dock.classList.add("is-hidden");
+
+    $("#focusFront img").src=selected.front;
+    $("#focusFront img").alt=`${selected.title} ${selected.editionLabel} front cover`;
+    $("#focusBack img").src=selected.back;
+    $("#focusBack img").alt=`${selected.title} ${selected.editionLabel} back cover`;
+    const aboutBox=$("#bookAboutText");
+    if(aboutBox){
+      const d=selected.descriptions||{};
+      aboutBox.textContent=d[language]||d[selected.bookLanguage]||d.en||"";
+    }
+    focused = true;
+
+    const source = activeFloatingCover || floatingCovers[0];
+    if(!source) return;
+
+    const r = source.getBoundingClientRect();
+    const ghost = source.cloneNode(true);
+    ghost.removeAttribute("id");
+    Object.assign(ghost.style,{
+      position:"fixed",left:r.left+"px",top:r.top+"px",width:r.width+"px",height:r.height+"px",
+      zIndex:"9999",margin:"0",animation:"none",transition:"all .76s cubic-bezier(.2,.85,.18,1)"
+    });
+
+    document.body.appendChild(ghost);
+    source.style.visibility="hidden";
+
+    requestAnimationFrame(()=>{
+      ghost.style.left=(innerWidth*.5-r.width*.5)+"px";
+      ghost.style.top=(innerHeight*.45-r.height*.5)+"px";
+      ghost.style.transform="scale(1.24)";
+      ghost.style.opacity=".12";
+    });
+
+    setTimeout(()=>{
+      ghost.remove();
+      focusZone.classList.add("show");
+      focusZone.setAttribute("aria-hidden","false");
+      returnBooksBtn.classList.add("show");
+    },740);
+  }
+
+  function returnToBookList(){
+    if(currentView==="buy"){
+      resetBackCoverZoom();
+      focusZone.classList.remove("show","buy-preview-mode");
+      focusZone.setAttribute("aria-hidden","true");
+      returnBooksBtn.classList.remove("show");
+      focused=false;
+      opened=false;
+      buyMode=false;
+      showView("buy");
+      return;
+    }
+    resetBackCoverZoom();
+
+    focusZone.classList.remove("show");
+    focusZone.setAttribute("aria-hidden","true");
+    returnBooksBtn.classList.remove("show");
+
+    focused = false;
+    opened = false;
+    setReaderUI(false);
+    contentsPanel.classList.remove("show");
+    contentsPanel.setAttribute("aria-hidden","true");
+
+    focusZone.classList.remove("buy-preview-mode");
+
+    // Restore both language editions.
+    const dock=$("#bookDock");
+    if(dock) dock.classList.remove("is-hidden");
+    floatingCovers.forEach(el=>el.style.visibility="visible");
+
+    // Animate only the edition that was selected.
+    if(activeFloatingCover){
+      activeFloatingCover.animate(
+        [
+          {opacity:0, transform:"translateX(38px) scale(.92)"},
+          {opacity:1, transform:"translateX(0) scale(1)"}
+        ],
+        {
+          duration:420,
+          easing:"cubic-bezier(.2,.85,.18,1)"
+        }
+      );
+    }
+  }
+
+  function bookmarkKey(){ return `anbook-bookmark:${currentBookId}`; }
+  function currentPageIndex(){
+    return matchMedia("(max-width:900px)").matches ? spread : spread*2;
+  }
+  function goToPage(pageIndex){
+    const i=Math.max(0,Math.min(Number(pageIndex)||0,pages.length-1));
+    spread=matchMedia("(max-width:900px)").matches ? i : Math.floor(i/2);
+    render();
+  }
+  function saveBookmark(){
+    if(!opened || !pages.length) return;
+    const data={page:currentPageIndex(),savedAt:new Date().toISOString()};
+    localStorage.setItem(bookmarkKey(),JSON.stringify(data));
+    buildContents();
+    const b=$("#bookmarkBtn");
+    if(b){
+      const old=b.querySelector(".bookmark-label").textContent;
+      b.querySelector(".bookmark-label").textContent=I18N[language].bookmarkSaved;
+      setTimeout(()=>{ if(b.querySelector(".bookmark-label")) b.querySelector(".bookmark-label").textContent=I18N[language].bookmark; },1200);
+    }
+  }
+  function getBookmark(){
+    try{return JSON.parse(localStorage.getItem(bookmarkKey())||"null")}catch(_e){return null}
+  }
+  function installReaderTools(){
+    const br=$(".bottom-right");
+    if(!br || $("#pageJumpSelect")) return;
+    const select=document.createElement("select");
+    select.id="pageJumpSelect"; select.className="bottom-tool page-jump";
+    select.setAttribute("aria-label","Choose page");
+    select.addEventListener("change",()=>{ if(!opened) return; goToPage(Number(select.value)); });
+    br.insertBefore(select,br.firstChild);
+    const bm=document.createElement("button");
+    bm.id="bookmarkBtn"; bm.className="bottom-tool"; bm.type="button";
+    bm.innerHTML='<span class="tool-icon">🔖</span><span class="bookmark-label"></span>';
+    bm.addEventListener("click",saveBookmark);
+    br.insertBefore(bm,select.nextSibling);
+    const resume=document.createElement("button");
+    resume.id="resumeBookmarkBtn"; resume.className="bottom-tool"; resume.type="button";
+    resume.innerHTML='<span class="tool-icon">↪</span><span class="resume-label"></span>';
+    resume.addEventListener("click",()=>{const x=getBookmark();if(!x || !opened)return;goToPage(x.page)});
+    br.insertBefore(resume,bm.nextSibling);
+    updateReaderTools();
+    setReaderUI(opened);
+  }
+  function updateReaderTools(){
+    const sel=$("#pageJumpSelect"),bm=$("#bookmarkBtn"),resume=$("#resumeBookmarkBtn");
+    if(!sel)return;
+    const old=Number(sel.value);
+    sel.innerHTML=pages.map((_,i)=>`<option value="${i}">${I18N[language].page} ${i+1}</option>`).join("");
+    sel.value=String(Math.max(0,Math.min(currentPageIndex(),pages.length-1)));
+    if(bm) bm.querySelector(".bookmark-label").textContent=I18N[language].bookmark;
+    const saved=getBookmark();
+    if(resume){
+      const canShow=opened && reader.classList.contains("show") && !!saved;
+      resume.hidden=!canShow;
+      resume.style.setProperty("display",canShow?"":"none","important");
+      resume.querySelector(".resume-label").textContent=I18N[language].resume;
+    }
+  }
+
+  function setReaderUI(active){
+    const trulyReading = !!active && opened && reader.classList.contains("show");
+    pageCounter.classList.toggle("hidden",!trulyReading);
+    ["#pageJumpSelect","#bookmarkBtn","#resumeBookmarkBtn","#contentsBtn","#prevPage","#nextPage","#zoomBtn"].forEach(sel=>{
+      const el=$(sel);
+      if(!el) return;
+      el.hidden=!trulyReading;
+      el.style.setProperty("display",trulyReading ? "" : "none","important");
+      el.style.setProperty("pointer-events",trulyReading ? "auto" : "none","important");
+    });
+    document.body.classList.toggle("reader-open",trulyReading);
+    if(trulyReading) updateReaderTools();
+  }
+
+  function openReader(){
+    if(buyMode) return;
+    $("#openBookButton").textContent=I18N[language].openBook;
+    resetBackCoverZoom();
+    returnBooksBtn.classList.remove("show");
+    opened = true;
+    focusZone.classList.remove("show");
+    focusZone.setAttribute("aria-hidden","true");
+    reader.classList.add("show");
+    reader.setAttribute("aria-hidden","false");
+    spread = 0;
+    setReaderUI(true);
+    render();
+  }
+
+  function closeReader(){
+    focusZone.classList.remove("buy-preview-mode");
+    opened = false;
+    reader.classList.remove("show");
+    reader.setAttribute("aria-hidden","true");
+    focusZone.classList.add("show");
+    focusZone.setAttribute("aria-hidden","false");
+    returnBooksBtn.classList.add("show");
+    setReaderUI(false);
+  }
+
+  function render(){
+    if(!pages.length) return;
+    const mobile = matchMedia("(max-width:900px)").matches;
+
+    if(mobile){
+      const i = Math.max(0,Math.min(spread,pages.length-1));
+      leftPage.innerHTML = pages[i] || "";
+      leftNum.textContent = i+1;
+      rightPage.innerHTML = "";
+      rightNum.textContent = "";
+      pageCounter.textContent = `${i+1} / ${pages.length}`;
+      const jump=$("#pageJumpSelect"); if(jump) jump.value=String(i);
+      return;
+    }
+
+    const li = Math.max(0,Math.min(spread*2,pages.length-1));
+    const ri = li+1;
+    leftPage.innerHTML = pages[li] || "";
+    rightPage.innerHTML = pages[ri] || "";
+    leftNum.textContent = li+1;
+    rightNum.textContent = ri<pages.length ? ri+1 : "";
+    pageCounter.textContent = `${Math.min(ri+1,pages.length)} / ${pages.length}`;
+    const jump=$("#pageJumpSelect"); if(jump) jump.value=String(li);
+
+    prevPage.disabled = spread===0;
+    nextPage.disabled = false;
+  }
+
+  function next(){
+    const mobile = matchMedia("(max-width:900px)").matches;
+    const max = mobile ? pages.length-1 : Math.ceil(pages.length/2)-1;
+    if(spread < max){
+      spread++;
+      render();
+    }else{
+      closeReader();
+      // finished: show front + back preview again
+    }
+  }
+
+  function prev(){
+    if(spread>0){
+      spread--;
+      render();
+    }
+  }
+
+  function buildContents(){
+    contentsList.innerHTML = "";
+    const found = new Set();
+
+    pages.forEach((html,index)=>{
+      const d = document.createElement("div");
+      d.innerHTML = html;
+      const chapter = d.querySelector(".chapter-head");
+      if(!chapter || found.has(chapter.id)) return;
+      found.add(chapter.id);
+
+      const label = chapter.querySelector(".chapter-label")?.textContent || "";
+      const title = chapter.querySelector(".chapter-title")?.textContent || "";
+      const b = document.createElement("button");
+      b.className = "content-link";
+      b.dataset.pageIndex=String(index);
+      const saved=getBookmark();
+      const isMarked=!!saved && Number(saved.page)===index;
+      b.innerHTML = `<span class="toc-main"><span class="toc-title">${escapeHtml(label)}. ${escapeHtml(title)}</span>${isMarked?'<span class="toc-bookmark" aria-label="Bookmark">🔖</span>':''}</span><span class="toc-page">${escapeHtml(I18N[language].page)} ${index+1}</span>`;
+      b.addEventListener("click",()=>{
+        contentsPanel.classList.remove("show");
+        contentsPanel.setAttribute("aria-hidden","true");
+        if(!opened) openReader();
+        goToPage(index);
+      });
+      contentsList.appendChild(b);
+    });
+  }
+
+  // Home book listeners are attached by renderHomeBooks().
+  $("[data-share-book]:not(#bookDock [data-share-book])").forEach(btn=>btn.addEventListener("click",e=>{
+    e.stopPropagation();
+    shareBook(btn.dataset.shareBook);
+  }));
+  returnBooksBtn.addEventListener("click",returnToBookList);
+  $("#focusFront").addEventListener("click",()=>{
+    if(buyMode) return;
+    openReader();
+  });
+  $("#focusBack").addEventListener("click",toggleBackCoverZoom);
+  $("#openBookButton").addEventListener("click",()=>{
+    if(buyMode){
+      const book=bookById(currentBookId);
+      window.top.location.href="https://pay.sumup.com/b2c/QMKU95FF";
+      return;
+    }
+    openReader();
+  });
+  $("#closeReader").addEventListener("click",closeReader);
+  prevPage.addEventListener("click",()=>{ if(opened && reader.classList.contains("show")) prev(); });
+  nextPage.addEventListener("click",()=>{ if(opened && reader.classList.contains("show")) next(); });
+
+  $(".languages button").forEach(b=>b.addEventListener("click",()=>applyLanguage(b.dataset.lang)));
+
+  $("#fullscreenBtn").addEventListener("click",async()=>{
+    try{ if(!document.fullscreenElement) await root.requestFullscreen(); }catch(e){ console.warn(e); }
+  });
+  $("#exitFullscreen").addEventListener("click",async()=>{
+    try{ if(document.fullscreenElement) await document.exitFullscreen(); }catch(e){ console.warn(e); }
+  });
+
+  $("#zoomBtn").addEventListener("click",()=>{
+    if(!opened) return;
+    zoomed = !zoomed;
+    bookOpen.classList.toggle("zoomed",zoomed);
+  });
+
+  $("#shareBtn").addEventListener("click",()=>shareBook(currentBookId));
+
+  $("#contentsBtn").addEventListener("click",()=>{
+    if(!opened || !reader.classList.contains("show")) return;
+    contentsPanel.classList.add("show");
+    contentsPanel.setAttribute("aria-hidden","false");
+  });
+  $("#contentsClose").addEventListener("click",()=>{
+    contentsPanel.classList.remove("show");
+    contentsPanel.setAttribute("aria-hidden","true");
+  });
+
+  $("[data-view-link]").forEach(a=>a.addEventListener("click",e=>{
+    e.preventDefault();
+    showView(a.dataset.viewLink);
+  }));
+
+  const oldListShare=$("#shareBookFromList");
+  if(oldListShare){
+    oldListShare.addEventListener("click",e=>{
+      e.stopPropagation();
+      shareBook(currentBookId);
+    });
+  }
+
+  reviewBookSelect.addEventListener("change",async()=>{
+    currentBookId=reviewBookSelect.value;
+    $("#reviewBookCover").src=bookById(currentBookId).front;
+    await loadCurrentBook();
+    renderReviews();
+  });
+  $("#shareReviewBook").addEventListener("click",()=>shareBook(reviewBookSelect.value));
+
+  $("#ratingStars").addEventListener("click",e=>{
+    const btn=e.target.closest("[data-rating]");
+    if(!btn) return;
+    currentRating=Number(btn.dataset.rating);
+    $("#ratingStars [data-rating]").forEach(b=>b.classList.toggle("on",Number(b.dataset.rating)<=currentRating));
+  });
+
+  $("#reviewForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    if(currentRating<1){
+      reviewStatus.textContent=I18N[language].ratingRequired;
+      return;
+    }
+    const review={
+      bookId:reviewBookSelect.value,
+      rating:currentRating,
+      name:$("#reviewName").value.trim(),
+      text:$("#reviewText").value.trim(),
+      createdAt:new Date().toISOString()
+    };
+    try{
+      await submitReview(review);
+      $("#reviewText").value="";
+      currentRating=0;
+      $("#ratingStars [data-rating]").forEach(b=>b.classList.remove("on"));
+      reviewStatus.textContent=CONFIG.REVIEWS_API ? "" : I18N[language].savedLocal;
+      renderReviews();
+    }catch(_e){
+      reviewStatus.textContent="Error";
+    }
+  });
+
+  let touchX = null;
+  let touchY = null;
+
+  reader.addEventListener("touchstart",e=>{
+    if(!matchMedia("(max-width:900px)").matches) return;
+    if(e.target.closest("button,a,input,textarea,select")) return;
+    const t=e.changedTouches[0];
+    touchX=t.clientX;
+    touchY=t.clientY;
+  },{passive:true});
+
+  reader.addEventListener("touchend",e=>{
+    if(!matchMedia("(max-width:900px)").matches) return;
+    if(touchX==null || touchY==null) return;
+
+    const t=e.changedTouches[0];
+    const dx=t.clientX-touchX;
+    const dy=t.clientY-touchY;
+    touchX=null;
+    touchY=null;
+
+    // Only a deliberate horizontal swipe turns pages.
+    if(Math.abs(dx)<45) return;
+    if(Math.abs(dx)<=Math.abs(dy)*1.15) return;
+
+    dx<0?next():prev();
+  },{passive:true});
+
+  // Desktop trackpads can emit horizontal wheel gestures.
+  // Block the browser/page horizontal movement without changing pages.
+  reader.addEventListener("wheel",e=>{
+    if(matchMedia("(max-width:900px)").matches) return;
+    if(Math.abs(e.deltaX)>Math.abs(e.deltaY) && Math.abs(e.deltaX)>8){
+      e.preventDefault();
+    }
+  },{passive:false});
+
+  // Desktop keyboard navigation belongs to the reader only.
+  window.addEventListener("keydown",e=>{
+    if(!opened || matchMedia("(max-width:900px)").matches) return;
+    if(e.key==="ArrowRight"){
+      e.preventDefault();
+      next();
+    }else if(e.key==="ArrowLeft"){
+      e.preventDefault();
+      prev();
+    }
+  });
+
+  window.addEventListener("resize",()=>{
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(()=>{
+      if(!parsed) return;
+      const oldRatio = pages.length ? (matchMedia("(max-width:900px)").matches ? spread/pages.length : (spread*2)/pages.length) : 0;
+      pages=paginate(parsed);
+      spread=matchMedia("(max-width:900px)").matches
+        ? Math.min(pages.length-1,Math.max(0,Math.round(oldRatio*pages.length)))
+        : Math.min(Math.ceil(pages.length/2)-1,Math.max(0,Math.round(oldRatio*pages.length/2)));
+      buildContents();
+      render();
+    },180);
+  });
+
+  setReaderUI(false);
+  installReaderTools();
+  renderHomeBooks();
+  fillBookSelectors();
+
+  const deepBook = new URLSearchParams(location.search).get("book");
+  if(deepBook && CONFIG.BOOKS.some(b=>b.id===deepBook)){
+    currentBookId=deepBook;
+    reviewBookSelect.value=currentBookId;
+  }
+
+  loadCurrentBook();
+  applyLanguage("ru");
+
+  const initialHash=(location.hash||"#home").slice(1);
+  if(["home","book","gallery","reviews","buy"].includes(initialHash)){
+    setTimeout(()=>{
+      const cover=$(`.floating-cover[data-book-id="${currentBookId}"]`);
+      if(cover) activeFloatingCover=cover;
+      showView(initialHash);
+    },80);
+  }
+})();
+</script>
 <script src="./book-music.js?v=20260913-3"></script>
 
 <script>
