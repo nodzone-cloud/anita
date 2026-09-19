@@ -311,8 +311,7 @@
       card.querySelector(".preview-btn").addEventListener("click",openBuyPreview);
 
       card.querySelector(".direct-buy-btn").addEventListener("click",()=>{
-        if(book.buyUrl) location.href=book.buyUrl;
-        else alert(I18N[language].buyNotReady);
+        window.top.location.href="https://pay.sumup.com/b2c/QMKU95FF";
       });
 
       card.querySelector(".share-book-card").addEventListener("click",()=>shareBook(book.id));
@@ -1087,8 +1086,7 @@
   $("#openBookButton").addEventListener("click",()=>{
     if(buyMode){
       const book=bookById(currentBookId);
-      if(book.buyUrl) location.href=book.buyUrl;
-      else alert(I18N[language].buyNotReady);
+      window.top.location.href="https://pay.sumup.com/b2c/QMKU95FF";
       return;
     }
     openReader();
