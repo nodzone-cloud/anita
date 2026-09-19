@@ -88,6 +88,10 @@ A.Interpreter={
       if(state.pending)out=A.Secretary.answer(text);
     }
     else if(state.brief&&state.brief.meta&&state.brief.meta.status==="waiting"&&/^(thanks|thank you|thanks a lot|thank you very much|ok thanks|okay thanks|great thanks|perfect thanks|спасибо|спасибо большое|хорошо спасибо|ок спасибо|понял спасибо|kiitos|kiitos paljon)[.! 😊🙏]*$/i.test(text))out={text:state.language==="ru"?"Пожалуйста 😊 Я всё сделаю.":state.language==="fi"?"Ole hyvä 😊 Hoidan sen.":"You’re welcome 😊 I’ll take care of it.",sector:"human"};
+    else if(state.phase==="free_editing")out=A.Secretary.applyFreeEdit(text);
+    else if(state.brief&&state.brief.meta&&!state.brief.meta.sent&&["waiting","confirmed","updated"].includes(state.brief.meta.status)&&/(change|edit|add).*(brief)|brief.*(change|edit|add)|remembered something|измен.*бриф|добав.*бриф|вспомнил|вспомнила/i.test(text)){
+      if(state.brief.meta.status==="waiting"){const stopped=await timerCancel(state.brief.meta.orderNumber);if(!stopped.ok){out={text:state.language==="ru"?"Я не смогла безопасно остановить запланированную отправку. Попробуйте ещё раз через секунду.":"I couldn’t safely pause the scheduled send. Please try again in a moment.",sector:"secretary"};}else out=A.Secretary.beginFreeEdit();}else out=A.Secretary.beginFreeEdit();
+    }
     else if(intent.primary==="new_brief")out=A.Secretary.start();
     else if(state.phase==="brief_amended"&&/^(ok|okay|done|that'?s done|thats done|finished|all done|готов|всё|все|закончил|готово|valmis)/i.test(text))out=A.Secretary.finishAmendments();
     else if(state.brief&&state.brief.confirmed&&state.brief.meta&&!state.brief.meta.sent&&state.brief.confirmed.business&&/^(also\b|and\b|i also\b|also i\b|plus\b|we also\b|add\b|include\b|actually\b|ещ[её]\b|а ещё\b|также\b|добав\b|lisäksi\b)/i.test(text))out=A.Secretary.amend(text.replace(/^(also\s+i\s+need|i\s+also\s+need|we\s+also\s+need|also|and|plus|add|include|ещ[её]|а ещё|также|добав(?:ь|ить)?|lisäksi)\s*/i,"").trim()||text);
