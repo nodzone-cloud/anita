@@ -116,7 +116,7 @@ A.Interpreter={
         out=A.Secretary.cancel();
       }
     }
-    else if((state.phase==="confirmed"||state.phase==="waiting")&&/send|pass|перед|отправ|lähet/i.test(text)){
+    else if((state.phase==="confirmed"||state.phase==="waiting"||state.phase==="updated")&&/send|pass|перед|отправ|lähet/i.test(text)){
       const dm=A.Secretary.delayedMinutes(text);
 
       if(dm!==null){
