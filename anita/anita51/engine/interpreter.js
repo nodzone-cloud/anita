@@ -144,18 +144,21 @@ A.Interpreter={
       }
     }
     else if(intent.primary==="website")out=A.Secretary.start();
-    else if(intent.primary==="guide"){
-      const g=A.Guide.answer(text,state.language);
-      out={text:g||A.Human.fallback(state.language),sector:"guide"};
-    }
     else if(intent.primary==="it")out={
       text:state.language==="ru"?"Конечно. Опишите, что происходит с устройством и что вы уже пробовали.":"Sure. Tell me what is happening with the device and what you have already tried.",
       sector:"it"
     };
     else if(intent.primary==="human")out={text:A.Human.reply(text,state.language),sector:"human"};
     else{
+      /* Once deterministic workflow actions above have had first refusal,
+         normal conversation is semantic-first. A waiting Timer is background
+         state, not ownership of the next user message. */
       const ai=await A.AI.understand(text,state);
-      out={text:ai||A.Human.fallback(state.language),sector:"human",usedAI:!!ai};
+      if(ai)out={text:ai,sector:intent.primary==="guide"?"guide":"human",usedAI:true};
+      else if(intent.primary==="guide"){
+        const g=A.Guide.answer(text,state.language);
+        out={text:g||A.Human.fallback(state.language),sector:"guide"};
+      }else out={text:A.Human.fallback(state.language),sector:"human"};
     }
 
     if(out&&out.action&&out.action.type==="schedule_brief"){
