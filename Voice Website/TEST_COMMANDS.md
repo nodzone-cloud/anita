@@ -37,3 +37,48 @@
 
 - Если `transcribeEndpoint` заполнен, выбери **AUTO · RU / EN / FI** — тогда распознавание действительно не привязано к языку сайта.
 - Если endpoint пустой, используется встроенный Web Speech API браузера. Он работает бесплатно, но обычно распознаёт один выбранный язык за одну сессию.
+
+
+## Smart scroll
+
+### Русский
+- «чуть ниже»
+- «опусти вниз»
+- «к следующему заголовку»
+- «следующий раздел»
+- «чуть выше»
+- «к предыдущему заголовку»
+- «в самый верх»
+- «в самый низ»
+
+### English
+- “scroll down”
+- “a little lower”
+- “next heading”
+- “next section”
+- “scroll up”
+- “previous heading”
+- “go to top”
+- “go to bottom”
+
+### Suomi
+- “vieritä alas”
+- “vähän alemmas”
+- “seuraava otsikko”
+- “seuraava osio”
+- “vieritä ylös”
+- “edellinen otsikko”
+- “sivun alkuun”
+- “sivun loppuun”
+
+## Contextual price questions
+
+If the current page is a specific product page, a phrase such as «сколько стоит?» / “how much is it?” / “paljonko maksaa?” goes to that product’s pricing.
+
+On a general page where `pageProduct: ""`, the same ambiguous question opens the centered chooser:
+
+- ANITA
+- Websites / Веб-сайты / Verkkosivut
+- Voice Package / Voice пакет
+
+The user can tap an option or simply say the product name. «Закрой» / “cancel” / “sulje” closes the chooser.
