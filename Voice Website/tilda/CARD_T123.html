@@ -1,0 +1,48 @@
+<!-- Alex Node Voice card — fixed version -->
+<a id="an-voice-card" class="an-voice-card" href="https://alexnode.fi/smartwebsite">
+  <span class="an-voice-card__label">ALEX NODE · HUMAN TECH</span>
+  <strong>Alex Node Voice</strong>
+  <span class="an-voice-card__text"></span>
+  <span class="an-voice-card__action"></span>
+</a>
+
+<style>
+  .an-voice-card {
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+    max-width:1160px;
+    margin:35px auto;
+    padding:clamp(30px,6vw,65px);
+    border:1px solid #695477;
+    border-radius:28px;
+    background:radial-gradient(circle at 85% 10%,#593562,#292332 47%,#17151e);
+    color:#faf7ff !important;
+    text-decoration:none !important;
+    transition:transform .2s,border-color .2s;
+  }
+  .an-voice-card:hover {
+    transform:translateY(-4px);
+    border-color:#e5a7fa;
+  }
+  .an-voice-card__label {
+    color:#e5a7fa;
+    font:700 12px/1.4 Arial,sans-serif;
+    letter-spacing:.18em;
+  }
+  .an-voice-card strong {
+    font:800 clamp(36px,6vw,70px)/1.05 Arial,sans-serif;
+    letter-spacing:-.055em;
+  }
+  .an-voice-card__text {
+    max-width:680px;
+    color:#ddd3e1;
+    font:400 clamp(17px,2vw,22px)/1.5 Arial,sans-serif;
+  }
+  .an-voice-card__action {
+    color:#e5a7fa;
+    font:700 17px Arial,sans-serif;
+  }
+</style>
+
+<script src="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/Voice%20Website/js/voice-card.js"></script>
