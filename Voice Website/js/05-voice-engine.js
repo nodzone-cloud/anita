@@ -21,7 +21,7 @@
       silenceMs:900,
       maxRecordMs:9000,
       minRecordMs:350,
-      browserRestartMs:650,
+      browserRestartMs:350,
       autoOpenExternal:false
     }, w.AN_VOICE_CONFIG || {});
 
@@ -31,7 +31,11 @@
       option.textContent = (AN.t && AN.t().voiceAuto) || 'AUTO · EN / RU / FI';
       voiceLanguage.insertBefore(option, voiceLanguage.firstChild);
     }
-    voiceLanguage.value = config.transcribeEndpoint ? 'auto' : (voiceLanguage.value || 'en-US');
+    if (!config.transcribeEndpoint) {
+      const autoOption = voiceLanguage.querySelector('option[value="auto"]');
+      if (autoOption) { autoOption.disabled = true; autoOption.hidden = true; }
+    }
+    voiceLanguage.value = config.transcribeEndpoint ? 'auto' : (voiceLanguage.value === 'auto' ? 'en-US' : (voiceLanguage.value || 'en-US'));
 
     let recognition = null;
     let restartTimer = null;
@@ -141,22 +145,25 @@
 
       recognition = new Recognition();
       recognition.lang = browserLanguage();
-      recognition.continuous = false;
+      recognition.continuous = true;
       recognition.interimResults = false;
       recognition.maxAlternatives = 3;
 
       recognition.onresult = function (event) {
-        const results = event.results && event.results[0];
-        if (!results) return;
-        let chosen = '';
-        for (let i = 0; i < results.length; i++) {
-          const candidate = results[i] && results[i].transcript;
-          if (!candidate) continue;
-          if (!chosen) chosen = candidate;
-          const routed = AN.routeRequest ? AN.routeRequest(candidate) : { handled:false };
-          if (routed.handled) { chosen = candidate; break; }
+        if (!event.results) return;
+        for (let index = event.resultIndex || 0; index < event.results.length; index++) {
+          const result = event.results[index];
+          if (!result || !result.isFinal) continue;
+          let chosen = '';
+          for (let i = 0; i < result.length; i++) {
+            const candidate = result[i] && result[i].transcript;
+            if (!candidate) continue;
+            if (!chosen) chosen = candidate;
+            const routed = AN.routeRequest ? AN.routeRequest(candidate) : { handled:false };
+            if (routed.handled) { chosen = candidate; break; }
+          }
+          if (chosen) handleTranscript(chosen);
         }
-        handleTranscript(chosen);
       };
 
       recognition.onerror = function (event) {
