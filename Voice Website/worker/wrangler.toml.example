@@ -1,0 +1,10 @@
+name = "alex-node-voice-transcribe"
+main = "openai-transcribe-worker.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+ALLOWED_ORIGINS = "https://alexnode.fi,https://www.alexnode.fi"
+
+# DO NOT put OPENAI_API_KEY here.
+# Add it as a secret instead:
+#   npx wrangler secret put OPENAI_API_KEY
