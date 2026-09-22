@@ -35,7 +35,13 @@
       const autoOption = voiceLanguage.querySelector('option[value="auto"]');
       if (autoOption) { autoOption.disabled = true; autoOption.hidden = true; }
     }
-    voiceLanguage.value = config.transcribeEndpoint ? 'auto' : (voiceLanguage.value === 'auto' ? 'en-US' : (voiceLanguage.value || 'en-US'));
+    let preferredSpeechLanguage = '';
+    try { preferredSpeechLanguage = localStorage.getItem('alexNodeVoiceSpeechLanguage') || ''; } catch (_) {}
+    const siteSpeechLanguage = {
+      ru:'ru-RU', en:'en-US', fi:'fi-FI'
+    }[(AN.siteLanguage && AN.siteLanguage.value) || 'en'] || 'en-US';
+    voiceLanguage.value = preferredSpeechLanguage && voiceLanguage.querySelector('option[value="' + preferredSpeechLanguage + '"]')
+      ? preferredSpeechLanguage : (config.transcribeEndpoint ? 'auto' : siteSpeechLanguage);
 
     let recognition = null;
     let restartTimer = null;
@@ -385,6 +391,7 @@
     });
 
     voiceLanguage.addEventListener('change', function () {
+      try { localStorage.setItem('alexNodeVoiceSpeechLanguage', voiceLanguage.value); } catch (_) {}
       if (!AN.listening) return;
       stopVoice();
       startVoice();
