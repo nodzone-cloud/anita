@@ -1,38 +1,42 @@
 <!--
-ALEX NODE VOICE — GitHub loader for the existing /smartwebsite T123 page
+ALEX NODE VOICE — GitHub loader for /smartwebsite
 
-IMPORTANT:
-1) KEEP all your current HTML + CSS from the T123 block.
-2) DELETE the old large inline <script> ... </script> from the bottom.
-3) PASTE this loader in its place.
-4) GitHub repo is already set to nodzone-cloud/anita.
-5) For true automatic RU/EN/FI voice recognition, add your Worker URL to transcribeEndpoint.
+This page is the Voice Package product page, therefore pageProduct = "voice".
+If you reuse this loader on a general page that contains several products, set pageProduct to "".
 -->
 
 <script>
 window.AN_VOICE_CONFIG = {
-  // Leave empty for browser Web Speech fallback.
-  // For true AUTO RU/EN/FI use your Cloudflare Worker endpoint:
-  // Example: "https://alex-node-voice-transcribe.YOUR.workers.dev/transcribe"
   transcribeEndpoint: "",
 
-  // Voice activity detection settings for AUTO mode.
+  // Current page context for ambiguous price questions.
+  // "voice" means: on /smartwebsite, "How much is it?" opens this page's pricing.
+  // Use "" on a general page so the product chooser popup appears.
+  pageProduct: "voice",
+
+  products: {
+    anita: {
+      url: "https://alexnode.fi/anita2"
+    },
+    websites: {
+      url: "https://alexnode.fi"
+    },
+    voice: {
+      url: "https://alexnode.fi/smartwebsite#pricing"
+    }
+  },
+
   vadThreshold: 0.035,
   silenceMs: 900,
   maxRecordMs: 9000,
-
-  // Safer default: voice commands like "open the book" show a confirmation button
-  // instead of immediately leaving the page.
   autoOpenExternal: false,
-
-  // Optional later:
   carImageUrl: ""
 };
 </script>
 
-<script src="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/Voice%20Website/js/01-translations.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/Voice%20Website/js/02-human-tech.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/Voice%20Website/js/03-voice-routes.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/Voice%20Website/js/04-site-ui.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/Voice%20Website/js/05-voice-engine.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/Voice%20Website/js/06-burger.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/Voice%20Website/js/01-translations.js?v=20260922-smartnav1"></script>
+<script src="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/Voice%20Website/js/02-human-tech.js?v=20260922-smartnav1"></script>
+<script src="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/Voice%20Website/js/03-voice-routes.js?v=20260922-smartnav1"></script>
+<script src="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/Voice%20Website/js/04-site-ui.js?v=20260922-smartnav1"></script>
+<script src="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/Voice%20Website/js/05-voice-engine.js?v=20260922-smartnav1"></script>
+<script src="https://cdn.jsdelivr.net/gh/nodzone-cloud/anita@main/Voice%20Website/js/06-burger.js?v=20260922-smartnav1"></script>
