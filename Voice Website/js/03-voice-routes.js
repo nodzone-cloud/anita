@@ -124,6 +124,64 @@
     { url:'https://alexnode.fi', terms:/(main site|main website|alex node website|главный сайт|сайт alex node|paasivu|pääsivu|alex node sivu)/ }
   ];
 
+  // Navigate to one of the ten Human Tech entries by title or number.
+  const humanTechNumberWords = [
+    ['один','первый','первую','one','first','yksi','ensimmäinen'],
+    ['два','второй','вторую','two','second','kaksi','toinen'],
+    ['три','третий','третью','three','third','kolme','kolmas'],
+    ['четыре','четвертый','четвертую','four','fourth','neljä','neljas'],
+    ['пять','пятый','пятую','five','fifth','viisi','viides'],
+    ['шесть','шестой','шестую','six','sixth','kuusi','kuudes'],
+    ['семь','седьмой','седьмую','seven','seventh','seitsemän','seitsemäs'],
+    ['восемь','восьмой','восьмую','eight','eighth','kahdeksan','kahdeksas'],
+    ['девять','девятый','девятую','nine','ninth','yhdeksän','yhdeksäs'],
+    ['десять','десятый','десятую','ten','tenth','kymmenen','kymmenes']
+  ];
+  const humanTechContext = /(?:human tech|хуман тек|хьюман тек|раздел|пункт|секци|номер|section|item|topic|number|kohta|osio|numero)/;
+  const humanTechAliases = [
+    null,
+    /(?:технологи[яюи] с характер|technology with character|technology with personality|teknologiaa persoonalla)/,
+    /(?:почему alex node выбрал|why alex node chose|miksi alex node valitsi)/,
+    /(?:технологи[яию] должна понимать|технологи[яию] понимает человека|technology should understand people|teknologian pitää ymmärtää)/,
+    /(?:меньше действий|fewer actions|vähemmän vaiheita)/,
+    /(?:доступност|accessibility|saavutettavuus)/,
+    /(?:голос вместо лишних кликов|voice instead of extra clicks|puhe turhien klikkausten)/,
+    /(?:человек оста[её]тся главн|user stays in control|käyttäjä säilyttää hallinnan)/,
+    /(?:анита и human tech|anita and human tech|anita ja human tech)/,
+    /(?:будущее взаимодействия|future of interaction|vuorovaikutuksen tulevaisuus)/
+  ];
+
+  function humanTechDestination(text) {
+    const translations = AN.humanTechTranslations || {};
+    for (let number = 1; number <= 10; number++) {
+      const matchesTitle = ['ru','en','fi'].some(function (lang) {
+        const title = translations[lang] && translations[lang]['t' + number];
+        return title && text.includes(normalize(title));
+      });
+      if (matchesTitle || humanTechAliases[number - 1] && humanTechAliases[number - 1].test(text)) {
+        return 'ht-' + String(number).padStart(2, '0');
+      }
+    }
+
+    if (/(?:€|евро|euro|цен|price|cost|hinta)/.test(text)) return null;
+    const numberMatch = text.match(/(?:^|\s)(?:0\s*([1-9])|(10|[1-9]))(?=\s|$)/);
+    const bareNumber = /^(?:0\s*[1-9]|[1-9]|10)$/.test(text);
+    if (numberMatch && (bareNumber || humanTechContext.test(text))) {
+      const number = Number(numberMatch[1] || numberMatch[2]);
+      return 'ht-' + String(number).padStart(2, '0');
+    }
+
+    const words = text.replace(/(?:^|\s)(?:ноль|zero|nolla)\s+/,' ').trim().split(/\s+/);
+    if (words.length === 1 || humanTechContext.test(text)) {
+      for (let i = 0; i < humanTechNumberWords.length; i++) {
+        if (words.some(function (word) { return humanTechNumberWords[i].includes(word); })) {
+          return 'ht-' + String(i + 1).padStart(2, '0');
+        }
+      }
+    }
+    return null;
+  }
+
   function detectProduct(text) {
     if (hasAny(text, productTerms.voice)) return 'voice';
     if (hasAny(text, productTerms.anita)) return 'anita';
@@ -153,6 +211,9 @@
     if (hasAny(text, phraseSets.prevSection)) return { handled:true, type:'scroll', action:'prevSection', text };
     if (hasAny(text, phraseSets.smallDown)) return { handled:true, type:'scroll', action:'smallDown', text };
     if (hasAny(text, phraseSets.smallUp)) return { handled:true, type:'scroll', action:'smallUp', text };
+
+    const humanTechId = humanTechDestination(text);
+    if (humanTechId) return { handled:true, type:'section', id:humanTechId, text };
 
     if (hasAny(text, priceTerms)) {
       const product = detectProduct(text);
