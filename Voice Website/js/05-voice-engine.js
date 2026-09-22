@@ -56,6 +56,30 @@
         return false;
       }
 
+      if (result.type === 'scroll') {
+        if (AN.performScroll) AN.performScroll(result.action);
+        setMessage(AN.t().voiceHeard + text + ' · ' + AN.t().voiceFound);
+        return true;
+      }
+
+      if (result.type === 'price_ambiguous') {
+        if (AN.showPriceModal) AN.showPriceModal();
+        setMessage((AN.t().priceQuestion || 'Which product price are you interested in?'));
+        return true;
+      }
+
+      if (result.type === 'price_cancel') {
+        if (AN.hidePriceModal) AN.hidePriceModal();
+        setMessage(AN.t().voiceReady);
+        return true;
+      }
+
+      if (result.type === 'product') {
+        if (AN.openProduct) AN.openProduct(result.product, true);
+        setMessage(AN.t().voiceHeard + text + ' · ' + AN.t().voiceFound);
+        return true;
+      }
+
       if (result.type === 'language') {
         AN.setSiteLanguage(result.lang);
         updateAutoLabel();
