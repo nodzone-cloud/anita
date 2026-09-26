@@ -27,8 +27,73 @@ function highlightTarget(id){
  el.classList.add('voice-target-highlight');el.scrollIntoView({behavior:'smooth',block:'center'});
  setTimeout(()=>el.classList.remove('voice-target-highlight'),5200);
 }
-function go(dest,response,target){continuousVoice=false;sessionStorage.setItem('motorVoiceReply',response||'');sessionStorage.setItem('motorResumeVoice','1');if(target)sessionStorage.setItem('motorVoiceTarget',target);window.location.assign(dest)}
-function callPhone(){continuousVoice=false;window.location.href='tel:+358458525293'}
+async function spaNavigate(dest,response,target,push=true){
+  try{
+    const res=await fetch(dest,{cache:'no-store'});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const html=await res.text();
+    const doc=new DOMParser().parseFromString(html,'text/html');
+    const next=doc.querySelector('main.content');
+    const main=document.querySelector('main.content');
+    if(!next||!main)throw new Error('main not found');
+    main.innerHTML=next.innerHTML;
+    document.title=doc.title||document.title;
+    document.querySelectorAll('.nav a').forEach(a=>a.classList.remove('active'));
+    const key=dest.split('/').pop().split('?')[0]||'index.html';
+    document.querySelectorAll('.nav a').forEach(a=>{
+      const href=(a.getAttribute('href')||'').split('?')[0];
+      if(href===key)a.classList.add('active');
+    });
+    if(push)history.pushState({page:dest},document.title,dest);
+    if(response){
+      try{await play(response)}catch(e){}
+    }
+    if(target)setTimeout(()=>highlightTarget(target),100);
+  }catch(e){
+    if(response)sessionStorage.setItem('motorVoiceReply',response);
+    if(target)sessionStorage.setItem('motorVoiceTarget',target);
+    window.location.assign(dest);
+  }
+}
+function go(dest,response,target){spaNavigate(dest,response||'',target||null,true)}
+function installSpaLinks(){
+  document.addEventListener('click',e=>{
+    const a=e.target.closest('a');if(!a)return;
+    const href=a.getAttribute('href')||'';
+    if(!/^(index|services|prices|about|contact|catalog|service-detail)\.html(?:\?|$)/.test(href))return;
+    e.preventDefault();spaNavigate(href,'',null,true);
+  },true);
+  addEventListener('popstate',e=>{
+    const dest=(e.state&&e.state.page)||location.pathname.split('/').pop()||'index.html';
+    spaNavigate(dest,'',null,false);
+  });
+}
+function detailHtml(kind){
+ const d={
+  diagnostics:{eyebrow:'Подробнее · Диагностика',title:'Подробнее о диагностике',lead:'Диагностика двигателя и электронных систем автомобиля.',cards:[['Что проверяем','ECU, датчики и параметры двигателя.'],['Результат','Понятное объяснение найденных проблем.'],['Следующий шаг','Ремонт или дополнительная проверка.']]},
+  service:{eyebrow:'Подробнее · Service',title:'Подробнее о Service',lead:'Плановое техническое обслуживание автомобиля.',cards:[['Обслуживание','Масла, фильтры, жидкости и плановые работы.'],['Проверка','Контроль основных систем и состояния автомобиля.'],['Следующий шаг','Рекомендации по дальнейшему обслуживанию.']]},
+  performance:{eyebrow:'Подробнее · Performance',title:'Подробнее о Performance',lead:'Настройка и дополнительные решения для производительности автомобиля.',cards:[['Настройка','Подбор решений под автомобиль и задачи владельца.'],['Performance','Работы, связанные с производительностью и откликом автомобиля.'],['Следующий шаг','Обсуждение подходящего варианта и дальнейших работ.']]}
+ }[kind];
+ return '<div class="eyebrow">'+d.eyebrow+'</div><h1>'+d.title+'</h1><p class="lead">'+d.lead+'</p><div class="grid">'+d.cards.map(c=>'<div class="card"><strong>'+c[0]+'</strong><p>'+c[1]+'</p></div>').join('')+'</div>';
+}
+async function openServiceDetail(kind,response){
+ const main=document.querySelector('main.content');if(!main)return;
+ main.innerHTML=detailHtml(kind);document.title='Motor Engine — '+(kind==='diagnostics'?'Диагностика':kind==='service'?'Service':'Performance');
+ history.pushState({detail:kind},document.title,'service-detail.html?service='+kind);
+ if(response){try{await play(response)}catch(e){}}
+}
+function priceTargetFromSpeech(t){
+ if(!/(€|\bевро\b|\beuro\b|\beuros\b)/i.test(t))return null;
+ if(/\b49\b/.test(t)||t.includes('сорок девять'))return 'price-49';
+ if(/\b99\b/.test(t)||t.includes('девяносто девять'))return 'price-99';
+ if(/\b120\b/.test(t)||t.includes('сто двадцать'))return 'price-120';
+ return null;
+}
+function showPriceTarget(id){
+ const onPrices=(location.pathname.split('/').pop()||'index.html')==='prices.html';
+ if(onPrices&&document.getElementById(id))highlightTarget(id);else go('prices.html','',id);
+}
+function callPhone(){window.location.href='tel:+358458525293'}
 function callWhatsApp(){continuousVoice=false;window.location.href='https://wa.me/358458525293'}
 function hasAny(t,list){return list.some(x=>typeof x==='string'?t.includes(x):x.test(t))}
 const INTENTS=[
@@ -43,13 +108,15 @@ const INTENTS=[
  {id:'pricesQuestion',p:['сколько стоит','во сколько обойдется','во сколько обойдётся','какая стоимость','сколько это стоит','сколько будет стоить','почем','почём','что по цене','сколько денег'],run:()=>go('prices.html','priceQuestion')},
  {id:'prices',p:['цены','цена','прайс','тарифы','покажи цены','посмотреть цены','какие цены','открой цены','покажи прайс','сколько у вас цены'],run:()=>go('prices.html','prices')},
  {id:'services',p:['услуги','услуга','посмотреть услуги','посмотри услуги','какие услуги','какие есть услуги','покажи услуги','показать услуги','открой услуги','что вы делаете','чем занимаетесь','что можете сделать','что предлагаете','что у вас есть','чем можете помочь','что можно заказать','что можно сделать'],run:()=>go('services.html','services')},
- {id:'diagnostics',p:['диагностика','диагностировать','проверить машину','проверить автомобиль','проверка машины','найти неисправность','что сломалось'],run:()=>go('service-detail.html','diagnostics')},
+ {id:'diagnostics',p:['диагностика','диагностировать','проверить машину','проверить автомобиль','проверка машины','найти неисправность','что сломалось'],run:()=>openServiceDetail('diagnostics','diagnostics')},
+ {id:'serviceDetail',p:[/^service$/,/^сервис$/,'техническое обслуживание','подробнее про service','подробнее о service','расскажи про service','подробнее про сервис','подробнее о сервисе'],run:()=>openServiceDetail('service','detail')},
+ {id:'performanceDetail',p:[/^performance$/,/^перформанс$/,'performance','перформанс','подробнее про performance','подробнее о performance','расскажи про performance'],run:()=>openServiceDetail('performance','detail')},
  {id:'engine',p:['ремонт двигателя','ремонт мотора','починить двигатель','починить мотор','двигатель сломался','мотор сломался',/(ремонт|почин).*(двигател|мотор)/],run:()=>go('service-detail.html','engine')},
  {id:'oil',p:['масло','замена масла','поменять масло','сменить масло','заменить масло'],run:()=>go('service-detail.html','oil')},
  {id:'tires',p:['шины','колеса','колёса','шиномонтаж','поменять колеса','поменять колёса','заменить шины'],run:()=>go('service-detail.html','tires')},
  {id:'about',p:['о компании','о вас','кто вы','расскажи о вас','расскажите о вас','расскажи о компании','расскажите о компании','чем известны','кто такие motor engine'],run:()=>go('about.html','about')},
  {id:'catalog',p:['каталог','варианты','покажи варианты','какие варианты','что можно выбрать','покажи каталог','открой каталог','что есть в каталоге','что выбрать'],run:()=>go('catalog.html','catalog')},
- {id:'detail',p:['подробнее','подробности','расскажи подробнее','покажи подробнее','подробнее об услуге','что входит','что туда входит'],run:()=>go('service-detail.html','detail')},
+ {id:'detail',p:['подробнее','подробности','расскажи подробнее','покажи подробнее','подробнее об услуге','что входит','что туда входит'],run:()=>openServiceDetail('diagnostics','detail')},
  {id:'home',p:['главная','на главную','главная страница','вернись на главную','вернуться на главную','в начало','домой','начальная страница'],run:()=>go('index.html','home')}
 ];
 function handle(raw){
@@ -58,7 +125,7 @@ function handle(raw){
  if(hasAny(t,[/^что$/, /^чего$/,'повтори','повторите','скажи еще раз','еще раз','не услышал','не расслышал','что ты сказал','что ты говоришь','можешь повторить','можете повторить']))return repeatLastReply();
  const presentation=hasAny(t,['сейчас покажу сайт','смотри как это работает','смотри как работает сайт','давай покажу сайт','покажу презентацию','давай покажем презентацию']);
  if(presentation){attentiveUntil=Date.now()+20000;return;}
- const intent=INTENTS.find(x=>hasAny(t,x.p));
+ const priceTarget=priceTargetFromSpeech(t);if(priceTarget)return showPriceTarget(priceTarget);\n const intent=INTENTS.find(x=>hasAny(t,x.p));
  if(intent)return intent.run();
 }
 let introDone=false,introPlaying=false,continuousVoice=false,recognizer=null,attentiveUntil=0,isSpeaking=false;
@@ -86,7 +153,7 @@ function showVoiceStart(){
    playIntroOnce();
  };
 }
-function init(){
+function init(){installSpaLinks();
  let b=document.querySelector('.mic'),s=document.querySelector('.status');if(!SR){s.textContent='Откройте сайт в Chrome для голосового управления';b.disabled=true;return}
  let r=new SR();recognizer=r;r.lang='ru-RU';r.interimResults=false;r.continuous=false;
  r.onstart=()=>{s.textContent='●';s.style.color='#35d06f';s.title='Голосовая навигация активна'};
