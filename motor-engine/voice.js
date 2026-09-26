@@ -14,7 +14,10 @@ function go(dest,response){continuousVoice=false;sessionStorage.setItem('motorVo
 function callPhone(){continuousVoice=false;window.location.href='tel:+358458525293'}
 function callWhatsApp(){continuousVoice=false;window.location.href='https://wa.me/358458525293'}
 function handle(raw){
- let t=raw.toLowerCase().replace(/ё/g,'е'),h=document.querySelector('.heard');if(h)h.textContent='Вы: «'+raw+'»';
+ let t=raw.toLowerCase().replace(/ё/g,'е').trim(),h=document.querySelector('.heard');if(h)h.textContent='Вы: «'+raw+'»';
+ if(!/^(motor|мотор)([ ,.!:-]|$)/i.test(t)){let s=document.querySelector('.status');if(s)s.textContent='🎙 Motor слушает';return;}
+ t=t.replace(/^(motor|мотор)[ ,.!:-]*/i,'').trim();
+ if(!t)return;
  if(/(позвон|звон).*(ватсап|вацап|вотсап)|(ватсап|вацап|вотсап).*(позвон|звон)/.test(t))return callWhatsApp();
  if(/позвон|позвонить|звонить|звонок|набери номер|набрать номер|набери телефон|позвони на телефон|позвонить на телефон|позвони по телефону|позвонить по телефону/.test(t))return callPhone();
  if(/спасибо|благодар/.test(t))return play('thanks');
@@ -46,24 +49,27 @@ function unlockIntro(){
 }
 function removeIntroUnlock(){['pointerup','touchend','click','keydown'].forEach(ev=>document.removeEventListener(ev,unlockIntro,true));window.removeEventListener('wheel',unlockIntro,true)}
 function armIntroUnlock(){['pointerup','touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,unlockIntro,true));window.addEventListener('wheel',unlockIntro,{capture:true,passive:true})}
+function compactVoiceUI(){
+ let v=document.querySelector('.voice');if(v){v.style.width='auto';v.style.maxWidth='none';v.style.padding='8px 12px';v.style.left='auto';v.style.right='12px';v.style.bottom='12px';v.style.borderRadius='999px';let hints=v.querySelector('.hints');if(hints)hints.style.display='none';let heard=v.querySelector('.heard');if(heard)heard.style.display='none';let s=v.querySelector('.status');if(s)s.textContent='🎙 Motor слушает';let b=v.querySelector('.mic');if(b)b.style.display='none';}
+}
 function startListening(){
- if(!recognizer)return;
+ if(!recognizer||!continuousVoice)return;
  try{recognizer.start()}catch(e){}
 }
 function showVoiceStart(){
  let o=document.createElement('div');o.id='voice-start';o.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(5,7,12,.82);display:flex;align-items:center;justify-content:center;padding:24px';
  o.innerHTML='<div style="max-width:440px;background:#11151d;border:1px solid #ff7a00;border-radius:20px;padding:28px;text-align:center;color:#fff;box-shadow:0 20px 60px #000"><div style="font-size:42px;margin-bottom:10px">🎙️</div><h2 style="margin:0 0 10px">Используйте навигацию голосом</h2><p style="margin:0 0 20px;color:#c7cbd1;line-height:1.5">Нажмите микрофон один раз, чтобы управлять сайтом голосом. После этого можно просто говорить команды.</p><button id="voice-start-btn" style="border:0;border-radius:999px;padding:14px 22px;font-weight:700;cursor:pointer">🎙 Включить микрофон</button></div>';
  document.body.appendChild(o);
- o.querySelector('#voice-start-btn').onclick=()=>{continuousVoice=true;markVoiceEnabled();unlockIntro();o.remove();setTimeout(startListening,250)};
+ o.querySelector('#voice-start-btn').onclick=()=>{continuousVoice=true;markVoiceEnabled();unlockIntro();o.remove();compactVoiceUI();setTimeout(startListening,250)};
 }
 function init(){
  let b=document.querySelector('.mic'),s=document.querySelector('.status');if(!SR){s.textContent='Откройте сайт в Chrome для голосового управления';b.disabled=true;return}
  let r=new SR();recognizer=r;r.lang='ru-RU';r.interimResults=false;r.continuous=false;
- r.onstart=()=>s.textContent='Слушаю…';
- r.onend=()=>{if(continuousVoice){s.textContent='Слушаю…';setTimeout(startListening,350)}else if(s.textContent==='Слушаю…')s.textContent='Нажмите микрофон и говорите'};
+ r.onstart=()=>s.textContent='🎙 Motor слушает';
+ r.onend=()=>{if(continuousVoice){s.textContent='🎙 Motor слушает';setTimeout(startListening,250)}else if(s.textContent==='Слушаю…')s.textContent='Нажмите микрофон и говорите'};
  r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){continuousVoice=false;s.textContent='Разрешите доступ к микрофону'}else{s.textContent='Не расслышал. Слушаю дальше…';if(e.error==='no-speech')play('notfound').catch(()=>{})}};
  r.onresult=e=>{let heard=e.results[0][0].transcript;s.textContent='Распознано: «'+heard+'»';setTimeout(()=>handle(heard),80)};
- b.onclick=()=>{continuousVoice=true;markVoiceEnabled();unlockIntro();startListening()}
- if(sessionStorage.getItem('motorResumeVoice')){sessionStorage.removeItem('motorResumeVoice');continuousVoice=true;setTimeout(startListening,700)}else{showVoiceStart();}
+ b.onclick=()=>{continuousVoice=true;markVoiceEnabled();unlockIntro();compactVoiceUI();startListening()}
+ if(sessionStorage.getItem('motorResumeVoice')){sessionStorage.removeItem('motorResumeVoice');continuousVoice=true;compactVoiceUI();setTimeout(startListening,700)}else{showVoiceStart();}
 }
 addEventListener('DOMContentLoaded',()=>{init();armIntroUnlock();setTimeout(tryIntro,500);let k=sessionStorage.getItem('motorVoiceReply');if(k){sessionStorage.removeItem('motorVoiceReply');if(sessionStorage.getItem('motorVoiceEnabled'))setTimeout(()=>play(k).catch(()=>{}),350)}});
