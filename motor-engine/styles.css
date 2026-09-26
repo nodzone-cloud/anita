@@ -12,3 +12,45 @@
   0%,100%{filter:brightness(1)}
   50%{filter:brightness(1.18)}
 }
+
+/* Dual voice on/off indicators */
+.voice-toggle{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+.voice-dot{
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  border:2px solid transparent;
+  background:transparent;
+  font-size:22px;
+  line-height:1;
+  cursor:pointer;
+  padding:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition: box-shadow .2s ease, border-color .2s ease, transform .15s ease;
+}
+.voice-dot-on{
+  color:#35d06f;
+}
+.voice-dot-off{
+  color:#e5484d;
+}
+.voice-dot-active{
+  border-color: currentColor;
+  box-shadow:
+    0 0 0 2px rgba(255,255,255,.08),
+    0 0 10px currentColor,
+    0 0 22px currentColor;
+  transform: scale(1.08);
+}
+.voice-dot:not(.voice-dot-active){
+  opacity:.55;
+}
+.voice-dot:active{
+  transform: scale(.96);
+}

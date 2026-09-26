@@ -176,6 +176,11 @@
   }
 
   function setStatus(text, color, title) {
+    // When compact toggle is active, keep visual state on the dots only
+    if (document.getElementById('voice-toggle')) {
+      updateVoiceToggleUI();
+      return;
+    }
     const s = document.querySelector('.status');
     if (!s) return;
     s.textContent = text;
@@ -598,12 +603,44 @@
     try { recognizer.start(); } catch (e) {}
   }
 
+  function updateVoiceToggleUI() {
+    const onBtn = document.getElementById('voice-on-dot');
+    const offBtn = document.getElementById('voice-off-dot');
+    if (!onBtn || !offBtn) return;
+    if (continuousVoice) {
+      onBtn.classList.add('voice-dot-active');
+      offBtn.classList.remove('voice-dot-active');
+      onBtn.title = 'Микрофон активен (слушает)';
+      offBtn.title = 'Нажмите, чтобы выключить микрофон';
+    } else {
+      offBtn.classList.add('voice-dot-active');
+      onBtn.classList.remove('voice-dot-active');
+      onBtn.title = 'Нажмите, чтобы включить микрофон';
+      offBtn.title = 'Микрофон выключен';
+    }
+  }
+
+  function setVoiceActive(active) {
+    continuousVoice = !!active;
+    if (!continuousVoice) {
+      isSpeaking = false;
+      if (recognizer) {
+        try { recognizer.abort(); } catch (e) {}
+      }
+      stopAudio();
+    } else {
+      markVoiceEnabled();
+      setTimeout(startListening, 200);
+    }
+    updateVoiceToggleUI();
+  }
+
   function compactVoiceUI() {
     const v = document.querySelector('.voice');
     if (!v) return;
     v.style.width = 'auto';
     v.style.maxWidth = 'none';
-    v.style.padding = '8px 12px';
+    v.style.padding = '10px 14px';
     v.style.left = 'auto';
     v.style.right = '12px';
     v.style.bottom = '12px';
@@ -612,15 +649,27 @@
     if (hints) hints.style.display = 'none';
     const heard = v.querySelector('.heard');
     if (heard) heard.style.display = 'none';
-    const s = v.querySelector('.status');
-    if (s) {
-      s.textContent = '●';
-      s.style.color = '#35d06f';
-      s.style.fontSize = '22px';
-      s.title = 'Голосовая навигация активна';
-    }
     const b = v.querySelector('.mic');
     if (b) b.style.display = 'none';
+
+    // Replace status with dual green/red toggle
+    let row = v.querySelector('.voice-row');
+    if (!row) return;
+    let statusBox = row.querySelector('div');
+    if (!statusBox) {
+      statusBox = document.createElement('div');
+      row.appendChild(statusBox);
+    }
+    statusBox.innerHTML = `
+      <div class="voice-toggle" id="voice-toggle">
+        <button type="button" id="voice-off-dot" class="voice-dot voice-dot-off" aria-label="Выключить микрофон" title="Выключить микрофон">●</button>
+        <button type="button" id="voice-on-dot" class="voice-dot voice-dot-on" aria-label="Включить микрофон" title="Включить микрофон">●</button>
+      </div>`;
+    const offBtn = document.getElementById('voice-off-dot');
+    const onBtn = document.getElementById('voice-on-dot');
+    if (offBtn) offBtn.onclick = (e) => { e.preventDefault(); e.stopPropagation(); setVoiceActive(false); };
+    if (onBtn) onBtn.onclick = (e) => { e.preventDefault(); e.stopPropagation(); setVoiceActive(true); };
+    updateVoiceToggleUI();
   }
 
   function showVoiceStart() {
@@ -640,10 +689,9 @@
       const btn = o.querySelector('#voice-start-btn');
       if (btn.disabled) return;
       btn.disabled = true;
-      continuousVoice = true;
-      markVoiceEnabled();
       o.remove();
       compactVoiceUI();
+      setVoiceActive(true);
       playIntroOnce();
     };
   }
@@ -712,10 +760,8 @@
     const mic = document.querySelector('.mic');
     if (mic) {
       mic.onclick = () => {
-        continuousVoice = true;
-        markVoiceEnabled();
         compactVoiceUI();
-        startListening();
+        setVoiceActive(true);
       };
     }
   }
@@ -752,10 +798,9 @@
     try { sessionActive = localStorage.getItem('motorVoiceSession') === '1'; } catch (e) {}
 
     if (sessionActive) {
-      continuousVoice = true;
       introDone = true;
       compactVoiceUI();
-      setTimeout(startListening, 400);
+      setVoiceActive(true);
     } else {
       showVoiceStart();
     }
