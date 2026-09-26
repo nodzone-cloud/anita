@@ -53,13 +53,19 @@ function handle(raw){
  if(/вариант|каталог|выбор|предлож/.test(t))return go('catalog.html','catalog');
  if(/подроб|детал|об этой услуге/.test(t))return go('service-detail.html','detail');
 }
-let introDone=false,continuousVoice=false,recognizer=null,attentiveUntil=0,isSpeaking=false;
+let introDone=false,introPlaying=false,continuousVoice=false,recognizer=null,attentiveUntil=0,isSpeaking=false;
 function markVoiceEnabled(){sessionStorage.setItem('motorVoiceEnabled','1')}
 function finishIntro(){introDone=true;markVoiceEnabled();sessionStorage.setItem('motorIntroPlayed','1');removeIntroUnlock()}
-function tryIntro(){if(introDone||sessionStorage.getItem('motorIntroPlayed'))return;play('intro').then(finishIntro).catch(()=>{})}
+function tryIntro(){
+ if(introDone||introPlaying||sessionStorage.getItem('motorIntroPlayed'))return;
+ introPlaying=true;
+ play('intro').then(()=>{introPlaying=false;finishIntro()}).catch(()=>{introPlaying=false});
+}
 function unlockIntro(){
  if(introDone||sessionStorage.getItem('motorIntroPlayed'))return;
- let a=new Audio(A+R.intro);a.preload='auto';a.volume=1;a.play().then(finishIntro).catch(()=>{let s=document.querySelector('.status');if(s)s.textContent='Коснитесь микрофона, чтобы включить голос'});
+ if(introPlaying)return;
+ introPlaying=true;
+ play('intro').then(()=>{introPlaying=false;finishIntro()}).catch(()=>{introPlaying=false;let s=document.querySelector('.status');if(s)s.textContent='Коснитесь микрофона, чтобы включить голос'});
 }
 function removeIntroUnlock(){['pointerup','touchend','click','keydown'].forEach(ev=>document.removeEventListener(ev,unlockIntro,true));window.removeEventListener('wheel',unlockIntro,true)}
 function armIntroUnlock(){['pointerup','touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,unlockIntro,true));window.addEventListener('wheel',unlockIntro,{capture:true,passive:true})}
@@ -74,7 +80,7 @@ function showVoiceStart(){
  let o=document.createElement('div');o.id='voice-start';o.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(5,7,12,.82);display:flex;align-items:center;justify-content:center;padding:24px';
  o.innerHTML='<div style="max-width:440px;background:#11151d;border:1px solid #ff7a00;border-radius:20px;padding:28px;text-align:center;color:#fff;box-shadow:0 20px 60px #000"><div style="font-size:42px;margin-bottom:10px">🎙️</div><h2 style="margin:0 0 10px">Используйте навигацию голосом</h2><p style="margin:0 0 20px;color:#c7cbd1;line-height:1.5">Нажмите микрофон один раз, чтобы управлять сайтом голосом. После этого можно просто говорить команды.</p><button id="voice-start-btn" style="border:0;border-radius:999px;padding:14px 22px;font-weight:700;cursor:pointer">🎙 Включить микрофон</button></div>';
  document.body.appendChild(o);
- o.querySelector('#voice-start-btn').onclick=()=>{continuousVoice=true;markVoiceEnabled();unlockIntro();o.remove();compactVoiceUI();setTimeout(startListening,250)};
+ o.querySelector('#voice-start-btn').onclick=()=>{continuousVoice=true;markVoiceEnabled();unlockIntro();o.remove();compactVoiceUI();if(!introPlaying&&!isSpeaking)setTimeout(startListening,250)};
 }
 function init(){
  let b=document.querySelector('.mic'),s=document.querySelector('.status');if(!SR){s.textContent='Откройте сайт в Chrome для голосового управления';b.disabled=true;return}
