@@ -55,20 +55,12 @@ function handle(raw){
 }
 let introDone=false,introPlaying=false,continuousVoice=false,recognizer=null,attentiveUntil=0,isSpeaking=false;
 function markVoiceEnabled(){sessionStorage.setItem('motorVoiceEnabled','1')}
-function finishIntro(){introDone=true;markVoiceEnabled();sessionStorage.setItem('motorIntroPlayed','1');removeIntroUnlock()}
-function tryIntro(){
- if(introDone||introPlaying||sessionStorage.getItem('motorIntroPlayed'))return;
+function finishIntro(){introDone=true;introPlaying=false;markVoiceEnabled()}
+function playIntroOnce(){
+ if(introDone||introPlaying)return;
  introPlaying=true;
- play('intro').then(()=>{introPlaying=false;finishIntro()}).catch(()=>{introPlaying=false});
+ play('intro').then(()=>{finishIntro()}).catch(()=>{introPlaying=false});
 }
-function unlockIntro(){
- if(introDone||sessionStorage.getItem('motorIntroPlayed'))return;
- if(introPlaying)return;
- introPlaying=true;
- play('intro').then(()=>{introPlaying=false;finishIntro()}).catch(()=>{introPlaying=false;let s=document.querySelector('.status');if(s)s.textContent='Коснитесь микрофона, чтобы включить голос'});
-}
-function removeIntroUnlock(){['pointerup','touchend','click','keydown'].forEach(ev=>document.removeEventListener(ev,unlockIntro,true));window.removeEventListener('wheel',unlockIntro,true)}
-function armIntroUnlock(){['pointerup','touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,unlockIntro,true));window.addEventListener('wheel',unlockIntro,{capture:true,passive:true})}
 function compactVoiceUI(){
  let v=document.querySelector('.voice');if(v){v.style.width='auto';v.style.maxWidth='none';v.style.padding='8px 12px';v.style.left='auto';v.style.right='12px';v.style.bottom='12px';v.style.borderRadius='999px';let hints=v.querySelector('.hints');if(hints)hints.style.display='none';let heard=v.querySelector('.heard');if(heard)heard.style.display='none';let s=v.querySelector('.status');if(s)s.textContent='🎙 Голосовая навигация включена';let b=v.querySelector('.mic');if(b)b.style.display='none';}
 }
@@ -80,7 +72,11 @@ function showVoiceStart(){
  let o=document.createElement('div');o.id='voice-start';o.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(5,7,12,.82);display:flex;align-items:center;justify-content:center;padding:24px';
  o.innerHTML='<div style="max-width:440px;background:#11151d;border:1px solid #ff7a00;border-radius:20px;padding:28px;text-align:center;color:#fff;box-shadow:0 20px 60px #000"><div style="font-size:42px;margin-bottom:10px">🎙️</div><h2 style="margin:0 0 10px">Используйте навигацию голосом</h2><p style="margin:0 0 20px;color:#c7cbd1;line-height:1.5">Нажмите микрофон один раз, чтобы управлять сайтом голосом. После этого можно просто говорить команды.</p><button id="voice-start-btn" style="border:0;border-radius:999px;padding:14px 22px;font-weight:700;cursor:pointer">🎙 Включить микрофон</button></div>';
  document.body.appendChild(o);
- o.querySelector('#voice-start-btn').onclick=()=>{continuousVoice=true;markVoiceEnabled();o.remove();compactVoiceUI();if(!introDone&&!sessionStorage.getItem('motorIntroPlayed')){unlockIntro()}else{setTimeout(startListening,250)}};
+ o.querySelector('#voice-start-btn').onclick=()=>{
+   const btn=o.querySelector('#voice-start-btn');if(btn.disabled)return;btn.disabled=true;
+   continuousVoice=true;markVoiceEnabled();o.remove();compactVoiceUI();
+   playIntroOnce();
+ };
 }
 function init(){
  let b=document.querySelector('.mic'),s=document.querySelector('.status');if(!SR){s.textContent='Откройте сайт в Chrome для голосового управления';b.disabled=true;return}
@@ -92,4 +88,4 @@ function init(){
  b.onclick=()=>{continuousVoice=true;markVoiceEnabled();unlockIntro();compactVoiceUI();startListening()}
  if(sessionStorage.getItem('motorResumeVoice')){sessionStorage.removeItem('motorResumeVoice');continuousVoice=true;compactVoiceUI();}else{showVoiceStart();}
 }
-addEventListener('DOMContentLoaded',()=>{init();let k=sessionStorage.getItem('motorVoiceReply');if(k){sessionStorage.removeItem('motorVoiceReply');setTimeout(()=>play(k).catch(()=>{}),150)}else if(continuousVoice){setTimeout(startListening,700)}});
+addEventListener('DOMContentLoaded',()=>{sessionStorage.removeItem('motorIntroPlayed');init();let k=sessionStorage.getItem('motorVoiceReply');if(k){sessionStorage.removeItem('motorVoiceReply');setTimeout(()=>play(k).catch(()=>{}),150)}});
