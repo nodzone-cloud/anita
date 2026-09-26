@@ -9,7 +9,17 @@ const R={
  address:'16_adres.mp3?v=8',phone:'17_telefon.mp3?v=8',unknown:'18_ne_ponyal.mp3?v=8',
  notfound:'19_ne_nashli.mp3?v=8',thanks:'20_rad_pomoch.mp3?v=8'
 };
-function play(k){let f=R[k]||k;if(!f)return Promise.resolve();if(R[k])sessionStorage.setItem('motorLastReply',k);let a=new Audio(A+f);a.volume=1;return a.play()}
+function play(k){
+ let f=R[k]||k;if(!f)return Promise.resolve();if(R[k])sessionStorage.setItem('motorLastReply',k);
+ isSpeaking=true;
+ if(recognizer){try{recognizer.abort()}catch(e){}}
+ let a=new Audio(A+f);a.volume=1;
+ return new Promise((resolve,reject)=>{
+   a.onended=()=>{isSpeaking=false;if(continuousVoice)setTimeout(startListening,300);resolve()};
+   a.onerror=e=>{isSpeaking=false;if(continuousVoice)setTimeout(startListening,300);reject(e)};
+   a.play().catch(e=>{isSpeaking=false;if(continuousVoice)setTimeout(startListening,300);reject(e)});
+ });
+}
 function repeatLastReply(){let k=sessionStorage.getItem('motorLastReply');if(k)return play(k);}
 function go(dest,response){continuousVoice=false;sessionStorage.setItem('motorVoiceReply',response||'');sessionStorage.setItem('motorResumeVoice','1');window.location.assign(dest)}
 function callPhone(){continuousVoice=false;window.location.href='tel:+358458525293'}
@@ -43,7 +53,7 @@ function handle(raw){
  if(/вариант|каталог|выбор|предлож/.test(t))return go('catalog.html','catalog');
  if(/подроб|детал|об этой услуге/.test(t))return go('service-detail.html','detail');
 }
-let introDone=false,continuousVoice=false,recognizer=null,attentiveUntil=0;
+let introDone=false,continuousVoice=false,recognizer=null,attentiveUntil=0,isSpeaking=false;
 function markVoiceEnabled(){sessionStorage.setItem('motorVoiceEnabled','1')}
 function finishIntro(){introDone=true;markVoiceEnabled();sessionStorage.setItem('motorIntroPlayed','1');removeIntroUnlock()}
 function tryIntro(){if(introDone||sessionStorage.getItem('motorIntroPlayed'))return;play('intro').then(finishIntro).catch(()=>{})}
@@ -57,7 +67,7 @@ function compactVoiceUI(){
  let v=document.querySelector('.voice');if(v){v.style.width='auto';v.style.maxWidth='none';v.style.padding='8px 12px';v.style.left='auto';v.style.right='12px';v.style.bottom='12px';v.style.borderRadius='999px';let hints=v.querySelector('.hints');if(hints)hints.style.display='none';let heard=v.querySelector('.heard');if(heard)heard.style.display='none';let s=v.querySelector('.status');if(s)s.textContent='🎙 Голосовая навигация включена';let b=v.querySelector('.mic');if(b)b.style.display='none';}
 }
 function startListening(){
- if(!recognizer||!continuousVoice)return;
+ if(!recognizer||!continuousVoice||isSpeaking)return;
  try{recognizer.start()}catch(e){}
 }
 function showVoiceStart(){
@@ -70,7 +80,7 @@ function init(){
  let b=document.querySelector('.mic'),s=document.querySelector('.status');if(!SR){s.textContent='Откройте сайт в Chrome для голосового управления';b.disabled=true;return}
  let r=new SR();recognizer=r;r.lang='ru-RU';r.interimResults=false;r.continuous=false;
  r.onstart=()=>s.textContent='🎙 Голосовая навигация включена';
- r.onend=()=>{if(continuousVoice){s.textContent='🎙 Голосовая навигация включена';setTimeout(startListening,250)}else if(s.textContent==='Слушаю…')s.textContent='Нажмите микрофон и говорите'};
+ r.onend=()=>{if(continuousVoice&&!isSpeaking){s.textContent='🎙 Голосовая навигация включена';setTimeout(startListening,300)}else if(!continuousVoice&&s.textContent==='Слушаю…')s.textContent='Нажмите микрофон и говорите'};
  r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){continuousVoice=false;s.textContent='Разрешите доступ к микрофону'}else{s.textContent='Не расслышал. Слушаю дальше…';if(e.error==='no-speech')play('notfound').catch(()=>{})}};
  r.onresult=e=>{let heard=e.results[0][0].transcript;s.textContent='Распознано: «'+heard+'»';setTimeout(()=>handle(heard),80)};
  b.onclick=()=>{continuousVoice=true;markVoiceEnabled();unlockIntro();compactVoiceUI();startListening()}
