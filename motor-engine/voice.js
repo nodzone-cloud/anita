@@ -10,7 +10,7 @@ const R={
  notfound:'19_ne_nashli.mp3?v=8',thanks:'20_rad_pomoch.mp3?v=8'
 };
 function play(k){let f=R[k]||k;if(!f)return Promise.resolve();let a=new Audio(A+f);a.volume=1;return a.play()}
-function go(dest,response){sessionStorage.setItem('motorVoiceReply',response||'');location.href=dest}
+function go(dest,response){continuousVoice=false;sessionStorage.setItem('motorVoiceReply',response||'');sessionStorage.setItem('motorResumeVoice','1');window.location.assign(dest)}
 function callPhone(){continuousVoice=false;window.location.href='tel:+358458525293'}
 function callWhatsApp(){continuousVoice=false;window.location.href='https://wa.me/358458525293'}
 function handle(raw){
@@ -62,8 +62,8 @@ function init(){
  r.onstart=()=>s.textContent='Слушаю…';
  r.onend=()=>{if(continuousVoice){s.textContent='Слушаю…';setTimeout(startListening,350)}else if(s.textContent==='Слушаю…')s.textContent='Нажмите микрофон и говорите'};
  r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){continuousVoice=false;s.textContent='Разрешите доступ к микрофону'}else{s.textContent='Не расслышал. Слушаю дальше…';if(e.error==='no-speech')play('notfound').catch(()=>{})}};
- r.onresult=e=>{s.textContent='Команда распознана';handle(e.results[0][0].transcript)};
+ r.onresult=e=>{let heard=e.results[0][0].transcript;s.textContent='Распознано: «'+heard+'»';setTimeout(()=>handle(heard),80)};
  b.onclick=()=>{continuousVoice=true;markVoiceEnabled();unlockIntro();startListening()}
- showVoiceStart();
+ if(sessionStorage.getItem('motorResumeVoice')){sessionStorage.removeItem('motorResumeVoice');continuousVoice=true;setTimeout(startListening,700)}else{showVoiceStart();}
 }
 addEventListener('DOMContentLoaded',()=>{init();armIntroUnlock();setTimeout(tryIntro,500);let k=sessionStorage.getItem('motorVoiceReply');if(k){sessionStorage.removeItem('motorVoiceReply');if(sessionStorage.getItem('motorVoiceEnabled'))setTimeout(()=>play(k).catch(()=>{}),350)}});
