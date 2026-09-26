@@ -62,7 +62,7 @@ function handle(raw){
  if(intent)return intent.run();
 }
 let introDone=false,introPlaying=false,continuousVoice=false,recognizer=null,attentiveUntil=0,isSpeaking=false;
-function markVoiceEnabled(){sessionStorage.setItem('motorVoiceEnabled','1');sessionStorage.setItem('motorVoiceSession','1')}
+function markVoiceEnabled(){sessionStorage.setItem('motorVoiceEnabled','1');localStorage.setItem('motorVoiceSession','1')}
 function finishIntro(){introDone=true;introPlaying=false;markVoiceEnabled()}
 function playIntroOnce(){
  if(introDone||introPlaying)return;
@@ -93,7 +93,7 @@ function init(){
  r.onend=()=>{if(continuousVoice&&!isSpeaking){s.textContent='●';s.style.color='#35d06f';s.title='Голосовая навигация активна';setTimeout(startListening,300)}else if(!continuousVoice&&s.textContent==='Слушаю…')s.textContent='Нажмите микрофон и говорите'};
  r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){continuousVoice=false;s.textContent='●';s.style.color='#e5484d';s.title='Голосовая навигация недоступна'}else{s.textContent='●';s.style.color='#e5484d';s.title='Ошибка распознавания — переподключение';setTimeout(()=>{if(continuousVoice&&!isSpeaking){s.style.color='#35d06f';s.title='Голосовая навигация активна'}},800);if(e.error==='no-speech'){/* silence: keep listening without speaking */}}};
  r.onresult=e=>{let heard=e.results[0][0].transcript;s.textContent='Распознано: «'+heard+'»';setTimeout(()=>handle(heard),80)};
- b.onclick=()=>{continuousVoice=true;markVoiceEnabled();unlockIntro();compactVoiceUI();startListening()}
- if(sessionStorage.getItem('motorVoiceSession')){sessionStorage.removeItem('motorResumeVoice');continuousVoice=true;compactVoiceUI();setTimeout(startListening,500)}else{showVoiceStart();}
+ b.onclick=()=>{continuousVoice=true;markVoiceEnabled();compactVoiceUI();startListening()}
+ if(localStorage.getItem('motorVoiceSession')==='1'){sessionStorage.removeItem('motorResumeVoice');continuousVoice=true;compactVoiceUI();setTimeout(startListening,500)}else{showVoiceStart();}
 }
 addEventListener('DOMContentLoaded',()=>{sessionStorage.removeItem('motorIntroPlayed');init();let target=sessionStorage.getItem('motorVoiceTarget');if(target){sessionStorage.removeItem('motorVoiceTarget');setTimeout(()=>highlightTarget(target),250)}let k=sessionStorage.getItem('motorVoiceReply');if(k){sessionStorage.removeItem('motorVoiceReply');setTimeout(()=>play(k).catch(()=>{}),150)}});
