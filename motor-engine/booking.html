@@ -1,1 +1,67 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Motor Engine — Запись</title><link rel="stylesheet" href="styles-v4.css"></head><body><header><div class="nav"><a class="brand" href="index.html">MOTOR <b>ENGINE</b></a><a class="" href="index.html">Главная</a><a class="" href="services.html">Услуги</a><a class="" href="prices.html">Цены</a><a class="" href="about.html">О компании</a><a class="active" href="booking.html">Запись</a><a class="" href="contact.html">Контакты</a></div></header><main class="content" id="spa-root"><div class="eyebrow">Запись</div><h1>Запишитесь онлайн</h1><p class="lead">Выберите день и время — голосом или вручную. Демо-календарь Motor Engine.</p></main><aside class="voice"><div class="voice-row"><button class="mic">🎙</button><div><div class="status">Нажмите микрофон и говорите</div><div class="heard">Например: «Записаться»</div></div></div><div class="hints"><span class="badge">Завтра в 10</span><span class="badge">Меня зовут…</span><span class="badge">Подтвердить</span></div></aside><script src="voice-v4.js"></script></body></html>
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Motor Engine — Запись</title>
+<link rel="stylesheet" href="styles-v5.css">
+</head>
+<body>
+<header>
+<div class="nav">
+<a class="brand" href="index.html">MOTOR <b>ENGINE</b></a>
+<a class="" href="index.html">Главная</a>
+<a class="" href="services.html">Услуги</a>
+<a class="" href="prices.html">Цены</a>
+<a class="" href="about.html">О компании</a>
+<a class="active" href="booking.html">Запись</a>
+<a class="" href="contact.html">Контакты</a>
+</div>
+</header>
+<main class="content" id="spa-root">
+<div class="eyebrow">Запись</div>
+<h1>Запишитесь онлайн</h1>
+<p class="lead">Выберите день и время — голосом или вручную. Демо-календарь Motor Engine.</p>
+<div class="booking-layout">
+  <div class="cal-panel" id="booking-calendar">
+    <div class="cal-header">
+      <button type="button" class="cal-nav-btn" id="cal-prev" aria-label="Предыдущий месяц">‹</button>
+      <h3 id="cal-title">—</h3>
+      <button type="button" class="cal-nav-btn" id="cal-next" aria-label="Следующий месяц">›</button>
+    </div>
+    <div class="cal-grid" id="cal-dows"></div>
+    <div class="cal-grid" id="cal-days"></div>
+    <div class="legend"><span><i class="leg-free"></i> свободно</span><span><i class="leg-busy"></i> занято</span><span><i class="leg-sel"></i> выбрано</span></div>
+    <div class="slots-title" id="slots-title">Сначала выберите день</div>
+    <div class="slots" id="cal-slots"></div>
+  </div>
+  <div class="form-panel" id="booking-form-panel">
+    <div style="font-weight:800;font-size:16px;margin-bottom:4px">Ваши данные</div>
+    <label for="bk-name">Имя</label>
+    <input id="bk-name" autocomplete="name" placeholder="Как к вам обращаться">
+    <label for="bk-phone">Телефон</label>
+    <input id="bk-phone" autocomplete="tel" placeholder="+358 …">
+    <label for="bk-email">Email</label>
+    <input id="bk-email" autocomplete="email" placeholder="name@email.com">
+    <div class="booking-summary" id="bk-summary">Дата и время пока не выбраны</div>
+    <div class="booking-actions">
+      <button type="button" class="btn-primary" id="bk-confirm" disabled>Подтвердить запись</button>
+      <button type="button" class="btn-ghost" id="bk-reset">Сбросить</button>
+    </div>
+    <div class="booking-success" id="bk-success">Запись принята. Мы свяжемся с вами для подтверждения.</div>
+  </div>
+</div>
+</main>
+<aside class="voice">
+<div class="voice-row"><button class="mic">🎙</button>
+<div><div class="status">Нажмите микрофон и говорите</div>
+<div class="heard">Например: «Записаться»</div></div></div>
+<div class="hints">
+<span class="badge">Завтра в 10</span>
+<span class="badge">Меня зовут…</span>
+<span class="badge">Подтвердить</span>
+</div>
+</aside>
+<script src="voice-v5.js"></script>
+</body>
+</html>
