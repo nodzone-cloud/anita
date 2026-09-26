@@ -1,166 +1,52 @@
-const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-const A='assets/audio/';
-const R={
- intro:'01_intro.mp3?v=8',services:'02_uslugi.mp3?v=8',prices:'03_ceny.mp3?v=8',
- contact:'04_kontakty.mp3?v=8',about:'05_o_nas.mp3?v=8',catalog:'06_varianty.mp3?v=8',
- detail:'07_podrobnosti.mp3?v=8',priceQuestion:'08_cena_chego.mp3?v=8',home:'09_glavnaya.mp3?v=8',
- booking:'10_zapis.mp3?v=8',diagnostics:'11_diagnostika.mp3?v=8',engine:'12_remont_dvigatelya.mp3?v=8',
- oil:'13_menyaem.mp3?v=8',tires:'14_shiny.mp3?v=8',hours:'15_chasy.mp3?v=8',
- address:'16_adres.mp3?v=8',phone:'17_telefon.mp3?v=8',unknown:'18_ne_ponyal.mp3?v=8',
- notfound:'19_ne_nashli.mp3?v=8',thanks:'20_rad_pomoch.mp3?v=8'
+/* Motor Engine Voice UI — Grok SPA session + Alex Node patch 1-3 */
+(function(){
+'use strict';
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition,A='assets/audio/';
+const R={intro:'01_intro.mp3?v=9',services:'02_uslugi.mp3?v=9',prices:'03_ceny.mp3?v=9',contact:'04_kontakty.mp3?v=9',about:'05_o_nas.mp3?v=9',catalog:'06_varianty.mp3?v=9',detail:'07_podrobnosti.mp3?v=9',priceQuestion:'08_cena_chego.mp3?v=9',home:'09_glavnaya.mp3?v=9',booking:'10_zapis.mp3?v=9',diagnostics:'11_diagnostika.mp3?v=9',engine:'12_remont_dvigatelya.mp3?v=9',oil:'13_menyaem.mp3?v=9',tires:'14_shiny.mp3?v=9',hours:'15_chasy.mp3?v=9',address:'16_adres.mp3?v=9',phone:'17_telefon.mp3?v=9'};
+const P={
+'index.html':{title:'Motor Engine — Главная',nav:'index',html:'<div class="eyebrow">Smart Website · Voice User Interface</div><h1>ENGINEERING THAT MOVES YOU</h1><p class="lead">Motor Engine — демонстрационный многостраничный сайт с голосовым управлением. Скажите, что хотите найти, и сайт откроет нужную страницу.</p><div class="grid"><div class="card"><strong>Диагностика</strong><p>Компьютерная диагностика двигателя и электронных систем.</p></div><div class="card"><strong>Сервис</strong><p>Плановое обслуживание и ремонт автомобиля.</p></div><div class="card"><strong>Performance</strong><p>Настройка и решения для производительности.</p></div></div>'},
+'services.html':{title:'Motor Engine — Услуги',nav:'services',html:'<div class="eyebrow">Услуги</div><h1>Сервис без лишних остановок</h1><p class="lead">Диагностика, техническое обслуживание и ремонт.</p><div class="grid"><div class="card"><strong>Диагностика двигателя</strong><p>Поиск ошибок и проверка ключевых систем.</p></div><div class="card"><strong>Техническое обслуживание</strong><p>Масла, фильтры, жидкости и плановые работы.</p></div><div class="card"><strong>Ремонт</strong><p>Механические и электрические работы.</p></div></div>'},
+'prices.html':{title:'Motor Engine — Цены',nav:'prices',html:'<div class="eyebrow">Цены</div><h1>Понятные цены</h1><p class="lead">Демонстрационные цены Motor Engine.</p><div class="grid"><div class="card" id="price-49"><strong>Диагностика</strong><div class="price">49 €</div></div><div class="card" id="price-99"><strong>Service</strong><div class="price">99 €</div></div><div class="card" id="price-120"><strong>Repair</strong><div class="price">от 120 €</div></div></div>'},
+'about.html':{title:'Motor Engine — О компании',nav:'about',html:'<div class="eyebrow">О компании</div><h1>Motor Engine</h1><p class="lead">Демонстрационный автосервис для тестирования Smart Website и Voice User Interface.</p><div class="grid"><div class="card"><strong>Точность</strong><p>Понятный процесс обслуживания.</p></div><div class="card"><strong>Технологии</strong><p>Современная диагностика и цифровой сервис.</p></div><div class="card"><strong>Клиент</strong><p>Информация находится быстро — в том числе голосом.</p></div></div>'},
+'contact.html':{title:'Motor Engine — Контакты',nav:'contact',html:'<div class="eyebrow">Контакты</div><h1>Свяжитесь с Alex Node</h1><p class="lead">Есть вопрос по Smart Website или другим услугам? Свяжитесь удобным способом.</p><div class="grid" id="contact-options"><div class="card" id="contact-phone"><strong>Телефон</strong><p><a href="tel:+358458525293">+358 45 852 5293</a></p></div><div class="card" id="contact-email"><strong>Email</strong><p><a href="mailto:AN@alexnode.fi">AN@alexnode.fi</a></p></div><div class="card"><strong>WhatsApp</strong><p><a href="https://wa.me/358458525293" target="_blank">Написать в WhatsApp</a></p></div></div>'},
+'catalog.html':{title:'Motor Engine — Варианты',nav:null,html:'<div class="eyebrow">Варианты</div><h1>Доступные варианты</h1><p class="lead">Эту отдельную страницу сайт открывает по голосовой команде.</p><div class="grid"><div class="card"><strong>Engine Care</strong><p>Диагностика и обслуживание.</p></div><div class="card"><strong>Season Check</strong><p>Сезонная проверка автомобиля.</p></div><div class="card"><strong>Performance</strong><p>Дополнительные решения и настройки.</p></div></div>'}
 };
-function play(k){
- let f=R[k]||k;if(!f)return Promise.resolve();if(R[k])sessionStorage.setItem('motorLastReply',k);
- isSpeaking=true;
- if(recognizer){try{recognizer.abort()}catch(e){}}
- let a=new Audio(A+f);a.volume=1;
- return new Promise((resolve,reject)=>{
-   a.onended=()=>{isSpeaking=false;if(continuousVoice)setTimeout(startListening,300);resolve()};
-   a.onerror=e=>{isSpeaking=false;if(continuousVoice)setTimeout(startListening,300);reject(e)};
-   a.play().catch(e=>{isSpeaking=false;if(continuousVoice)setTimeout(startListening,300);reject(e)});
- });
+const D={
+diagnostics:{title:'Motor Engine — Диагностика',html:'<div class="eyebrow">Подробнее · Диагностика</div><h1>Подробнее о диагностике</h1><p class="lead">Диагностика двигателя и электронных систем автомобиля.</p><div class="grid"><div class="card"><strong>Что проверяем</strong><p>ECU, датчики и параметры двигателя.</p></div><div class="card"><strong>Результат</strong><p>Понятное объяснение найденных проблем.</p></div><div class="card"><strong>Следующий шаг</strong><p>Ремонт или дополнительная проверка.</p></div></div>'},
+service:{title:'Motor Engine — Service',html:'<div class="eyebrow">Подробнее · Service</div><h1>Подробнее о Service</h1><p class="lead">Плановое техническое обслуживание автомобиля.</p><div class="grid"><div class="card"><strong>Обслуживание</strong><p>Масла, фильтры, жидкости и плановые работы.</p></div><div class="card"><strong>Проверка</strong><p>Контроль основных систем и состояния автомобиля.</p></div><div class="card"><strong>Следующий шаг</strong><p>Рекомендации по дальнейшему обслуживанию.</p></div></div>'},
+performance:{title:'Motor Engine — Performance',html:'<div class="eyebrow">Подробнее · Performance</div><h1>Подробнее о Performance</h1><p class="lead">Настройка и дополнительные решения для производительности автомобиля.</p><div class="grid"><div class="card"><strong>Настройка</strong><p>Подбор решений под автомобиль и задачи владельца.</p></div><div class="card"><strong>Performance</strong><p>Работы, связанные с производительностью и откликом автомобиля.</p></div><div class="card"><strong>Следующий шаг</strong><p>Обсуждение подходящего варианта и дальнейших работ.</p></div></div>'}
+};
+let active=false,r=null,speaking=false,audio=null,intro=false,current=(location.pathname.split('/').pop()||'index.html').split('?')[0];
+const any=(t,x)=>x.some(v=>typeof v==='string'?t.includes(v):v.test(t));
+function status(txt,color){const e=document.querySelector('.status');if(e){e.textContent=txt;if(color)e.style.color=color}}
+function compact(){const v=document.querySelector('.voice');if(!v)return;v.style.cssText+=';width:auto;max-width:none;padding:8px 12px;left:auto;right:12px;bottom:12px;border-radius:999px';const h=v.querySelector('.hints'),x=v.querySelector('.heard'),b=v.querySelector('.mic');if(h)h.style.display='none';if(x)x.style.display='none';if(b)b.style.display='none';status('●','#35d06f')}
+function listen(){if(!r||!active||speaking)return;try{r.start()}catch(e){}}
+function play(k){const f=R[k];if(!f)return Promise.resolve();try{sessionStorage.setItem('motorLastReply',k)}catch(e){};speaking=true;if(r)try{r.abort()}catch(e){};if(audio)try{audio.pause()}catch(e){};audio=new Audio(A+f);return new Promise((ok,no)=>{audio.onended=()=>{speaking=false;audio=null;if(active)setTimeout(listen,280);ok()};audio.onerror=e=>{speaking=false;audio=null;if(active)setTimeout(listen,280);no(e)};audio.play().catch(e=>{speaking=false;if(active)setTimeout(listen,280);no(e)})})}
+function highlight(id){const e=document.getElementById(id);if(!e)return;document.querySelectorAll('.voice-target-highlight').forEach(x=>x.classList.remove('voice-target-highlight'));e.classList.add('voice-target-highlight');e.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>e.classList.remove('voice-target-highlight'),5200)}
+function navActive(n){document.querySelectorAll('.nav a').forEach(a=>{a.classList.remove('active');if(n&&(a.getAttribute('href')||'')===n+'.html')a.classList.add('active')})}
+function go(page,reply,target,push=true){const d=P[page],m=document.querySelector('main.content');if(!d||!m)return;m.innerHTML=d.html;document.title=d.title;navActive(d.nav);current=page;if(push)history.pushState({page},d.title,page);if(reply)setTimeout(()=>play(reply).finally(()=>target&&highlight(target)),60);else if(target)setTimeout(()=>highlight(target),100)}
+function detail(k,reply){const d=D[k],m=document.querySelector('main.content');if(!d||!m)return;m.innerHTML=d.html;document.title=d.title;navActive(null);current='service-detail.html';history.pushState({page:'service-detail.html',service:k},d.title,'service-detail.html?service='+k);if(reply)setTimeout(()=>play(reply).catch(()=>{}),60)}
+function price(t){if(!/(€|\bевро\b|\beuro\b|\beuros\b)/i.test(t))return null;if(/\b49\b/.test(t)||t.includes('сорок девять'))return'price-49';if(/\b99\b/.test(t)||t.includes('девяносто девять'))return'price-99';if(/\b120\b/.test(t)||t.includes('сто двадцать'))return'price-120';return null}
+function handle(raw){let t=raw.toLowerCase().replace(/ё/g,'е').replace(/[?!.,]/g,' ').replace(/\s+/g,' ').trim(),p=price(t);if(p)return current==='prices.html'&&document.getElementById(p)?highlight(p):go('prices.html','',p);
+if(any(t,[/^что$/, /^чего$/,'повтори','повторите','еще раз','не расслышал'])){let k=sessionStorage.getItem('motorLastReply');if(k)return play(k)}
+if(any(t,[/(позвон|звон).*(ватсап|вацап|вотсап|whatsapp)/]))return location.href='https://wa.me/358458525293';
+if(any(t,['позвони','позвонить','набери номер']))return location.href='tel:+358458525293';
+if(any(t,[/^performance$/, /^перформанс$/,'performance','перформанс']))return detail('performance','detail');
+if(any(t,[/^service$/, /^сервис$/,'техническое обслуживание','подробнее про service','подробнее про сервис']))return detail('service','detail');
+if(any(t,['диагностика','диагностировать','проверить машину','проверить автомобиль']))return detail('diagnostics','diagnostics');
+if(any(t,['цены','прайс','тарифы','покажи цены']))return go('prices.html','prices');
+if(any(t,['услуги','покажи услуги','что вы делаете','чем занимаетесь']))return go('services.html','services');
+if(any(t,['контакты','покажи контакты','как связаться']))return go('contact.html','contact','contact-options');
+if(any(t,['о компании','о вас','кто вы']))return go('about.html','about');
+if(any(t,['каталог','варианты','покажи варианты']))return go('catalog.html','catalog');
+if(any(t,['главная','на главную','домой']))return go('index.html','home');
+if(any(t,['телефон','номер телефона','покажи номер']))return go('contact.html','phone','contact-phone');
+if(any(t,['email','e mail','имейл','емейл']))return go('contact.html','contact','contact-email');
 }
-function repeatLastReply(){let k=sessionStorage.getItem('motorLastReply');if(k)return play(k);}
-function highlightTarget(id){
- if(!id)return;let el=document.getElementById(id);if(!el)return;
- document.querySelectorAll('.voice-target-highlight').forEach(x=>x.classList.remove('voice-target-highlight'));
- el.classList.add('voice-target-highlight');el.scrollIntoView({behavior:'smooth',block:'center'});
- setTimeout(()=>el.classList.remove('voice-target-highlight'),5200);
-}
-async function spaNavigate(dest,response,target,push=true){
-  try{
-    const res=await fetch(dest,{cache:'no-store'});
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const html=await res.text();
-    const doc=new DOMParser().parseFromString(html,'text/html');
-    const next=doc.querySelector('main.content');
-    const main=document.querySelector('main.content');
-    if(!next||!main)throw new Error('main not found');
-    main.innerHTML=next.innerHTML;
-    document.title=doc.title||document.title;
-    document.querySelectorAll('.nav a').forEach(a=>a.classList.remove('active'));
-    const key=dest.split('/').pop().split('?')[0]||'index.html';
-    document.querySelectorAll('.nav a').forEach(a=>{
-      const href=(a.getAttribute('href')||'').split('?')[0];
-      if(href===key)a.classList.add('active');
-    });
-    if(push)history.pushState({page:dest},document.title,dest);
-    if(response){
-      try{await play(response)}catch(e){}
-    }
-    if(target)setTimeout(()=>highlightTarget(target),100);
-  }catch(e){
-    if(response)sessionStorage.setItem('motorVoiceReply',response);
-    if(target)sessionStorage.setItem('motorVoiceTarget',target);
-    window.location.assign(dest);
-  }
-}
-function go(dest,response,target){spaNavigate(dest,response||'',target||null,true)}
-function installSpaLinks(){
-  document.addEventListener('click',e=>{
-    const a=e.target.closest('a');if(!a)return;
-    const href=a.getAttribute('href')||'';
-    if(!/^(index|services|prices|about|contact|catalog|service-detail)\.html(?:\?|$)/.test(href))return;
-    e.preventDefault();spaNavigate(href,'',null,true);
-  },true);
-  addEventListener('popstate',e=>{
-    const dest=(e.state&&e.state.page)||location.pathname.split('/').pop()||'index.html';
-    spaNavigate(dest,'',null,false);
-  });
-}
-function detailHtml(kind){
- const d={
-  diagnostics:{eyebrow:'Подробнее · Диагностика',title:'Подробнее о диагностике',lead:'Диагностика двигателя и электронных систем автомобиля.',cards:[['Что проверяем','ECU, датчики и параметры двигателя.'],['Результат','Понятное объяснение найденных проблем.'],['Следующий шаг','Ремонт или дополнительная проверка.']]},
-  service:{eyebrow:'Подробнее · Service',title:'Подробнее о Service',lead:'Плановое техническое обслуживание автомобиля.',cards:[['Обслуживание','Масла, фильтры, жидкости и плановые работы.'],['Проверка','Контроль основных систем и состояния автомобиля.'],['Следующий шаг','Рекомендации по дальнейшему обслуживанию.']]},
-  performance:{eyebrow:'Подробнее · Performance',title:'Подробнее о Performance',lead:'Настройка и дополнительные решения для производительности автомобиля.',cards:[['Настройка','Подбор решений под автомобиль и задачи владельца.'],['Performance','Работы, связанные с производительностью и откликом автомобиля.'],['Следующий шаг','Обсуждение подходящего варианта и дальнейших работ.']]}
- }[kind];
- return '<div class="eyebrow">'+d.eyebrow+'</div><h1>'+d.title+'</h1><p class="lead">'+d.lead+'</p><div class="grid">'+d.cards.map(c=>'<div class="card"><strong>'+c[0]+'</strong><p>'+c[1]+'</p></div>').join('')+'</div>';
-}
-async function openServiceDetail(kind,response){
- const main=document.querySelector('main.content');if(!main)return;
- main.innerHTML=detailHtml(kind);document.title='Motor Engine — '+(kind==='diagnostics'?'Диагностика':kind==='service'?'Service':'Performance');
- history.pushState({detail:kind},document.title,'service-detail.html?service='+kind);
- if(response){try{await play(response)}catch(e){}}
-}
-function priceTargetFromSpeech(t){
- if(!/(€|\bевро\b|\beuro\b|\beuros\b)/i.test(t))return null;
- if(/\b49\b/.test(t)||t.includes('сорок девять'))return 'price-49';
- if(/\b99\b/.test(t)||t.includes('девяносто девять'))return 'price-99';
- if(/\b120\b/.test(t)||t.includes('сто двадцать'))return 'price-120';
- return null;
-}
-function showPriceTarget(id){
- const onPrices=(location.pathname.split('/').pop()||'index.html')==='prices.html';
- if(onPrices&&document.getElementById(id))highlightTarget(id);else go('prices.html','',id);
-}
-function callPhone(){window.location.href='tel:+358458525293'}
-function callWhatsApp(){continuousVoice=false;window.location.href='https://wa.me/358458525293'}
-function hasAny(t,list){return list.some(x=>typeof x==='string'?t.includes(x):x.test(t))}
-const INTENTS=[
- {id:'whatsappCall',p:[/(позвон|звон).*(ватсап|вацап|вотсап|whatsapp)/,/(ватсап|вацап|вотсап|whatsapp).*(позвон|звон)/],run:()=>callWhatsApp()},
- {id:'phoneCall',p:['позвони','позвонить','набери номер','набрать номер','набери телефон','сделай звонок','хочу позвонить'],run:()=>callPhone()},
- {id:'email',p:['электронная почта','email','e mail','имейл','емейл','почта компании','куда написать письмо','адрес почты'],run:()=>go('contact.html','contact','contact-email')},
- {id:'contact',p:['контакты','покажи контакты','найди контакты','с кем связаться','с кем можно связаться','как с вами связаться','как связаться','хочу связаться','кому написать','куда написать','кому позвонить','куда позвонить','у кого заказать','где заказать','как заказать','хочу заказать','можно заказать','заказать сайт','заказать услугу','заказать услуги','мне нужен сайт','мне нужна услуга','к кому обратиться','куда обратиться','с кем поговорить'],run:()=>go('contact.html','contact','contact-options')},
- {id:'booking',p:['запись','записаться','хочу записаться','можно записаться','запиши меня','запись на','как записаться','запишите меня'],run:()=>go('contact.html','booking')},
- {id:'address',p:['адрес','покажи адрес','где вы','где находитесь','где вас найти','как доехать','маршрут','как к вам приехать'],run:()=>go('contact.html','address')},
- {id:'hours',p:['часы работы','режим работы','когда вы работаете','когда открыты','во сколько открываетесь','во сколько закрываетесь','до скольки работаете'],run:()=>go('contact.html','hours')},
- {id:'phone',p:['телефон','номер','номер телефона','какой у вас номер','покажи телефон','покажи номер','ваш телефон','как вам позвонить'],run:()=>go('contact.html','phone','contact-phone')},
- {id:'pricesQuestion',p:['сколько стоит','во сколько обойдется','во сколько обойдётся','какая стоимость','сколько это стоит','сколько будет стоить','почем','почём','что по цене','сколько денег'],run:()=>go('prices.html','priceQuestion')},
- {id:'prices',p:['цены','цена','прайс','тарифы','покажи цены','посмотреть цены','какие цены','открой цены','покажи прайс','сколько у вас цены'],run:()=>go('prices.html','prices')},
- {id:'services',p:['услуги','услуга','посмотреть услуги','посмотри услуги','какие услуги','какие есть услуги','покажи услуги','показать услуги','открой услуги','что вы делаете','чем занимаетесь','что можете сделать','что предлагаете','что у вас есть','чем можете помочь','что можно заказать','что можно сделать'],run:()=>go('services.html','services')},
- {id:'diagnostics',p:['диагностика','диагностировать','проверить машину','проверить автомобиль','проверка машины','найти неисправность','что сломалось'],run:()=>openServiceDetail('diagnostics','diagnostics')},
- {id:'serviceDetail',p:[/^service$/,/^сервис$/,'техническое обслуживание','подробнее про service','подробнее о service','расскажи про service','подробнее про сервис','подробнее о сервисе'],run:()=>openServiceDetail('service','detail')},
- {id:'performanceDetail',p:[/^performance$/,/^перформанс$/,'performance','перформанс','подробнее про performance','подробнее о performance','расскажи про performance'],run:()=>openServiceDetail('performance','detail')},
- {id:'engine',p:['ремонт двигателя','ремонт мотора','починить двигатель','починить мотор','двигатель сломался','мотор сломался',/(ремонт|почин).*(двигател|мотор)/],run:()=>go('service-detail.html','engine')},
- {id:'oil',p:['масло','замена масла','поменять масло','сменить масло','заменить масло'],run:()=>go('service-detail.html','oil')},
- {id:'tires',p:['шины','колеса','колёса','шиномонтаж','поменять колеса','поменять колёса','заменить шины'],run:()=>go('service-detail.html','tires')},
- {id:'about',p:['о компании','о вас','кто вы','расскажи о вас','расскажите о вас','расскажи о компании','расскажите о компании','чем известны','кто такие motor engine'],run:()=>go('about.html','about')},
- {id:'catalog',p:['каталог','варианты','покажи варианты','какие варианты','что можно выбрать','покажи каталог','открой каталог','что есть в каталоге','что выбрать'],run:()=>go('catalog.html','catalog')},
- {id:'detail',p:['подробнее','подробности','расскажи подробнее','покажи подробнее','подробнее об услуге','что входит','что туда входит'],run:()=>openServiceDetail('diagnostics','detail')},
- {id:'home',p:['главная','на главную','главная страница','вернись на главную','вернуться на главную','в начало','домой','начальная страница'],run:()=>go('index.html','home')}
-];
-function handle(raw){
- let t=raw.toLowerCase().replace(/ё/g,'е').replace(/[?!.,]/g,' ').replace(/\s+/g,' ').trim();
- let h=document.querySelector('.heard');if(h)h.textContent='Вы: «'+raw+'»';
- if(hasAny(t,[/^что$/, /^чего$/,'повтори','повторите','скажи еще раз','еще раз','не услышал','не расслышал','что ты сказал','что ты говоришь','можешь повторить','можете повторить']))return repeatLastReply();
- const presentation=hasAny(t,['сейчас покажу сайт','смотри как это работает','смотри как работает сайт','давай покажу сайт','покажу презентацию','давай покажем презентацию']);
- if(presentation){attentiveUntil=Date.now()+20000;return;}
- const priceTarget=priceTargetFromSpeech(t);if(priceTarget)return showPriceTarget(priceTarget);\n const intent=INTENTS.find(x=>hasAny(t,x.p));
- if(intent)return intent.run();
-}
-let introDone=false,introPlaying=false,continuousVoice=false,recognizer=null,attentiveUntil=0,isSpeaking=false;
-function markVoiceEnabled(){sessionStorage.setItem('motorVoiceEnabled','1');localStorage.setItem('motorVoiceSession','1')}
-function finishIntro(){introDone=true;introPlaying=false;markVoiceEnabled()}
-function playIntroOnce(){
- if(introDone||introPlaying)return;
- introPlaying=true;
- play('intro').then(()=>{finishIntro()}).catch(()=>{introPlaying=false});
-}
-function compactVoiceUI(){
- let v=document.querySelector('.voice');if(v){v.style.width='auto';v.style.maxWidth='none';v.style.padding='8px 12px';v.style.left='auto';v.style.right='12px';v.style.bottom='12px';v.style.borderRadius='999px';let hints=v.querySelector('.hints');if(hints)hints.style.display='none';let heard=v.querySelector('.heard');if(heard)heard.style.display='none';let s=v.querySelector('.status');if(s){s.textContent='●';s.style.color='#35d06f';s.style.fontSize='22px';s.title='Голосовая навигация активна';}let b=v.querySelector('.mic');if(b)b.style.display='none';}
-}
-function startListening(){
- if(!recognizer||!continuousVoice||isSpeaking)return;
- try{recognizer.start()}catch(e){}
-}
-function showVoiceStart(){
- let o=document.createElement('div');o.id='voice-start';o.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(5,7,12,.82);display:flex;align-items:center;justify-content:center;padding:24px';
- o.innerHTML='<div style="max-width:440px;background:#11151d;border:1px solid #ff7a00;border-radius:20px;padding:28px;text-align:center;color:#fff;box-shadow:0 20px 60px #000"><div style="font-size:42px;margin-bottom:10px">🎙️</div><h2 style="margin:0 0 10px">Используйте навигацию голосом</h2><p style="margin:0 0 20px;color:#c7cbd1;line-height:1.5">Нажмите микрофон один раз, чтобы управлять сайтом голосом. После этого можно просто говорить команды.</p><button id="voice-start-btn" style="border:0;border-radius:999px;padding:14px 22px;font-weight:700;cursor:pointer">🎙 Включить микрофон</button></div>';
- document.body.appendChild(o);
- o.querySelector('#voice-start-btn').onclick=()=>{
-   const btn=o.querySelector('#voice-start-btn');if(btn.disabled)return;btn.disabled=true;
-   continuousVoice=true;markVoiceEnabled();o.remove();compactVoiceUI();
-   playIntroOnce();
- };
-}
-function init(){installSpaLinks();
- let b=document.querySelector('.mic'),s=document.querySelector('.status');if(!SR){s.textContent='Откройте сайт в Chrome для голосового управления';b.disabled=true;return}
- let r=new SR();recognizer=r;r.lang='ru-RU';r.interimResults=false;r.continuous=false;
- r.onstart=()=>{s.textContent='●';s.style.color='#35d06f';s.title='Голосовая навигация активна'};
- r.onend=()=>{if(continuousVoice&&!isSpeaking){s.textContent='●';s.style.color='#35d06f';s.title='Голосовая навигация активна';setTimeout(startListening,300)}else if(!continuousVoice&&s.textContent==='Слушаю…')s.textContent='Нажмите микрофон и говорите'};
- r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){continuousVoice=false;s.textContent='●';s.style.color='#e5484d';s.title='Голосовая навигация недоступна'}else{s.textContent='●';s.style.color='#e5484d';s.title='Ошибка распознавания — переподключение';setTimeout(()=>{if(continuousVoice&&!isSpeaking){s.style.color='#35d06f';s.title='Голосовая навигация активна'}},800);if(e.error==='no-speech'){/* silence: keep listening without speaking */}}};
- r.onresult=e=>{let heard=e.results[0][0].transcript;s.textContent='Распознано: «'+heard+'»';setTimeout(()=>handle(heard),80)};
- b.onclick=()=>{continuousVoice=true;markVoiceEnabled();compactVoiceUI();startListening()}
- if(localStorage.getItem('motorVoiceSession')==='1'){sessionStorage.removeItem('motorResumeVoice');continuousVoice=true;compactVoiceUI();setTimeout(startListening,500)}else{showVoiceStart();}
-}
-addEventListener('DOMContentLoaded',()=>{sessionStorage.removeItem('motorIntroPlayed');init();let target=sessionStorage.getItem('motorVoiceTarget');if(target){sessionStorage.removeItem('motorVoiceTarget');setTimeout(()=>highlightTarget(target),250)}let k=sessionStorage.getItem('motorVoiceReply');if(k){sessionStorage.removeItem('motorVoiceReply');setTimeout(()=>play(k).catch(()=>{}),150)}});
+function overlay(){if(document.getElementById('voice-start'))return;const o=document.createElement('div');o.id='voice-start';o.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(5,7,12,.82);display:flex;align-items:center;justify-content:center;padding:24px';o.innerHTML='<div style="max-width:440px;background:#11151d;border:1px solid #ff7a00;border-radius:20px;padding:28px;text-align:center;color:#fff"><div style="font-size:42px">🎙</div><h2>Используйте навигацию голосом</h2><p style="color:#c7cbd1">Нажмите микрофон один раз, чтобы управлять сайтом голосом. После этого можно просто говорить команды.</p><button id="voice-start-btn" style="border:0;border-radius:999px;padding:14px 22px;font-weight:700;cursor:pointer">🎙 Включить микрофон</button></div>';document.body.appendChild(o);o.querySelector('button').onclick=()=>{active=true;localStorage.setItem('motorVoiceSession','1');o.remove();compact();if(!intro){intro=true;play('intro').catch(()=>{})}}}
+function init(){if(SR){r=new SR();r.lang='ru-RU';r.interimResults=false;r.continuous=false;r.onstart=()=>status('●','#35d06f');r.onend=()=>{if(active&&!speaking)setTimeout(listen,280)};r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){active=false;status('●','#e5484d')}else if(active&&!speaking)setTimeout(listen,300)};r.onresult=e=>setTimeout(()=>handle(e.results[0][0].transcript),60)}
+document.addEventListener('click',e=>{const a=e.target.closest('a');if(!a)return;const h=a.getAttribute('href')||'',k=h.split('/').pop().split('?')[0];if(P[k]&&!h.startsWith('http')){e.preventDefault();go(k,'',null,true)}},true);
+addEventListener('popstate',e=>{const k=e.state&&e.state.page;if(P[k])go(k,'',null,false)});
+if(localStorage.getItem('motorVoiceSession')==='1'){active=true;intro=true;compact();setTimeout(listen,400)}else overlay()}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
