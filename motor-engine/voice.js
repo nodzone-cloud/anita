@@ -21,7 +21,13 @@ function play(k){
  });
 }
 function repeatLastReply(){let k=sessionStorage.getItem('motorLastReply');if(k)return play(k);}
-function go(dest,response){continuousVoice=false;sessionStorage.setItem('motorVoiceReply',response||'');sessionStorage.setItem('motorResumeVoice','1');window.location.assign(dest)}
+function highlightTarget(id){
+ if(!id)return;let el=document.getElementById(id);if(!el)return;
+ document.querySelectorAll('.voice-target-highlight').forEach(x=>x.classList.remove('voice-target-highlight'));
+ el.classList.add('voice-target-highlight');el.scrollIntoView({behavior:'smooth',block:'center'});
+ setTimeout(()=>el.classList.remove('voice-target-highlight'),5200);
+}
+function go(dest,response,target){continuousVoice=false;sessionStorage.setItem('motorVoiceReply',response||'');sessionStorage.setItem('motorResumeVoice','1');if(target)sessionStorage.setItem('motorVoiceTarget',target);window.location.assign(dest)}
 function callPhone(){continuousVoice=false;window.location.href='tel:+358458525293'}
 function callWhatsApp(){continuousVoice=false;window.location.href='https://wa.me/358458525293'}
 function hasAny(t,list){return list.some(x=>typeof x==='string'?t.includes(x):x.test(t))}
@@ -40,12 +46,12 @@ function handle(raw){
    'у кого заказать','где заказать','как заказать','хочу заказать','можно заказать',
    'заказать сайт','заказать услугу','заказать услуги','мне нужен сайт','мне нужна услуга',
    'к кому обратиться','куда обратиться','с кем поговорить','как вас найти'
- ])) return go('contact.html','contact');
+ ])) return go('contact.html','contact','contact-options');
 
  if(hasAny(t,['хочу записаться','можно записаться','запиши меня','запись на','записаться'])) return go('contact.html','booking');
  if(hasAny(t,['где вы','где находитесь','ваш адрес','как доехать','как вас найти','маршрут'])) return go('contact.html','address');
  if(hasAny(t,['когда вы работаете','во сколько открываетесь','во сколько закрываетесь','режим работы','часы работы'])) return go('contact.html','hours');
- if(hasAny(t,['какой у вас номер','номер телефона','покажи телефон','ваш телефон'])) return go('contact.html','phone');
+ if(hasAny(t,['какой у вас номер','номер телефона','покажи телефон','ваш телефон'])) return go('contact.html','phone','contact-phone');
 
  if(hasAny(t,['сколько стоит','во сколько обойдется','во сколько обойдётся','какая стоимость','сколько это стоит','сколько будет стоить','почем','почём'])) return go('prices.html','priceQuestion');
  if(hasAny(t,['покажи цены','открой цены','цены','прайс','тарифы'])) return go('prices.html','prices');
@@ -100,4 +106,4 @@ function init(){
  b.onclick=()=>{continuousVoice=true;markVoiceEnabled();unlockIntro();compactVoiceUI();startListening()}
  if(sessionStorage.getItem('motorResumeVoice')){sessionStorage.removeItem('motorResumeVoice');continuousVoice=true;compactVoiceUI();}else{showVoiceStart();}
 }
-addEventListener('DOMContentLoaded',()=>{sessionStorage.removeItem('motorIntroPlayed');init();let k=sessionStorage.getItem('motorVoiceReply');if(k){sessionStorage.removeItem('motorVoiceReply');setTimeout(()=>play(k).catch(()=>{}),150)}});
+addEventListener('DOMContentLoaded',()=>{sessionStorage.removeItem('motorIntroPlayed');init();let target=sessionStorage.getItem('motorVoiceTarget');if(target){sessionStorage.removeItem('motorVoiceTarget');setTimeout(()=>highlightTarget(target),250)}let k=sessionStorage.getItem('motorVoiceReply');if(k){sessionStorage.removeItem('motorVoiceReply');setTimeout(()=>play(k).catch(()=>{}),150)}});
