@@ -2,7 +2,40 @@ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;const A='asset
 function play(k){let f=R[k]||k;if(!f)return Promise.resolve();let a=new Audio(A+f);a.volume=1;return a.play()}
 function go(dest,response){sessionStorage.setItem('motorVoiceReply',response||'');location.href=dest}
 function handle(raw){let t=raw.toLowerCase().replace(/ё/g,'е');document.querySelector('.heard').textContent='Вы: «'+raw+'»';if(/главн|домой|начал/.test(t))return go('index.html','home');if(/услуг|сервис|ремонт|что вы делаете/.test(t))return go('services.html','services');if(/цен|стоим|сколько|прайс/.test(t))return go('prices.html',/сколько|стоим/.test(t)?'priceQuestion':'prices');if(/контакт|связ|телефон|позвон|адрес/.test(t))return go('contact.html','contact');if(/о компании|о вас|кто вы|компан/.test(t))return go('about.html','about');if(/вариант|каталог|выбор|предлож/.test(t))return go('catalog.html','catalog');if(/подроб|детал|об этой услуге/.test(t))return go('service-detail.html','detail');document.querySelector('.status').textContent='Попробуйте другую команду'}
-function activateVoice(){sessionStorage.setItem('motorVoiceEnabled','1');sessionStorage.setItem('motorIntroPlayed','1');let o=document.querySelector('.voice-start-overlay');if(o)o.remove();play('intro').catch(()=>{document.querySelector('.status').textContent='Добавьте intro.m4a в assets/audio/';});}
-function showActivation(){if(sessionStorage.getItem('motorVoiceEnabled'))return;let o=document.createElement('div');o.className='voice-start-overlay';o.innerHTML='<div class="voice-start-card"><div class="voice-start-icon">🎙️</div><h2>Motor Engine Voice</h2><p>Этот сайт умеет отвечать голосом и открывать нужные страницы по вашей команде.</p><button id="motor-enable-voice">Включить голосовой сайт</button><small>Нажмите один раз, чтобы разрешить звук.</small></div>';document.body.appendChild(o);document.getElementById('motor-enable-voice').onclick=activateVoice}
-function init(){let b=document.querySelector('.mic'),s=document.querySelector('.status');if(!SR){s.textContent='Откройте сайт в Chrome для голосового управления';b.disabled=true;return}let r=new SR();r.lang='ru-RU';r.interimResults=false;r.continuous=false;r.onstart=()=>s.textContent='Слушаю…';r.onend=()=>{if(s.textContent==='Слушаю…')s.textContent='Нажмите микрофон и говорите'};r.onerror=()=>s.textContent='Не удалось распознать. Попробуйте ещё раз.';r.onresult=e=>{s.textContent='Команда распознана';handle(e.results[0][0].transcript)};b.onclick=()=>{if(!sessionStorage.getItem('motorVoiceEnabled')){activateVoice();return}try{r.start()}catch(e){}}}
-addEventListener('DOMContentLoaded',()=>{init();showActivation();let k=sessionStorage.getItem('motorVoiceReply');if(k){sessionStorage.removeItem('motorVoiceReply');if(sessionStorage.getItem('motorVoiceEnabled'))setTimeout(()=>play(k).catch(()=>{}),350)}});
+let introDone=false;
+function markVoiceEnabled(){sessionStorage.setItem('motorVoiceEnabled','1')}
+function tryIntro(){
+  if(introDone||sessionStorage.getItem('motorIntroPlayed')) return;
+  play('intro').then(()=>{
+    introDone=true;
+    markVoiceEnabled();
+    sessionStorage.setItem('motorIntroPlayed','1');
+    removeIntroUnlock();
+  }).catch(()=>{});
+}
+function unlockIntro(){
+  if(introDone||sessionStorage.getItem('motorIntroPlayed')) return;
+  play('intro').then(()=>{
+    introDone=true;
+    markVoiceEnabled();
+    sessionStorage.setItem('motorIntroPlayed','1');
+    removeIntroUnlock();
+  }).catch(()=>{});
+}
+function removeIntroUnlock(){
+  ['pointerdown','touchstart','click','keydown','wheel','scroll'].forEach(ev=>window.removeEventListener(ev,unlockIntro,true));
+}
+function armIntroUnlock(){
+  ['pointerdown','touchstart','click','keydown','wheel','scroll'].forEach(ev=>window.addEventListener(ev,unlockIntro,{capture:true,passive:true,once:false}));
+}
+function init(){let b=document.querySelector('.mic'),s=document.querySelector('.status');if(!SR){s.textContent='Откройте сайт в Chrome для голосового управления';b.disabled=true;return}let r=new SR();r.lang='ru-RU';r.interimResults=false;r.continuous=false;r.onstart=()=>s.textContent='Слушаю…';r.onend=()=>{if(s.textContent==='Слушаю…')s.textContent='Нажмите микрофон и говорите'};r.onerror=()=>s.textContent='Не удалось распознать. Попробуйте ещё раз.';r.onresult=e=>{s.textContent='Команда распознана';handle(e.results[0][0].transcript)};b.onclick=()=>{unlockIntro();try{r.start()}catch(e){}}}
+addEventListener('DOMContentLoaded',()=>{
+  init();
+  armIntroUnlock();
+  setTimeout(tryIntro,500);
+  let k=sessionStorage.getItem('motorVoiceReply');
+  if(k){
+    sessionStorage.removeItem('motorVoiceReply');
+    if(sessionStorage.getItem('motorVoiceEnabled')) setTimeout(()=>play(k).catch(()=>{}),350);
+  }
+});
