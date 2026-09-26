@@ -16,7 +16,7 @@ function callWhatsApp(){continuousVoice=false;window.location.href='https://wa.m
 function handle(raw){
  let t=raw.toLowerCase().replace(/ё/g,'е'),h=document.querySelector('.heard');if(h)h.textContent='Вы: «'+raw+'»';
  if(/(позвон|звон).*(ватсап|вацап|вотсап)|(ватсап|вацап|вотсап).*(позвон|звон)/.test(t))return callWhatsApp();
- if(/позвон|звонить|набери номер|набрать номер/.test(t))return callPhone();
+ if(/позвон|позвонить|звонить|звонок|набери номер|набрать номер|набери телефон|позвони на телефон|позвонить на телефон|позвони по телефону|позвонить по телефону/.test(t))return callPhone();
  if(/спасибо|благодар/.test(t))return play('thanks');
  if(/запис|запись|записаться/.test(t))return go('contact.html','booking');
  if(/диагност/.test(t))return go('service-detail.html','diagnostics');
