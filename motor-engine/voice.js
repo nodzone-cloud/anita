@@ -11,8 +11,12 @@ const R={
 };
 function play(k){let f=R[k]||k;if(!f)return Promise.resolve();let a=new Audio(A+f);a.volume=1;return a.play()}
 function go(dest,response){sessionStorage.setItem('motorVoiceReply',response||'');location.href=dest}
+function callPhone(){continuousVoice=false;sessionStorage.removeItem('motorContinuousVoice');window.location.href='tel:+358458525293'}
+function callWhatsApp(){continuousVoice=false;sessionStorage.removeItem('motorContinuousVoice');window.location.href='https://wa.me/358458525293'}
 function handle(raw){
  let t=raw.toLowerCase().replace(/ё/g,'е'),h=document.querySelector('.heard');if(h)h.textContent='Вы: «'+raw+'»';
+ if(/(позвон|звон).*(ватсап|вацап|вотсап)|(ватсап|вацап|вотсап).*(позвон|звон)/.test(t))return callWhatsApp();
+ if(/позвон|звонить|набери номер|набрать номер/.test(t))return callPhone();
  if(/спасибо|благодар/.test(t))return play('thanks');
  if(/запис|запись|записаться/.test(t))return go('contact.html','booking');
  if(/диагност/.test(t))return go('service-detail.html','diagnostics');
@@ -21,7 +25,7 @@ function handle(raw){
  if(/шин|колес/.test(t))return go('service-detail.html','tires');
  if(/часы|время работ|когда открыт|режим работ/.test(t))return go('contact.html','hours');
  if(/адрес|где наход|как доехать|маршрут/.test(t))return go('contact.html','address');
- if(/телефон|позвон|номер/.test(t))return go('contact.html','phone');
+ if(/телефон|номер/.test(t))return go('contact.html','phone');
  if(/главн|домой|начал/.test(t))return go('index.html','home');
  if(/услуг|сервис|что вы делаете/.test(t))return go('services.html','services');
  if(/сколько|стоимост/.test(t))return go('prices.html','priceQuestion');
