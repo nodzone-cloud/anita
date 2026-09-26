@@ -24,36 +24,46 @@ function repeatLastReply(){let k=sessionStorage.getItem('motorLastReply');if(k)r
 function go(dest,response){continuousVoice=false;sessionStorage.setItem('motorVoiceReply',response||'');sessionStorage.setItem('motorResumeVoice','1');window.location.assign(dest)}
 function callPhone(){continuousVoice=false;window.location.href='tel:+358458525293'}
 function callWhatsApp(){continuousVoice=false;window.location.href='https://wa.me/358458525293'}
+function hasAny(t,list){return list.some(x=>typeof x==='string'?t.includes(x):x.test(t))}
 function handle(raw){
- let t=raw.toLowerCase().replace(/ё/g,'е').trim(),h=document.querySelector('.heard');if(h)h.textContent='Вы: «'+raw+'»';
- const now=Date.now();
- const contactOrder=/(с кем( можно)? связаться)|(с кем.*для.*заказ)|(у кого.*заказ)|(где.*заказ)|(как.*заказ)|(заказать|закажу|заказал).*(сайт|услуг)|(сайт|услуг).*(заказать|заказ)/.test(t);
- if(contactOrder)return go('contact.html','contact');
- const repeat=/^(что|чего)[?!. ]*$|повтори|повторите|скажи еще раз|скажи ещё раз|еще раз|ещё раз|не услышал|не услышала|не расслышал|не расслышала|что ты сказал|что ты сказала|что ты говоришь|что вы сказали|можешь повторить|можете повторить/.test(t);
- if(repeat){return repeatLastReply();}
- const presentation=/(сейчас|щас|давай|смотри|посмотри|покажу|покажем).*(сайт|презентац|как.*работ)|(сайт|презентац).*(покажу|покажем|смотри|работ)/.test(t);
- if(presentation){attentiveUntil=now+20000;let s=document.querySelector('.status');if(s)s.textContent='🎙 Голосовая навигация готова';return;}
- const attentive=now<attentiveUntil;
- const direct=/(покажи|открой|найди|перейди|верни|позвон|набери|запиш|заказ|заказать|сколько|какие|где|как связ|с кем связ|у кого|контакт|цены|прайс|услуг|сайт|телефон|номер|адрес|диагност|ремонт|масл|шин|часы|главн|каталог|вариант)/.test(t);
- if(!direct&&!attentive)return;
- if(/(позвон|звон).*(ватсап|вацап|вотсап)|(ватсап|вацап|вотсап).*(позвон|звон)/.test(t))return callWhatsApp();
- if(/позвон|позвонить|звонить|звонок|набери номер|набрать номер|набери телефон|позвони на телефон|позвонить на телефон|позвони по телефону|позвонить по телефону/.test(t))return callPhone();
- if(/запис|запись|записаться/.test(t))return go('contact.html','booking');
- if(/диагност/.test(t))return go('service-detail.html','diagnostics');
- if(/двигател|мотор/.test(t)&&/ремонт|почин|чин/.test(t))return go('service-detail.html','engine');
- if(/масл/.test(t))return go('service-detail.html','oil');
- if(/шин|колес/.test(t))return go('service-detail.html','tires');
- if(/часы|время работ|когда открыт|режим работ/.test(t))return go('contact.html','hours');
- if(/адрес|где наход|как доехать|маршрут/.test(t))return go('contact.html','address');
- if(/телефон|номер/.test(t))return go('contact.html','phone');
- if(/главн|домой|начал/.test(t))return go('index.html','home');
- if(/услуг|сервис|что вы делаете/.test(t))return go('services.html','services');
- if(/сколько|стоимост/.test(t))return go('prices.html','priceQuestion');
- if(/цен|прайс/.test(t))return go('prices.html','prices');
- if(/контакт|с кем.*связ|связаться|как.*связ|у кого.*заказ|заказ.*(сайт|услуг)|заказать.*(сайт|услуг)|хочу.*заказ.*(сайт|услуг)/.test(t))return go('contact.html','contact');
- if(/о компании|о вас|кто вы|компан/.test(t))return go('about.html','about');
- if(/вариант|каталог|выбор|предлож/.test(t))return go('catalog.html','catalog');
- if(/подроб|детал|об этой услуге/.test(t))return go('service-detail.html','detail');
+ let t=raw.toLowerCase().replace(/ё/g,'е').replace(/[?!.,]/g,' ').replace(/\s+/g,' ').trim();
+ let h=document.querySelector('.heard');if(h)h.textContent='Вы: «'+raw+'»';
+
+ if(hasAny(t,[/^что$/, /^чего$/, 'повтори','повторите','скажи еще раз','еще раз','не услышал','не расслышал','что ты сказал','что ты говоришь','можешь повторить','можете повторить'])) return repeatLastReply();
+
+ if(hasAny(t,[/(позвон|звон).*(ватсап|вацап|вотсап|whatsapp)/,/(ватсап|вацап|вотсап|whatsapp).*(позвон|звон)/])) return callWhatsApp();
+ if(hasAny(t,['позвони','позвонить','набери номер','набрать номер','набери телефон','сделай звонок','хочу позвонить'])) return callPhone();
+
+ if(hasAny(t,[
+   'с кем связаться','с кем можно связаться','как с вами связаться','как связаться','хочу связаться',
+   'кому написать','куда написать','кому позвонить','куда позвонить',
+   'у кого заказать','где заказать','как заказать','хочу заказать','можно заказать',
+   'заказать сайт','заказать услугу','заказать услуги','мне нужен сайт','мне нужна услуга',
+   'к кому обратиться','куда обратиться','с кем поговорить','как вас найти'
+ ])) return go('contact.html','contact');
+
+ if(hasAny(t,['хочу записаться','можно записаться','запиши меня','запись на','записаться'])) return go('contact.html','booking');
+ if(hasAny(t,['где вы','где находитесь','ваш адрес','как доехать','как вас найти','маршрут'])) return go('contact.html','address');
+ if(hasAny(t,['когда вы работаете','во сколько открываетесь','во сколько закрываетесь','режим работы','часы работы'])) return go('contact.html','hours');
+ if(hasAny(t,['какой у вас номер','номер телефона','покажи телефон','ваш телефон'])) return go('contact.html','phone');
+
+ if(hasAny(t,['сколько стоит','во сколько обойдется','во сколько обойдётся','какая стоимость','сколько это стоит','сколько будет стоить','почем','почём'])) return go('prices.html','priceQuestion');
+ if(hasAny(t,['покажи цены','открой цены','цены','прайс','тарифы'])) return go('prices.html','prices');
+
+ if(hasAny(t,['что вы делаете','чем занимаетесь','что можете сделать','что предлагаете','какие есть услуги','что у вас есть','чем можете помочь','покажи услуги','открой услуги'])) return go('services.html','services');
+ if(hasAny(t,['диагностика','проверить машину','проверить автомобиль','найти неисправность'])) return go('service-detail.html','diagnostics');
+ if(hasAny(t,[/(ремонт|почин).*(двигател|мотор)/,/(двигател|мотор).*(ремонт|почин)/])) return go('service-detail.html','engine');
+ if(hasAny(t,['замена масла','поменять масло','сменить масло'])) return go('service-detail.html','oil');
+ if(hasAny(t,['шины','шиномонтаж','поменять колеса','поменять колёса'])) return go('service-detail.html','tires');
+
+ if(hasAny(t,['кто вы','расскажи о вас','расскажите о вас','расскажи о компании','о компании','чем известны'])) return go('about.html','about');
+ if(hasAny(t,['что можно выбрать','какие варианты','покажи варианты','покажи каталог','что есть в каталоге'])) return go('catalog.html','catalog');
+ if(hasAny(t,['расскажи подробнее','покажи подробнее','подробнее об услуге','что входит'])) return go('service-detail.html','detail');
+ if(hasAny(t,['на главную','вернись назад','вернуться на главную','в начало','домой'])) return go('index.html','home');
+
+ const presentation=hasAny(t,['сейчас покажу сайт','смотри как это работает','смотри как работает сайт','давай покажу сайт','покажу презентацию','давай покажем презентацию']);
+ if(presentation){attentiveUntil=Date.now()+20000;return;}
+ // Любую другую речь игнорируем: никаких случайных переходов.
 }
 let introDone=false,introPlaying=false,continuousVoice=false,recognizer=null,attentiveUntil=0,isSpeaking=false;
 function markVoiceEnabled(){sessionStorage.setItem('motorVoiceEnabled','1')}
