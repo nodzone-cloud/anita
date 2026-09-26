@@ -80,7 +80,7 @@ function showVoiceStart(){
  let o=document.createElement('div');o.id='voice-start';o.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(5,7,12,.82);display:flex;align-items:center;justify-content:center;padding:24px';
  o.innerHTML='<div style="max-width:440px;background:#11151d;border:1px solid #ff7a00;border-radius:20px;padding:28px;text-align:center;color:#fff;box-shadow:0 20px 60px #000"><div style="font-size:42px;margin-bottom:10px">🎙️</div><h2 style="margin:0 0 10px">Используйте навигацию голосом</h2><p style="margin:0 0 20px;color:#c7cbd1;line-height:1.5">Нажмите микрофон один раз, чтобы управлять сайтом голосом. После этого можно просто говорить команды.</p><button id="voice-start-btn" style="border:0;border-radius:999px;padding:14px 22px;font-weight:700;cursor:pointer">🎙 Включить микрофон</button></div>';
  document.body.appendChild(o);
- o.querySelector('#voice-start-btn').onclick=()=>{continuousVoice=true;markVoiceEnabled();unlockIntro();o.remove();compactVoiceUI();if(!introPlaying&&!isSpeaking)setTimeout(startListening,250)};
+ o.querySelector('#voice-start-btn').onclick=()=>{continuousVoice=true;markVoiceEnabled();o.remove();compactVoiceUI();if(!introDone&&!sessionStorage.getItem('motorIntroPlayed')){unlockIntro()}else{setTimeout(startListening,250)}};
 }
 function init(){
  let b=document.querySelector('.mic'),s=document.querySelector('.status');if(!SR){s.textContent='Откройте сайт в Chrome для голосового управления';b.disabled=true;return}
@@ -92,4 +92,4 @@ function init(){
  b.onclick=()=>{continuousVoice=true;markVoiceEnabled();unlockIntro();compactVoiceUI();startListening()}
  if(sessionStorage.getItem('motorResumeVoice')){sessionStorage.removeItem('motorResumeVoice');continuousVoice=true;compactVoiceUI();}else{showVoiceStart();}
 }
-addEventListener('DOMContentLoaded',()=>{init();armIntroUnlock();let k=sessionStorage.getItem('motorVoiceReply');if(k){sessionStorage.removeItem('motorVoiceReply');setTimeout(()=>play(k).catch(()=>{}),150)}else{setTimeout(tryIntro,500);if(continuousVoice)setTimeout(startListening,700)}});
+addEventListener('DOMContentLoaded',()=>{init();let k=sessionStorage.getItem('motorVoiceReply');if(k){sessionStorage.removeItem('motorVoiceReply');setTimeout(()=>play(k).catch(()=>{}),150)}else if(continuousVoice){setTimeout(startListening,700)}});
