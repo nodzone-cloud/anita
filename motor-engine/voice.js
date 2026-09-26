@@ -15,18 +15,26 @@ function tryIntro(){
 }
 function unlockIntro(){
   if(introDone||sessionStorage.getItem('motorIntroPlayed')) return;
-  play('intro').then(()=>{
+  const a=new Audio(A+R.intro);
+  a.preload='auto';
+  a.volume=1;
+  a.play().then(()=>{
     introDone=true;
     markVoiceEnabled();
     sessionStorage.setItem('motorIntroPlayed','1');
     removeIntroUnlock();
-  }).catch(()=>{});
+  }).catch(err=>{
+    const s=document.querySelector('.status');
+    if(s) s.textContent='Коснитесь микрофона, чтобы включить голос';
+    console.log('Intro playback blocked',err);
+  });
 }
 function removeIntroUnlock(){
-  ['pointerdown','touchstart','click','keydown','wheel','scroll'].forEach(ev=>window.removeEventListener(ev,unlockIntro,true));
+  ['pointerup','touchend','click','keydown'].forEach(ev=>document.removeEventListener(ev,unlockIntro,true));window.removeEventListener('wheel',unlockIntro,true);
 }
 function armIntroUnlock(){
-  ['pointerdown','touchstart','click','keydown','wheel','scroll'].forEach(ev=>window.addEventListener(ev,unlockIntro,{capture:true,passive:true,once:false}));
+  ['pointerup','touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,unlockIntro,true));
+  window.addEventListener('wheel',unlockIntro,{capture:true,passive:true});
 }
 function init(){let b=document.querySelector('.mic'),s=document.querySelector('.status');if(!SR){s.textContent='Откройте сайт в Chrome для голосового управления';b.disabled=true;return}let r=new SR();r.lang='ru-RU';r.interimResults=false;r.continuous=false;r.onstart=()=>s.textContent='Слушаю…';r.onend=()=>{if(s.textContent==='Слушаю…')s.textContent='Нажмите микрофон и говорите'};r.onerror=()=>s.textContent='Не удалось распознать. Попробуйте ещё раз.';r.onresult=e=>{s.textContent='Команда распознана';handle(e.results[0][0].transcript)};b.onclick=()=>{unlockIntro();try{r.start()}catch(e){}}}
 addEventListener('DOMContentLoaded',()=>{
