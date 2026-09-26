@@ -9,13 +9,16 @@ const R={
  address:'16_adres.mp3?v=8',phone:'17_telefon.mp3?v=8',unknown:'18_ne_ponyal.mp3?v=8',
  notfound:'19_ne_nashli.mp3?v=8',thanks:'20_rad_pomoch.mp3?v=8'
 };
-function play(k){let f=R[k]||k;if(!f)return Promise.resolve();let a=new Audio(A+f);a.volume=1;return a.play()}
+function play(k){let f=R[k]||k;if(!f)return Promise.resolve();if(R[k])sessionStorage.setItem('motorLastReply',k);let a=new Audio(A+f);a.volume=1;return a.play()}
+function repeatLastReply(){let k=sessionStorage.getItem('motorLastReply');if(k)return play(k);}
 function go(dest,response){continuousVoice=false;sessionStorage.setItem('motorVoiceReply',response||'');sessionStorage.setItem('motorResumeVoice','1');window.location.assign(dest)}
 function callPhone(){continuousVoice=false;window.location.href='tel:+358458525293'}
 function callWhatsApp(){continuousVoice=false;window.location.href='https://wa.me/358458525293'}
 function handle(raw){
  let t=raw.toLowerCase().replace(/ё/g,'е').trim(),h=document.querySelector('.heard');if(h)h.textContent='Вы: «'+raw+'»';
  const now=Date.now();
+ const repeat=/^(что|чего)[?!. ]*$|повтори|повторите|скажи еще раз|скажи ещё раз|еще раз|ещё раз|не услышал|не услышала|не расслышал|не расслышала|что ты сказал|что ты сказала|что ты говоришь|что вы сказали|можешь повторить|можете повторить/.test(t);
+ if(repeat){return repeatLastReply();}
  const presentation=/(сейчас|щас|давай|смотри|посмотри|покажу|покажем).*(сайт|презентац|как.*работ)|(сайт|презентац).*(покажу|покажем|смотри|работ)/.test(t);
  if(presentation){attentiveUntil=now+20000;let s=document.querySelector('.status');if(s)s.textContent='🎙 Голосовая навигация готова';return;}
  const attentive=now<attentiveUntil;
