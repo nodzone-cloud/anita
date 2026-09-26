@@ -12,3 +12,6 @@
   0%,100%{filter:brightness(1)}
   50%{filter:brightness(1.18)}
 }
+
+/* Keep the old inline mic hidden. Voice activation is only through the one-time start overlay. */
+.voice .mic{display:none!important}
