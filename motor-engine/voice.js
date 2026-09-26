@@ -56,7 +56,7 @@ function handle(raw){
  if(hasAny(t,['сколько стоит','во сколько обойдется','во сколько обойдётся','какая стоимость','сколько это стоит','сколько будет стоить','почем','почём'])) return go('prices.html','priceQuestion');
  if(hasAny(t,['покажи цены','открой цены','цены','прайс','тарифы'])) return go('prices.html','prices');
 
- if(hasAny(t,['что вы делаете','чем занимаетесь','что можете сделать','что предлагаете','какие есть услуги','что у вас есть','чем можете помочь','покажи услуги','открой услуги'])) return go('services.html','services');
+ if(hasAny(t,['услуги','посмотреть услуги','посмотри услуги','какие услуги','какие есть услуги','покажи услуги','показать услуги','открой услуги','что вы делаете','чем занимаетесь','что можете сделать','что предлагаете','что у вас есть','чем можете помочь'])) return go('services.html','services');
  if(hasAny(t,['диагностика','проверить машину','проверить автомобиль','найти неисправность'])) return go('service-detail.html','diagnostics');
  if(hasAny(t,[/(ремонт|почин).*(двигател|мотор)/,/(двигател|мотор).*(ремонт|почин)/])) return go('service-detail.html','engine');
  if(hasAny(t,['замена масла','поменять масло','сменить масло'])) return go('service-detail.html','oil');
@@ -72,7 +72,7 @@ function handle(raw){
  // Любую другую речь игнорируем: никаких случайных переходов.
 }
 let introDone=false,introPlaying=false,continuousVoice=false,recognizer=null,attentiveUntil=0,isSpeaking=false;
-function markVoiceEnabled(){sessionStorage.setItem('motorVoiceEnabled','1')}
+function markVoiceEnabled(){sessionStorage.setItem('motorVoiceEnabled','1');sessionStorage.setItem('motorVoiceSession','1')}
 function finishIntro(){introDone=true;introPlaying=false;markVoiceEnabled()}
 function playIntroOnce(){
  if(introDone||introPlaying)return;
@@ -104,6 +104,6 @@ function init(){
  r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){continuousVoice=false;s.textContent='●';s.style.color='#e5484d';s.title='Голосовая навигация недоступна'}else{s.textContent='●';s.style.color='#e5484d';s.title='Ошибка распознавания — переподключение';setTimeout(()=>{if(continuousVoice&&!isSpeaking){s.style.color='#35d06f';s.title='Голосовая навигация активна'}},800);if(e.error==='no-speech'){/* silence: keep listening without speaking */}}};
  r.onresult=e=>{let heard=e.results[0][0].transcript;s.textContent='Распознано: «'+heard+'»';setTimeout(()=>handle(heard),80)};
  b.onclick=()=>{continuousVoice=true;markVoiceEnabled();unlockIntro();compactVoiceUI();startListening()}
- if(sessionStorage.getItem('motorResumeVoice')){sessionStorage.removeItem('motorResumeVoice');continuousVoice=true;compactVoiceUI();}else{showVoiceStart();}
+ if(sessionStorage.getItem('motorVoiceSession')){sessionStorage.removeItem('motorResumeVoice');continuousVoice=true;compactVoiceUI();setTimeout(startListening,500)}else{showVoiceStart();}
 }
 addEventListener('DOMContentLoaded',()=>{sessionStorage.removeItem('motorIntroPlayed');init();let target=sessionStorage.getItem('motorVoiceTarget');if(target){sessionStorage.removeItem('motorVoiceTarget');setTimeout(()=>highlightTarget(target),250)}let k=sessionStorage.getItem('motorVoiceReply');if(k){sessionStorage.removeItem('motorVoiceReply');setTimeout(()=>play(k).catch(()=>{}),150)}});
