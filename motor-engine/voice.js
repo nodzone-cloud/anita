@@ -27,6 +27,8 @@ function callWhatsApp(){continuousVoice=false;window.location.href='https://wa.m
 function handle(raw){
  let t=raw.toLowerCase().replace(/ё/g,'е').trim(),h=document.querySelector('.heard');if(h)h.textContent='Вы: «'+raw+'»';
  const now=Date.now();
+ const contactOrder=/(с кем( можно)? связаться)|(с кем.*для.*заказ)|(у кого.*заказ)|(где.*заказ)|(как.*заказ)|(заказать|закажу|заказал).*(сайт|услуг)|(сайт|услуг).*(заказать|заказ)/.test(t);
+ if(contactOrder)return go('contact.html','contact');
  const repeat=/^(что|чего)[?!. ]*$|повтори|повторите|скажи еще раз|скажи ещё раз|еще раз|ещё раз|не услышал|не услышала|не расслышал|не расслышала|что ты сказал|что ты сказала|что ты говоришь|что вы сказали|можешь повторить|можете повторить/.test(t);
  if(repeat){return repeatLastReply();}
  const presentation=/(сейчас|щас|давай|смотри|посмотри|покажу|покажем).*(сайт|презентац|как.*работ)|(сайт|презентац).*(покажу|покажем|смотри|работ)/.test(t);
@@ -62,7 +64,7 @@ function playIntroOnce(){
  play('intro').then(()=>{finishIntro()}).catch(()=>{introPlaying=false});
 }
 function compactVoiceUI(){
- let v=document.querySelector('.voice');if(v){v.style.width='auto';v.style.maxWidth='none';v.style.padding='8px 12px';v.style.left='auto';v.style.right='12px';v.style.bottom='12px';v.style.borderRadius='999px';let hints=v.querySelector('.hints');if(hints)hints.style.display='none';let heard=v.querySelector('.heard');if(heard)heard.style.display='none';let s=v.querySelector('.status');if(s)s.textContent='🎙 Голосовая навигация включена';let b=v.querySelector('.mic');if(b)b.style.display='none';}
+ let v=document.querySelector('.voice');if(v){v.style.width='auto';v.style.maxWidth='none';v.style.padding='8px 12px';v.style.left='auto';v.style.right='12px';v.style.bottom='12px';v.style.borderRadius='999px';let hints=v.querySelector('.hints');if(hints)hints.style.display='none';let heard=v.querySelector('.heard');if(heard)heard.style.display='none';let s=v.querySelector('.status');if(s){s.textContent='●';s.style.color='#35d06f';s.style.fontSize='22px';s.title='Голосовая навигация активна';}let b=v.querySelector('.mic');if(b)b.style.display='none';}
 }
 function startListening(){
  if(!recognizer||!continuousVoice||isSpeaking)return;
@@ -81,9 +83,9 @@ function showVoiceStart(){
 function init(){
  let b=document.querySelector('.mic'),s=document.querySelector('.status');if(!SR){s.textContent='Откройте сайт в Chrome для голосового управления';b.disabled=true;return}
  let r=new SR();recognizer=r;r.lang='ru-RU';r.interimResults=false;r.continuous=false;
- r.onstart=()=>s.textContent='🎙 Голосовая навигация включена';
- r.onend=()=>{if(continuousVoice&&!isSpeaking){s.textContent='🎙 Голосовая навигация включена';setTimeout(startListening,300)}else if(!continuousVoice&&s.textContent==='Слушаю…')s.textContent='Нажмите микрофон и говорите'};
- r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){continuousVoice=false;s.textContent='Разрешите доступ к микрофону'}else{s.textContent='Не расслышал. Слушаю дальше…';if(e.error==='no-speech'){/* silence: keep listening without speaking */}}};
+ r.onstart=()=>{s.textContent='●';s.style.color='#35d06f';s.title='Голосовая навигация активна'};
+ r.onend=()=>{if(continuousVoice&&!isSpeaking){s.textContent='●';s.style.color='#35d06f';s.title='Голосовая навигация активна';setTimeout(startListening,300)}else if(!continuousVoice&&s.textContent==='Слушаю…')s.textContent='Нажмите микрофон и говорите'};
+ r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){continuousVoice=false;s.textContent='●';s.style.color='#e5484d';s.title='Голосовая навигация недоступна'}else{s.textContent='●';s.style.color='#e5484d';s.title='Ошибка распознавания — переподключение';setTimeout(()=>{if(continuousVoice&&!isSpeaking){s.style.color='#35d06f';s.title='Голосовая навигация активна'}},800);if(e.error==='no-speech'){/* silence: keep listening without speaking */}}};
  r.onresult=e=>{let heard=e.results[0][0].transcript;s.textContent='Распознано: «'+heard+'»';setTimeout(()=>handle(heard),80)};
  b.onclick=()=>{continuousVoice=true;markVoiceEnabled();unlockIntro();compactVoiceUI();startListening()}
  if(sessionStorage.getItem('motorResumeVoice')){sessionStorage.removeItem('motorResumeVoice');continuousVoice=true;compactVoiceUI();}else{showVoiceStart();}
