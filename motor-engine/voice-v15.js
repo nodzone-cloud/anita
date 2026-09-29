@@ -81,13 +81,39 @@
     'index.html': {
       title: 'Motor Engine — Главная',
       nav: 'index',
-      html: `<div class="eyebrow">Smart Website · Voice User Interface</div>
+      html: ` <div class="eyebrow">Smart Website · Voice User Interface</div>
 <h1>ENGINEERING THAT MOVES YOU</h1>
-<p class="lead">Motor Engine — демонстрационный многостраничный сайт с голосовым управлением. Скажите, что хотите найти, и сайт откроет нужную страницу.</p>
+<p class="lead">Motor Engine — демонстрационный сайт с голосовым управлением. Сайт не только переходит по разделам, но и <strong>отвечает голосом</strong>, понимает вопросы и помогает с записью.</p>
 <div class="grid">
   <div class="card" id="card-diagnostics"><strong>Диагностика</strong><p>Компьютерная диагностика двигателя и электронных систем.</p></div>
   <div class="card" id="card-service"><strong>Сервис</strong><p>Плановое обслуживание и ремонт автомобиля.</p></div>
   <div class="card" id="card-performance"><strong>Performance</strong><p>Настройка и решения для производительности.</p></div>
+</div>
+<div class="img-grid">
+  <a class="img-card" id="card-engines" href="engines.html">
+    <img src="https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=700&q=80" alt="Двигатель">
+    <div class="body"><strong>Двигатели</strong><p>Ремонт, диагностика и performance-настройка моторов. Скажите «покажи двигатели».</p></div>
+  </a>
+  <a class="img-card" id="card-repairs" href="repairs.html">
+    <img src="https://images.unsplash.com/photo-1625047509168-a7026f36de04?w=700&q=80" alt="Ремонт">
+    <div class="body"><strong>Ремонт</strong><p>Механика, электрика, ходовая. Скажите «открой ремонт».</p></div>
+  </a>
+  <a class="img-card" id="card-wheels" href="wheels.html">
+    <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=700&q=80" alt="Колёса">
+    <div class="body"><strong>Колёса и шины</strong><p>Диски, шины, балансировка, сход-развал. Скажите «колёса» или «шины».</p></div>
+  </a>
+  <a class="img-card" id="card-checkups" href="checkups.html">
+    <img src="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=700&q=80" alt="Осмотр">
+    <div class="body"><strong>Осмотр / Check-up</strong><p>Полная проверка перед покупкой или сезоном. Скажите «осмотр» или «чек-ап».</p></div>
+  </a>
+</div>
+<div class="talk-demo">
+  <strong>Что умеет голос</strong>
+  <p>• Навигация: «покажи услуги», «цены», «запись», «контакты»<br>
+  • Ответ голосом: сайт проговаривает, куда идёт и что нашёл<br>
+  • Вопросы: «сколько стоит диагностика?», «какой адрес?», «какой телефон?»<br>
+  • Запись: дата, время, имя — диалог с подтверждением<br>
+  • Новые разделы (карточки выше + голос): «двигатели», «ремонт», «колёса», «осмотр» — в верхнем меню их нет</p>
 </div>`
     },
     'services.html': {

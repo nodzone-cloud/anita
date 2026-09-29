@@ -158,3 +158,6 @@
 .talk-demo{margin-top:28px;padding:20px 22px;border-radius:18px;border:1px solid var(--line);background:linear-gradient(145deg,#151a23,#0e1117)}
 .talk-demo strong{color:var(--accent2)}
 .talk-demo p{color:var(--muted);margin:8px 0 0;line-height:1.55;font-size:14px}
+
+a.img-card{display:block;text-decoration:none;color:inherit;cursor:pointer}
+a.img-card:hover{border-color:rgba(255,90,54,.45);box-shadow:0 0 0 1px rgba(255,90,54,.25),0 16px 40px #0006;transform:translateY(-2px)}
