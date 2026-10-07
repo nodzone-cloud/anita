@@ -1,0 +1,15 @@
+S.P.A.C.E. installer build
+=========================
+1. Install Node.js LTS on a Windows PC.
+2. Double-click BUILD_INSTALLER.bat.
+3. Wait for npm install and electron-builder.
+4. The finished Windows installer will be in the dist folder.
+
+Important architecture note:
+This desktop build runs its own local S.P.A.C.E. server inside the app. localhost is internal and the user does NOT need to open a browser or type localhost:3000. The desktop shortcut launches S.P.A.C.E. directly.
+
+Local/offline data is stored in Electron's writable S.P.A.C.E. userData folder, not inside the installed application. This fixes persistence in the packaged app.
+
+A single installed copy can work offline with locally stored data/materials. However, true shared users, global chat, private chats, and shared files between different computers require one shared server (cloud/VPS or an always-on owner/server PC) and a client configuration that connects all installations to that server. Separate offline installations cannot magically share data while disconnected.
+
+Do not use ordinary chat messages to exchange passwords or other secrets. A dedicated encrypted secret-sharing/vault feature should be implemented for that use case.

@@ -1,0 +1,33 @@
+S.P.A.C.E. 2.4.9 — LAN DEVELOPMENT
+
+LAN architecture
+- One PC can act as the S.P.A.C.E. LAN server and hold the shared database/uploads.
+- Other installed S.P.A.C.E. clients can connect to that PC over the same LAN/Wi-Fi.
+- Server listens on 0.0.0.0:3000; client uses the server PC's private IPv4 address.
+- CONFIGURE_LAN_SERVER.bat selects server mode.
+- CONFIGURE_LAN_CLIENT.bat asks for the server IPv4 address and selects client mode.
+- Connection configuration is stored in %APPDATA%\S.P.A.C.E.\connection.json.
+- The same architecture can later point clients at an HTTPS VPS without replacing the application model.
+
+Security/account rules
+- Being on the same LAN/Wi-Fi does NOT grant access.
+- Public self-registration remains disabled.
+- A user must have an account/invite created by an authorized administrator.
+- Passwords remain bcrypt hashes; JWT authentication protects API and Socket.IO access.
+- Server-side permissions remain authoritative.
+- The JWT signing secret is now generated randomly and persisted in the server data directory instead of using the old development fallback string.
+
+First LAN test
+1. On the main PC run CONFIGURE_LAN_SERVER.bat, then start S.P.A.C.E.
+2. Allow S.P.A.C.E./Node TCP port 3000 through Windows Firewall for PRIVATE networks if Windows asks.
+3. On the main PC open Management -> Invite colleague. Create a test Employee account and note the temporary email/password.
+4. On Samsung run CONFIGURE_LAN_CLIENT.bat and enter the main PC IPv4 shown by ipconfig (example 192.168.1.100).
+5. Restart S.P.A.C.E. on Samsung.
+6. Before an account is created, unknown credentials cannot enter. Use the temporary account created on the server.
+7. On first login, set the user's permanent name/email/password.
+8. Test Team/online status and General Chat from both computers.
+
+IMPORTANT
+- The server PC must be running for LAN clients to connect.
+- Use only trusted private LAN/Wi-Fi for this development build. Port 3000 is plain HTTP and must NOT be exposed to the public internet.
+- Do not router-port-forward port 3000.

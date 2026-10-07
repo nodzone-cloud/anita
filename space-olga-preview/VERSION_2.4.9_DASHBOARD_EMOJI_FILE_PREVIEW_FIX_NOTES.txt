@@ -1,0 +1,9 @@
+S.P.A.C.E. 2.4.9 — Dashboard / Emoji / File Preview fix
+
+- Dashboard stat cards Team / Files / Tasks / Events are clickable and keyboard accessible.
+- Material icon selector replaced with a messenger-style emoji palette with a much larger selection.
+- Files & Media cards are clickable to preview.
+- Preview before download: images, video, audio, PDF, text/code/CSV/JSON/XML, DOCX, XLS/XLSX/ODS, and PPTX text slides.
+- Download remains available as a separate action.
+- Added server-side preview parsing dependencies: mammoth, xlsx, adm-zip.
+- Existing chat background, unread counters, long-message wrapping, growing composer and permissions remain in this source tree.

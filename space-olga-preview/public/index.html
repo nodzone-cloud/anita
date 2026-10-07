@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#6366f1">
+<title>S.P.A.C.E.</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="stylesheet" href="/styles.css?v=2.4.9-chatux">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%236366f1'/><text x='50' y='68' font-size='55' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'>S</text></svg>">
+<script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+<!-- AUTH -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-box">
+    <div class="auth-logo">S</div>
+    <h1>S.P.A.C.E.</h1>
+    <p>Support · People · Academy · Community · Events</p>
+    <div class="auth-tabs" id="authTabs">
+      <button class="auth-tab active" data-tab="login">Вход</button>
+    </div>
+    <div class="auth-error" id="authError"></div>
+
+    <form class="auth-form" id="loginForm">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="loginEmail" placeholder="email@example.com" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Пароль</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn">Войти</button>
+    </form>
+
+    <!-- First-time permanent credentials -->
+    <form class="auth-form" id="completeForm" style="display:none">
+      <p style="margin-bottom:16px;font-size:14px;color:#6b7280;text-align:center">
+        Первый вход успешен. Создайте постоянный email и пароль — они будут использоваться всегда.
+      </p>
+      <div class="form-group">
+        <label>Ваше имя</label>
+        <input type="text" id="compName" placeholder="Анна Ковалева" required>
+      </div>
+      <div class="form-group">
+        <label>Постоянный email</label>
+        <input type="email" id="compEmail" placeholder="anna@company.com" required>
+      </div>
+      <div class="form-group">
+        <label>Новый пароль</label>
+        <input type="password" id="compPassword" placeholder="Минимум 8 символов" required minlength="8">
+      </div>
+      <div class="form-group">
+        <label>Повторите пароль</label>
+        <input type="password" id="compPassword2" placeholder="Повторите новый пароль" required minlength="8">
+      </div>
+      <button type="submit" class="btn">Создать постоянный аккаунт</button>
+    </form>
+  </div>
+  <div class="alexnode-credit login-brand login-brand-outside">Designed &amp; developed by <a href="https://alexnode.fi" target="_blank" rel="noopener"><strong>Alex Node Web Design Studio</strong></a><br><span>alexnode.fi</span></div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app">
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <div class="logo">S</div>
+    <div><h2>S.P.A.C.E.</h2><small>Внутреннее пространство команды</small></div>
+  </div>
+  <div class="nav-title">Главное</div>
+  <div class="nav-item active" data-page="dashboard"><span class="nav-icon">⌂</span> Главная</div>
+  <div class="nav-item" data-page="onboarding"><span class="nav-icon">🚀</span> Запуск новичка</div>
+  <div class="nav-item" data-page="school"><span class="nav-icon">🎓</span> Школа</div>
+  <div class="nav-item" data-page="events"><span class="nav-icon">📅</span> Мероприятия</div>
+  <div class="nav-title">Работа</div>
+  <div class="nav-item" data-page="tasks"><span class="nav-icon">✓</span> Задачи <span class="badge" id="taskBadge" style="display:none">0</span></div>
+  <div class="nav-item" data-page="team"><span class="nav-icon">👥</span> Команда</div>
+  <div class="nav-item" data-page="knowledge"><span class="nav-icon">📚</span> Материалы</div>
+  <div class="nav-item" data-page="media"><span class="nav-icon">📁</span> Файлы и медиа</div>
+  <div class="nav-item" data-page="chat"><span class="nav-icon">💬</span> Чат <span class="chat-unread-badge" id="chatUnreadBadge" style="display:none">0</span></div>
+  <div class="nav-title">Помощь</div>
+  <div class="nav-item" data-page="assistant"><span class="nav-icon">✦</span> Помощник</div>
+  <div class="nav-item" data-page="support"><span class="nav-icon"><svg class="lifebuoy-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6.35 6.35l3.53 3.53M14.12 14.12l3.53 3.53M17.65 6.35l-3.53 3.53M9.88 14.12l-3.53 3.53" fill="none" stroke="currentColor" stroke-width="2"/></svg></span> IT Support</div>
+  <div class="nav-title admin-only" id="adminNavTitle" style="display:none">Управление</div>
+  <div class="nav-item admin-only" data-page="admin" id="adminNav" style="display:none"><span class="nav-icon">⚙</span> Управление</div>
+  <div class="sidebar-credit">S.P.A.C.E. by<br><a href="https://alexnode.fi" target="_blank" rel="noopener"><strong>Alex Node</strong></a></div>
+  <div class="logout-btn" id="logoutBtn"><span class="nav-icon">⎋</span> Выйти</div>
+</aside>
+<div class="overlay" id="overlay"></div>
+<main class="main">
+<header class="header">
+  <button class="mobile-menu" id="menuButton">☰</button>
+  <div class="search"><span>⌕</span><input type="text" placeholder="Поиск..."></div>
+  <div class="header-right">
+    <button class="notification notification-btn" id="notificationBtn" onclick="toggleNotifications()">🔔<span id="notificationBadge" class="notification-badge" style="display:none">0</span></button><div class="notification-panel" id="notificationPanel"><div class="notification-head"><strong>Уведомления</strong><button onclick="markAllNotifications()">Прочитать все</button></div><div id="notificationList"><div class="empty">Нет уведомлений</div></div></div>
+    <div class="user" id="userMenuButton" onclick="toggleUserMenu(event)" style="cursor:pointer">
+      <div class="avatar" id="headerAvatar">?</div>
+      <div class="user-info">
+        <strong style="font-size:14px" id="headerName">—</strong><br>
+        <span class="small" id="headerRole">—</span>
+      </div>
+    </div>
+    <div class="user-menu" id="userMenu"><button onclick="openMyProfile()">👤 <span>Мой профиль</span></button><button onclick="openSettings()">⚙ <span>Настройки</span></button><button onclick="logout()">⎋ <span>Выйти</span></button></div>
+  </div>
+</header>
+<div class="content">
+
+<section class="page active" id="dashboard">
+  <div class="page-title">
+    <h1 id="dashGreeting">Добрый день 👋</h1>
+    <p>Ваше рабочее пространство. Пока пусто — добавьте задачи, файлы и коллег.</p>
+  </div>
+  <div class="grid">
+    <div class="stat stat-clickable" role="button" tabindex="0" onclick="openPage('team')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPage('team')}" title="Открыть команду"><div class="stat-top"><span>Команда</span><div class="stat-icon">👥</div></div><h3 id="statTeam">0</h3><p>участников</p></div>
+    <div class="stat stat-clickable" role="button" tabindex="0" onclick="openPage('media')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPage('media')}" title="Открыть файлы и медиа"><div class="stat-top"><span>Файлы</span><div class="stat-icon">📁</div></div><h3 id="statMedia">0</h3><p>в хранилище</p></div>
+    <div class="stat stat-clickable" role="button" tabindex="0" onclick="openPage('tasks')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPage('tasks')}" title="Открыть задачи"><div class="stat-top"><span>Задачи</span><div class="stat-icon">✓</div></div><h3 id="statTasks">0</h3><p id="statUrgent">открытых</p></div>
+    <div class="stat stat-clickable" role="button" tabindex="0" onclick="openPage('events')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPage('events')}" title="Открыть мероприятия"><div class="stat-top"><span>Мероприятия</span><div class="stat-icon">📅</div></div><h3 id="statEvents">0</h3><p>предстоящих</p></div>
+  </div>
+  <div class="dashboard-grid" style="margin-top:20px">
+    <div class="card">
+      <div class="card-header"><h3>Быстрый старт</h3></div>
+      <p class="small" style="line-height:1.6">
+        1. Загрузите материалы в «Файлы и медиа»<br>
+        2. Пригласите коллег в «Управление» (админ)<br>
+        3. Общайтесь в «Чат» — общий и личные<br>
+        4. Материалы доступны даже без интернета, если уже загружены на этот компьютер
+      </p>
+    </div>
+    <div class="card">
+      <div class="card-header"><h3>Ближайшие мероприятия</h3><span class="link" onclick="openPage('events')">Все →</span></div>
+      <div id="dashEvents"><div class="empty">Пока нет мероприятий</div></div>
+    </div>
+  </div>
+  <div class="card dashboard-news-card">
+    <div class="card-header"><div><h3>📰 Новости S.P.A.C.E.</h3><p class="small">Объявления компании и обновления приложения.</p></div><button id="addNewsBtn" class="btn btn-small" style="display:none" onclick="showNewsModal()">+ Новость</button></div>
+    <div id="dashNews" class="news-list"><div class="empty">Новостей пока нет</div></div>
+  </div>
+</section>
+
+<section class="page" id="onboarding">
+  <div class="page-title row-between"><div><h1>🚀 Запуск новичка</h1><p>Пошаговая программа адаптации.</p></div><button class="btn owner-onboarding" style="display:none" onclick="newOnboardingStep()">+ Добавить этап</button></div>
+  <div class="card"><div id="onboardingList"><div class="loading">Загрузка...</div></div></div>
+</section>
+
+<section class="page" id="school">
+  <div class="page-title row-between">
+    <div><h1>🎓 Школа</h1><p>Курсы и обучение.</p></div>
+    <button class="btn admin-only" style="display:none" onclick="showCourseModal()">+ Новый курс</button>
+  </div>
+  <div class="course-grid" id="courseGrid"><div class="empty">Курсов пока нет. Админ может добавить.</div></div>
+</section>
+
+<section class="page" id="events">
+  <div class="page-title row-between">
+    <div><h1>📅 Мероприятия</h1><p>Встречи и события.</p></div>
+    <button class="btn admin-only" style="display:none" onclick="showEventModal()">+ Создать</button>
+  </div>
+  <div class="card" id="eventsList"><div class="empty">Нет мероприятий</div></div>
+</section>
+
+<section class="page" id="tasks">
+  <div class="page-title row-between">
+    <div><h1>✓ Задачи</h1><p>Контроль выполнения.</p></div>
+    <button class="btn" onclick="showTaskModal()">+ Новая задача</button>
+  </div>
+  <div class="card" id="taskList"><div class="empty">Нет задач</div></div>
+</section>
+
+<section class="page" id="team">
+  <div class="page-title row-between">
+    <div><h1>👥 Команда</h1><p>Участники пространства.</p></div>
+    <button class="btn admin-only" style="display:none" onclick="showInviteModal()">+ Пригласить</button>
+  </div>
+  <div class="team-grid" id="teamGrid"><div class="empty">Пока только вы</div></div>
+</section>
+
+<section class="page" id="knowledge">
+  <div class="page-title row-between">
+    <div><h1>📚 Материалы</h1><p>Инструкции, документы, ссылки, изображения и видео.</p></div>
+    <button class="btn" onclick="showKnowledgeModal()">+ Добавить</button>
+  </div>
+  <div class="knowledge-grid" id="knowledgeGrid"><div class="empty">Пока пусто</div></div>
+</section>
+
+<!-- MEDIA: files / images / videos -->
+<section class="page" id="media">
+  <div class="page-title row-between">
+    <div>
+      <h1>📁 Файлы и медиа</h1>
+      <p>Общее хранилище: документы, фото, видео. Доступно всей команде. Уже загруженное работает и без интернета на этом компьютере.</p>
+    </div>
+    <button class="btn" onclick="document.getElementById('fileInput').click()">+ Загрузить</button>
+    <input type="file" id="fileInput" style="display:none" multiple
+           accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,image/*,video/*">
+  </div>
+  <div class="media-tabs" style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+    <button class="btn btn-light media-tab active" data-type="all" onclick="filterMedia('all')">Все</button>
+    <button class="btn btn-light media-tab" data-type="files" onclick="filterMedia('files')">📄 Файлы</button>
+    <button class="btn btn-light media-tab" data-type="images" onclick="filterMedia('images')"><span class="media-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9" r="1.5"></circle><path d="M4 17l5-5 4 4 2-2 5 5"></path></svg></span>Фото</button>
+    <button class="btn btn-light media-tab" data-type="videos" onclick="filterMedia('videos')">🎬 Видео</button>
+  </div>
+  <div id="uploadProgress" style="display:none;margin-bottom:12px" class="small"></div>
+  <div class="knowledge-grid" id="mediaGrid"><div class="empty">Хранилище пусто. Загрузите первый файл.</div></div>
+</section>
+
+<section class="page" id="chat">
+  <div class="page-title">
+    <h1>💬 Чат</h1>
+    <p>Общий чат команды и личные переписки. Для паролей используйте защищённый менеджер паролей, а не обычный чат.</p>
+  </div>
+  <div class="chat-layout">
+    <div class="chat-list" id="chatList">
+      <h3>Чаты</h3>
+      <div id="roomsList"><div class="loading">Загрузка...</div></div>
+      <div style="padding:12px 16px;border-top:1px solid var(--border)">
+        <button class="btn btn-light" style="width:100%;font-size:13px" onclick="showPrivateChatModal()">+ Личный чат</button>
+      </div>
+    </div>
+    <div class="chat-main">
+      <div class="chat-header">
+        <strong id="currentRoomName">Выберите чат</strong>
+        <div class="small" id="currentRoomInfo"></div>
+      </div>
+      <div class="messages" id="messages"></div>
+      <div class="chat-input chat-input-enhanced">
+        <button class="btn btn-light chat-attach-btn" id="chatAttachBtn" onclick="chooseChatFiles()" disabled title="Прикрепить файл">＋</button><input id="chatFiles" type="file" multiple hidden onchange="sendChatFiles(this.files)">
+        <textarea id="chatMessage" rows="1" placeholder="Сообщение..." disabled onkeydown="handleChatKeydown(event)" oninput="autoGrowChatInput(this)"></textarea>
+        <button class="btn" id="sendBtn" onclick="sendMessage()" disabled>Отправить</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="page" id="assistant">
+  <div class="assistant-box">
+    <div class="bot-hero">
+      <div class="bot-icon">✦</div>
+      <h1>Помощник</h1>
+      <p style="color:var(--muted);margin-top:10px">Подскажет, где найти разделы и материалы.</p>
+    </div>
+    <div class="card">
+      <div id="botAnswer" style="margin-bottom:20px"><strong>Здравствуйте!</strong><br><br>Чем помочь?</div>
+      <div class="bot-suggestions">
+        <button class="suggestion" onclick="askBot('файлы')">📁 Где файлы и видео?</button>
+        <button class="suggestion" onclick="askBot('чат')">💬 Как написать лично?</button>
+        <button class="suggestion" onclick="askBot('команда')">👥 Как пригласить коллегу?</button>
+        <button class="suggestion" onclick="askBot('оффлайн')">📴 Работа без интернета</button>
+      </div>
+      <div class="chat-input" style="padding:20px 0 0;border:0">
+        <input id="botInput" placeholder="Вопрос..." onkeydown="if(event.key==='Enter')customBotQuestion()">
+        <button class="btn" onclick="customBotQuestion()">Спросить</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="page" id="support">
+  <div class="page-title">
+    <h1>🛟 Alex Node IT Support</h1>
+    <p>Техническая поддержка S.P.A.C.E. напрямую от разработчика приложения.</p>
+  </div>
+  <div class="support-grid">
+    <div class="card support-card">
+      <div class="support-logo">AN</div>
+      <div>
+        <h2>Alex Node Web Design Studio</h2>
+        <p class="small">S.P.A.C.E. application development & IT support</p>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:14px">Контакты поддержки</h3>
+      <div class="support-contact">✉️ <a href="mailto:an@alexnode.fi">an@alexnode.fi</a></div>
+      <div class="support-contact">📞 <a href="tel:+358458525293">+358 45 852 5293</a></div>
+      <div class="support-contact">🌐 <a href="https://alexnode.fi" target="_blank">alexnode.fi</a></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:20px">
+    <h3>💬 Live Support Chat</h3>
+    <p class="small" style="margin:8px 0 16px">Напишите напрямую в Alex Node IT Support по вопросам работы S.P.A.C.E..</p>
+    <div class="support-actions"><button class="btn" onclick="openSupportChat()">Открыть чат с IT Support</button><button class="btn whatsapp-btn" onclick="openSupportWhatsApp()">WhatsApp</button></div>
+    <p class="small" style="margin-top:12px">Сообщения IT Support передаются через сервер S.P.A.C.E. Каждый сотрудник имеет отдельный приватный диалог с технической поддержкой.</p>
+  </div>
+  <div class="card" style="margin-top:20px">
+    <h3>О приложении</h3>
+    <p class="small" style="margin-top:8px;line-height:1.7">S.P.A.C.E. 2.4.9<br>Developed by Alex Node Web Design Studio<br>Technical support: an@alexnode.fi</p>
+  </div>
+</section>
+
+<section class="page" id="admin">
+  <div class="page-title">
+    <h1>⚙ Управление</h1>
+    <p>Управление рабочим пространством. Владелец бизнеса имеет главный уровень доступа.</p>
+  </div>
+  <div class="knowledge-grid">
+    <div class="knowledge" onclick="showInviteModal()">
+      <div class="knowledge-icon">✉️</div>
+      <h3>Пригласить коллегу</h3>
+      <p>Создать одноразовый вход для нового участника.</p>
+    </div>
+    <div class="knowledge" onclick="openPage('media')">
+      <div class="knowledge-icon">📁</div>
+      <h3>Хранилище</h3>
+      <p>Файлы, фото и видео команды.</p>
+    </div>
+    <div class="knowledge" onclick="openPage('team')">
+      <div class="knowledge-icon">👥</div>
+      <h3>Команда</h3>
+      <p>Участники и роли.</p>
+    </div>
+  </div>
+  <div class="card" style="margin-top:24px">
+    <h3 style="margin-bottom:6px">Пользователи и права доступа</h3><p class="small" style="margin-bottom:16px">Владелец имеет полный доступ. Для со-администраторов можно включать только нужные разрешения.</p>
+    <div id="adminUsersList"><div class="loading">Загрузка...</div></div>
+  </div>
+  <div class="card" style="margin-top:16px" id="inviteResult" style="display:none"></div>
+</section>
+
+</div>
+</main>
+</div>
+
+<!-- MODALS -->
+<div class="modal" id="taskModal"><div class="modal-box modal-wide"><h2>Новая задача</h2>
+<div class="form-group"><label>Название</label><input id="taskTitle"></div>
+<div class="form-group"><label>Подробное описание</label><textarea id="taskDesc" rows="5" placeholder="Опишите задачу подробно..."></textarea></div>
+<div class="form-row"><div class="form-group"><label>Назначить</label><select id="taskAssignee"></select></div><div class="form-group"><label>Приоритет</label><select id="taskPriority"><option value="normal">Обычный</option><option value="high">Важный</option></select></div><div class="form-group"><label>Срок</label><input id="taskDue" type="date"></div></div>
+<div class="form-group"><label>Ссылки</label><textarea id="taskLinks" rows="2" placeholder="Одна ссылка на строку"></textarea></div>
+<div class="form-group"><label>Файлы / фото / видео</label><input id="taskFiles" type="file" multiple></div>
+<div class="modal-buttons"><button class="btn btn-light" onclick="hideModal('taskModal')">Отмена</button><button class="btn" onclick="createTask()">Создать</button></div></div></div>
+
+<div class="modal" id="eventModal">
+  <div class="modal-box">
+    <h2>Мероприятие</h2>
+    <div class="form-group"><label>Название</label><input id="eventTitle"></div>
+    <div class="form-group"><label>Описание</label><textarea id="eventDescription" rows="4" placeholder="Для кого мероприятие, о чём оно и нужно ли участие"></textarea></div>
+    <div class="form-group"><label>Участники</label><select id="eventParticipants" multiple size="5"></select><small class="small">Выберите «Все» или конкретных сотрудников.</small></div>
+    <div class="form-group"><label>Дата</label><input id="eventDate" type="date"></div>
+    <div class="form-group"><label>Время</label><input id="eventTime" placeholder="10:00"></div>
+    <div class="form-group"><label>Место</label><input id="eventLocation" value="Онлайн"></div>
+    <div class="modal-buttons">
+      <button class="btn btn-light" onclick="hideModal('eventModal')">Отмена</button>
+      <button class="btn" onclick="createEvent()">Создать</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="courseModal"><div class="modal-box modal-wide"><h2>Новый курс / учебный материал</h2>
+<div class="form-group"><label>Название</label><input id="courseTitle"></div>
+<div class="form-group"><label>Краткое описание</label><input id="courseDesc"></div>
+<div class="form-group"><label>Содержание / инструкция</label><textarea id="courseContent" rows="7"></textarea></div>
+<div class="form-group"><label>Ссылки</label><textarea id="courseLinks" rows="2" placeholder="Одна ссылка на строку"></textarea></div>
+<div class="form-group"><label>Файлы, фото, видео, Word, Excel, PowerPoint, PDF</label><input id="courseFiles" type="file" multiple></div>
+<div class="modal-buttons"><button class="btn btn-light" onclick="hideModal('courseModal')">Отмена</button><button class="btn" onclick="createCourse()">Опубликовать</button></div></div></div>
+
+<div class="modal" id="knowledgeModal"><div class="modal-box modal-wide"><h2>Новый материал</h2>
+<div class="form-group"><label>Название</label><input id="knowTitle"></div><div class="form-group"><label>Краткое описание</label><input id="knowDesc"></div>
+<div class="form-group"><label>Текст материала</label><textarea id="knowContent" rows="7" placeholder="Инструкция, заметки, обучение..."></textarea></div>
+<div class="form-group"><label>Ссылки</label><textarea id="knowLinks" rows="2" placeholder="Одна ссылка на строку"></textarea></div>
+<div class="form-group"><label>Файлы / фото / видео</label><input id="knowFiles" type="file" multiple></div>
+<div class="form-group"><label>Иконка</label><div class="emoji-select-row"><button type="button" id="knowEmojiButton" class="emoji-main-button" onclick="toggleKnowledgeEmojiPicker()" title="Выбрать emoji"><span id="knowEmojiCurrent">📄</span><span class="emoji-button-label">Выбрать emoji</span></button><input id="knowIcon" type="hidden" value="📄"></div><div class="emoji-picker-panel" id="knowIconPicker"></div></div>
+<div class="modal-buttons"><button class="btn btn-light" onclick="hideModal('knowledgeModal')">Отмена</button><button class="btn" onclick="createKnowledge()">Добавить</button></div></div></div>
+
+<div class="modal" id="taskDetailModal"><div class="modal-box modal-wide" id="taskDetailBox"></div></div>
+<div class="modal" id="knowledgeDetailModal"><div class="modal-box modal-wide" id="knowledgeDetailBox"></div></div>
+<div class="modal" id="personModal"><div class="modal-box" id="personDetailBox"></div></div>
+<div class="modal" id="inviteModal">
+  <div class="modal-box">
+    <h2>Пригласить коллегу</h2>
+    <p class="small" style="margin-bottom:14px">Создаётся одноразовый вход. Коллега войдёт и задаст свой постоянный email и пароль.</p>
+    <div class="form-group"><label>Email (необязательно, для подсказки)</label><input id="inviteEmail" type="email" placeholder="colleague@mail.com"></div>
+    <div class="form-group"><label>Роль</label>
+      <select id="inviteRole">
+        <option value="member">Участник команды</option>
+        <option value="admin">Администратор</option>
+      </select>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn btn-light" onclick="hideModal('inviteModal')">Отмена</button>
+      <button class="btn" onclick="createInvite()">Создать приглашение</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="privateChatModal">
+  <div class="modal-box">
+    <h2>Личный чат</h2>
+    <p class="small" style="margin-bottom:14px">Выберите коллегу для приватной переписки.</p>
+    <div id="privateUserList"></div>
+    <div class="modal-buttons" style="margin-top:16px">
+      <button class="btn btn-light" onclick="hideModal('privateChatModal')">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal" id="newsModal"><div class="modal-box modal-wide"><h2 id="newsModalTitle">Новая новость</h2>
+<div class="form-group"><label>Заголовок</label><input id="newsTitle" maxlength="180" placeholder="Например: Обновление S.P.A.C.E. в пятницу"></div>
+<div class="form-group"><label>Категория</label><select id="newsCategory"><option value="company">Компания</option><option value="important">Важно</option><option value="announcement">Объявление</option><option value="team">Команда</option><option value="update">Обновление</option><option value="it">IT</option><option value="training">Обучение</option><option value="project">Проект</option><option value="client">Клиенты</option><option value="external">Внешние новости</option><option value="reminder">Напоминание</option><option value="success">Достижения</option><option value="other">Другое</option></select></div>
+<div class="form-group"><label>Текст новости</label><div class="news-editor-tools"><button type="button" class="btn btn-light btn-small" onclick="toggleNewsEmojiPicker()">😊 Добавить emoji</button><div id="newsEmojiPicker" class="news-emoji-picker"><button type="button" onclick="insertNewsEmoji('😀')">😀</button><button type="button" onclick="insertNewsEmoji('😃')">😃</button><button type="button" onclick="insertNewsEmoji('😊')">😊</button><button type="button" onclick="insertNewsEmoji('🙂')">🙂</button><button type="button" onclick="insertNewsEmoji('😉')">😉</button><button type="button" onclick="insertNewsEmoji('😍')">😍</button><button type="button" onclick="insertNewsEmoji('🥳')">🥳</button><button type="button" onclick="insertNewsEmoji('😂')">😂</button><button type="button" onclick="insertNewsEmoji('👍')">👍</button><button type="button" onclick="insertNewsEmoji('👏')">👏</button><button type="button" onclick="insertNewsEmoji('🙏')">🙏</button><button type="button" onclick="insertNewsEmoji('❤️')">❤️</button><button type="button" onclick="insertNewsEmoji('🔥')">🔥</button><button type="button" onclick="insertNewsEmoji('🎉')">🎉</button><button type="button" onclick="insertNewsEmoji('✨')">✨</button><button type="button" onclick="insertNewsEmoji('⭐')">⭐</button><button type="button" onclick="insertNewsEmoji('✅')">✅</button><button type="button" onclick="insertNewsEmoji('⚠️')">⚠️</button><button type="button" onclick="insertNewsEmoji('❗')">❗</button><button type="button" onclick="insertNewsEmoji('❓')">❓</button><button type="button" onclick="insertNewsEmoji('💡')">💡</button><button type="button" onclick="insertNewsEmoji('📌')">📌</button><button type="button" onclick="insertNewsEmoji('📣')">📣</button><button type="button" onclick="insertNewsEmoji('🔔')">🔔</button><button type="button" onclick="insertNewsEmoji('📅')">📅</button><button type="button" onclick="insertNewsEmoji('⏰')">⏰</button><button type="button" onclick="insertNewsEmoji('🎯')">🎯</button><button type="button" onclick="insertNewsEmoji('🚀')">🚀</button><button type="button" onclick="insertNewsEmoji('💼')">💼</button><button type="button" onclick="insertNewsEmoji('👥')">👥</button><button type="button" onclick="insertNewsEmoji('🤝')">🤝</button><button type="button" onclick="insertNewsEmoji('📚')">📚</button><button type="button" onclick="insertNewsEmoji('🎓')">🎓</button><button type="button" onclick="insertNewsEmoji('🛠️')">🛠️</button><button type="button" onclick="insertNewsEmoji('💻')">💻</button><button type="button" onclick="insertNewsEmoji('📱')">📱</button><button type="button" onclick="insertNewsEmoji('🌐')">🌐</button><button type="button" onclick="insertNewsEmoji('🔒')">🔒</button><button type="button" onclick="insertNewsEmoji('📎')">📎</button><button type="button" onclick="insertNewsEmoji('📷')">📷</button><button type="button" onclick="insertNewsEmoji('🎬')">🎬</button><button type="button" onclick="insertNewsEmoji('🎵')">🎵</button><button type="button" onclick="insertNewsEmoji('🏆')">🏆</button><button type="button" onclick="insertNewsEmoji('💶')">💶</button><button type="button" onclick="insertNewsEmoji('📦')">📦</button></div></div><textarea id="newsContent" rows="8" placeholder="Напишите объявление для команды..."></textarea></div><div class="form-group"><label>Видео / ссылка</label><input id="newsVideoLink" placeholder="Video URL — YouTube, Vimeo, website, MP4…"></div><div class="form-group"><label>Вложения</label><input id="newsFiles" type="file" multiple accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"></div>
+<label class="perm-check"><input type="checkbox" id="newsPinned"> 📌 Закрепить новость сверху</label>
+<div class="modal-buttons"><button class="btn btn-light" onclick="hideModal('newsModal')">Отмена</button><button class="btn" onclick="saveNews()">Опубликовать</button></div></div></div>
+<div class="modal" id="newsDetailModal"><div class="modal-box modal-wide" id="newsDetailBox"></div></div>
+
+<div class="modal" id="courseDetailModal"><div class="modal-box modal-wide" id="courseDetailBox"></div></div>
+<div class="modal" id="onboardingDetailModal"><div class="modal-box modal-wide" id="onboardingDetailBox"></div></div>
+<div class="modal" id="settingsModal"><div class="modal-box"><h2>Настройки</h2><div class="form-group"><label>Язык / Language / Kieli</label><select id="languageSelect"><option value="ru">Русский</option><option value="en">English</option><option value="fi">Suomi</option></select></div><div class="modal-buttons"><button class="btn btn-light" onclick="hideModal('settingsModal')">Закрыть</button><button class="btn" onclick="saveSettings()">Сохранить</button></div></div></div>
+<div class="modal" id="myProfileModal"><div class="modal-box modal-wide" id="myProfileBox"></div></div>
+<div class="modal" id="mediaPreviewModal"><div class="modal-box modal-wide" id="mediaPreviewBox"></div></div>
+<script src="/app.js?v=2.4.9-news-dashboard"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+S.P.A.C.E. 2.4.9 Management Fix
+- Dynamic chat labels rerender after RU/EN/FI language change.
+- IT Support sidebar icon replaced with embedded SVG lifebuoy.
+- Business Position / Job title separated from System Role.
+- System roles simplified to Owner, Administrator, Team Member, Technical Administrator.
+- Owner can suspend, restore, or soft-remove ordinary user accounts with Owner password confirmation.
+- Suspended/removed accounts are blocked server-side; removed users disappear from active team while historical content remains.
+- Owner and Technical Administrator are protected from ordinary account actions.

@@ -1,0 +1,7 @@
+S.P.A.C.E. 2.4.4
+- Full RU/EN/FI system-language audit expanded across navigation, dashboard, profile, chat, support and dynamic UI.
+- Events: description + participant targeting (everyone or selected team members).
+- Tasks: completed tasks show Done / Готово / Valmis on the right and open-task badge excludes completed tasks.
+- Chat: file/image/video/audio/Office/TXT attachments via + button, with preview/open/download where supported.
+- IT Support: external WhatsApp fallback button.
+- Login now restores each account language from the database.

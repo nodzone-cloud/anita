@@ -1,0 +1,14 @@
+S.P.A.C.E. 2.4.9 — Chat UX / Unread / Background / Responsive Management
+
+- Added supplied abstract blue wave image as the chat message-area background.
+- Incoming messages have a light card, border and shadow; outgoing messages remain accent colored.
+- Long unbroken text/email/URL content wraps inside the bubble; horizontal message-area overflow is disabled.
+- Private chats use a person icon instead of a lock. Lock remains for inaccessible chat state.
+- Added persistent server-side per-user unread counts (read_by on messages).
+- Chat sidebar shows total unread count. Each room shows its own unread badge.
+- Opening a specific room marks that room read; simply signing in/opening Chat does not clear other rooms.
+- Socket chat activity refreshes unread counters for online clients.
+- IT Support is now a separate private support room per employee. Technical Admin sees separate support threads.
+- Support/private access is enforced server-side for messages, joins and attachments.
+- Management action buttons use a safer responsive layout; destructive Remove is visually separated.
+- Existing Development Authority / Owner protections preserved.

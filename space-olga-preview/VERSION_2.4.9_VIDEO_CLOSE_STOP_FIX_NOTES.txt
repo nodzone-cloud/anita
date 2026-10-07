@@ -1,0 +1,8 @@
+S.P.A.C.E. 2.4.9 - VIDEO CLOSE STOP FIX
+
+Fix:
+- Closing a News detail modal now immediately stops any playing video/audio.
+- HTML5 video/audio is paused and reset.
+- Embedded iframe players (YouTube/Vimeo/Dailymotion/other embedded sites) are destroyed by clearing their source before the modal closes.
+- Clicking outside the News modal uses the same safe close path, so playback also stops there.
+- Existing Universal News Video features and all previous fixes remain unchanged.

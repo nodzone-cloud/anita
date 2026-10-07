@@ -1,0 +1,6 @@
+S.P.A.C.E. 2.4.9 — Onboarding Status Fix
+- Onboarding progress is now visible on Team cards for every account.
+- Completed onboarding is shown as “Onboarding completed” / “Адаптация завершена” / “Perehdytys suoritettu”.
+- Management user rows also show onboarding progress/completion.
+- Person profile keeps detailed done/total/percent and now uses the same completion wording.
+- Status is read from the central LAN server per user, not stored as a separate local flag.

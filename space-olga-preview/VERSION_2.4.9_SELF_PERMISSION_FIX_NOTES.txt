@@ -1,0 +1,9 @@
+S.P.A.C.E. 2.4.9 - Self Permission / Admin Safety Fix
+
+- Administrators no longer see clickable controls for their own permissions.
+- Their own permissions are shown read-only as a summary.
+- Administrators cannot change their own system role or permissions.
+- Only Owner can change system roles and permission grants.
+- Owner and Technical Administrator remain protected.
+- Account lifecycle actions remain Owner-only.
+- Existing LAN, chat/file, event, management and role-permission fixes are preserved.

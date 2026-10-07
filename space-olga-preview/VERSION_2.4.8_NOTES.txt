@@ -1,0 +1,9 @@
+S.P.A.C.E. 2.4.8
+
+- Technical Administrator remains separate from Owner.
+- Development permissions enabled for Alex IT Support: Materials, School, Events, Onboarding and file testing.
+- Owner can later independently revoke Technical Administrator business/file permissions.
+- File content reading, upload and deletion are separate permissions.
+- Private chats remain inaccessible by technical role.
+- General chat history rule from 2.4.7 is preserved: access only to new messages after Owner grants support access.
+- Owner role remains protected.

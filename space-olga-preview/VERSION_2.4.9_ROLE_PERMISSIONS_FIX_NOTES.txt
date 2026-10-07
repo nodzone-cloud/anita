@@ -1,0 +1,9 @@
+S.P.A.C.E. 2.4.9 ROLE/PERMISSIONS FIX
+
+- Changing a user to Administrator now grants real business capabilities, not only a role label.
+- Administrator defaults: users, materials/content, events, files, school, onboarding.
+- Owner can still disable individual Administrator permissions.
+- Changing back to Team Member clears administrator permissions.
+- LAN clients refresh live role/permissions from /api/me before opening a section and every 5 seconds while running.
+- Management shows School and Onboarding permission switches for Administrator.
+- Position/job title remains separate from System Role and grants no permissions by itself.

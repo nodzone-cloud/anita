@@ -1,0 +1,64 @@
+{
+  "name": "space-internal-workspace",
+  "version": "2.4.9",
+  "description": "S.P.A.C.E. — Support · People · Academy · Community · Events — private team workspace developed by Alex Node Web Design Studio",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "electron": "electron .",
+    "dev": "node server/index.js",
+    "pack": "electron-builder --win --x64",
+    "pack:dir": "electron-builder --win --x64 --dir"
+  },
+  "build": {
+    "appId": "fi.alexnode.space",
+    "productName": "S.P.A.C.E.",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "server/**/*",
+      "public/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "electron/icon.ico",
+      "legalTrademarks": "Alex Node Web Design Studio"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "S.P.A.C.E.",
+      "installerIcon": "electron/icon.ico",
+      "uninstallerIcon": "electron/icon.ico",
+      "uninstallDisplayName": "S.P.A.C.E. — Alex Node Web Design Studio"
+    },
+    "artifactName": "SPACE Setup ${version}.${ext}",
+    "copyright": "Copyright © 2026 Alex Node Web Design Studio"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "socket.io": "^4.8.1",
+    "uuid": "^9.0.1",
+    "mammoth": "^1.9.1",
+    "xlsx": "^0.18.5",
+    "adm-zip": "^0.5.16"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "author": "Alex Node Web Design Studio <an@alexnode.fi>",
+  "homepage": "https://alexnode.fi"
+}

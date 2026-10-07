@@ -1,0 +1,5 @@
+S.P.A.C.E. 2.4.5
+- Fixed Tasks page crash caused by translation-function name shadowing.
+- Restored missing onboarding loader/editor/delete functions.
+- Added FI/EN translations for Management table leftovers.
+- Preserves existing AppData/database.

@@ -1,0 +1,11 @@
+S.P.A.C.E. 2.4.9 — Development Authority Correction
+
+Corrected the permission model after testing:
+- Alex Node / Technical Administrator has development-time Management access for ordinary accounts.
+- Technical Administrator can invite users, switch Team Member <-> Administrator, assign/revoke ordinary admin permissions, reset passwords, suspend/restore/remove ordinary accounts, and manage/test business modules.
+- Existing ordinary Administrator accounts that accidentally inherited the full developer permission set are reset once to no optional admin permissions. This corrects Oleg's account after upgrade.
+- Promoting a Team Member to Administrator no longer automatically grants every permission. Permissions are separate and must be assigned explicitly.
+- Owner and Technical Administrator accounts remain protected from ordinary account management.
+- Technical Administrator does not become Owner.
+- Private-chat privacy rules are unchanged.
+- General-chat support access remains separately controlled.

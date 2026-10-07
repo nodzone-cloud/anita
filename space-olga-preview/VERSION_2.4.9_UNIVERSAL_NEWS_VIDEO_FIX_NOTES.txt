@@ -1,0 +1,11 @@
+S.P.A.C.E. 2.4.9 — Universal News Video update
+
+Only News video handling was changed on top of NEWS_CHAT_NOTIFICATION_FOCUS_FIX.
+- YouTube embedded preview/player
+- Vimeo embedded preview/player
+- Dailymotion embedded preview/player
+- Direct MP4/WebM/OGG/M4V/MOV links use the internal HTML5 player
+- Other website video links get an in-app iframe preview attempt
+- Every video card has two choices: Watch in S.P.A.C.E. / Open on website
+- If a provider blocks embedding, the original website button remains available
+- Existing News/chat/notification/focus fixes are preserved

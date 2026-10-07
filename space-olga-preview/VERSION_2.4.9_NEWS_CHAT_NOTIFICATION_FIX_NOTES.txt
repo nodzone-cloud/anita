@@ -1,0 +1,8 @@
+S.P.A.C.E. 2.4.9 follow-up fixes
+- Notification clicks now navigate to task/material/news and open the referenced item.
+- Private/support chat sessions can be closed locally with X; global team chat cannot be closed.
+- News categories expanded.
+- News supports emoji picker, video URL/YouTube preview, and multiple attachments.
+- News create/edit uses multipart upload.
+- Strengthened Electron text-field focus recovery.
+- Existing Files & Media multiple selection remains enabled (Windows uses Ctrl/Shift to select multiple files in one native dialog).

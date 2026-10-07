@@ -1,0 +1,15 @@
+S.P.A.C.E. 2.4.0
+Support · People · Academy · Community · Events
+
+Changes in this build:
+- Renamed desktop application from TeamSpace to S.P.A.C.E.
+- Materials are clickable and support long text, links, documents, images and videos.
+- Team member cards are clickable; profile details include a Private Message action.
+- Notification bell now opens a notification center for workspace activity.
+- Tasks are clickable and show detailed information.
+- New tasks support assignee, deadline, links, documents, images and videos.
+- Task creators and authorized admins can delete incorrect tasks after confirmation.
+- Existing password hashes remain private; no plaintext password files were added.
+
+Architecture note:
+This 2.4 build still uses the local backend bundled with the Electron app. Internet-wide multi-user synchronization requires the planned central S.P.A.C.E. Server and is NOT falsely claimed as complete in this build.

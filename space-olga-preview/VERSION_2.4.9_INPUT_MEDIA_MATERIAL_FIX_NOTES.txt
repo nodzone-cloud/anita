@@ -1,0 +1,11 @@
+S.P.A.C.E. 2.4.9 - Input / Media / Material usability fixes
+
+- Dashboard statistic cards remain clickable and navigate to Team, Files & media, Tasks, Events.
+- Chat composer changed from a single-line input to an auto-growing textarea (up to 180px).
+  Enter sends; Shift+Enter creates a new line.
+- Fixed a focus/i18n race that could interfere with typing in inputs/textareas until a file chooser was opened.
+- Files & media Photo tab no longer depends on a missing emoji glyph; it uses an inline SVG photo icon.
+- New Material icon is now a controlled icon picker with a safe default instead of a free-form field that can be emptied.
+- Material icon is preserved/updated when editing.
+- Technical Administrator / manage_content permissions are consistent for material edit/delete UI and backend.
+- Material and media delete actions now report server errors instead of appearing to do nothing.

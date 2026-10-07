@@ -1,0 +1,11 @@
+S.P.A.C.E. 2.4.9 — Development Management + LAN Client Startup Fix
+
+- Fixed Management disappearing for Technical Administrator after /api/me refresh/openPage.
+- Alex Node Technical Administrator keeps development management access to ordinary accounts.
+- Technical Administrator can change Team Member/Administrator roles and business permissions.
+- Technical Administrator can reset, suspend, restore and remove ordinary test/business accounts during development.
+- Owner and Technical Administrator accounts remain protected.
+- Olga remains Owner; Technical Administrator cannot assign Owner role or change protected roles.
+- Existing private-chat/privacy restrictions are unchanged.
+- Fixed LAN client failure mode: if Samsung cannot reach the LAN server, the Electron window now opens with a clear connection diagnostic instead of appearing not to launch.
+- Preserves onboarding status, LAN, chat/files and previous 2.4.9 fixes.

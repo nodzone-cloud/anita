@@ -1,0 +1,11 @@
+S.P.A.C.E. 2.4.7
+
+- Alex Node account (an@alexnode.fi) migrates from Owner to protected Technical Administrator / IT Support.
+- Technical admin can administer the system, upload and delete files, but file contents are locked by default.
+- Owner can explicitly grant/revoke IT Support permission to read file contents.
+- Private chats remain inaccessible to IT Support unless IT Support is an actual participant.
+- General chat is visible as a channel to IT Support, but messages are inaccessible until Owner grants support access.
+- When access is granted, IT Support sees only messages created from the grant time onward; older history remains hidden.
+- Revoking and granting again starts a new visibility window.
+- IT Support can bootstrap the first separate Owner invite when no Owner exists; IT Support cannot promote itself to Owner.
+- Owner role remains protected.

@@ -1,0 +1,10 @@
+S.P.A.C.E. 2.4.9 - Global Text Input Focus Fix
+
+Fixed Windows/Electron issue where text fields could appear unable to accept typing until a file chooser was opened and cancelled.
+
+Changes:
+- Electron window now explicitly receives keyboard focus after ready-to-show and did-finish-load.
+- All normal input/textarea/select/contenteditable controls receive reliable focus on pointer interaction.
+- File inputs are excluded from this handler.
+- Background localization observer pauses while an editor is active or during its focus transition.
+- Applies globally to Chat, Tasks, School, Materials, Events, Management and other text fields.

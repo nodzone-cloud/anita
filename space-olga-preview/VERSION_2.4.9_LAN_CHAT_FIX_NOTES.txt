@@ -1,0 +1,11 @@
+S.P.A.C.E. 2.4.9 LAN CHAT FIX
+
+Fix:
+- IT Support chat composer no longer gets pushed out/disappears after an attachment is rendered.
+- Chat message area is now a constrained flex child and scrolls internally.
+- Composer is fixed as a non-shrinking row at the bottom of the chat.
+- Existing LAN client/server configuration fix is preserved.
+
+Regression targets:
+- IT Support: image, TXT/document, file + text, repeated attachments.
+- Private chat remains unchanged functionally.

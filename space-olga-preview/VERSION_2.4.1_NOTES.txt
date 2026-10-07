@@ -1,0 +1,12 @@
+S.P.A.C.E. 2.4.1
+
+- Materials viewer responsive; long text wraps; preview/download; material editing.
+- Files & Media: Open now previews supported media/PDF; Download is separate.
+- User menu: Profile, Settings, language RU/EN/FI.
+- Onboarding: shared content + personal progress per user; Owner/authorized users can edit each step and attach files/links.
+- Team profile shows personal onboarding progress.
+- School: real course/training material creation with text, links, images, video, Office/PDF/other attachments and personal progress.
+- Owner can grant School/Onboarding/content/file permissions to individual users.
+- Existing data is preserved by migrations.
+
+Note: central internet server deployment is a later stage; this build still runs the local server packaged with Electron.

@@ -1,0 +1,8 @@
+S.P.A.C.E. 2.4.9 — Dashboard News
+- Added a News block to the empty lower area of Home.
+- Owner and Technical Administrator / IT Support can publish, edit, pin and delete news.
+- Team members can read news.
+- News includes Company, Important, Update and IT categories.
+- Pinned posts stay first.
+- New posts create standard bell notifications for other users.
+- RU/EN/FI UI strings included for the new feature.

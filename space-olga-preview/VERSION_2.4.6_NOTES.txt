@@ -1,0 +1,8 @@
+S.P.A.C.E. 2.4.6
+
+- Full-language pass improvements for RU / EN / FI dynamic UI.
+- General chat system name follows account language.
+- Assistant answers follow account language.
+- Restored School course UI functions: create, edit, delete, open, progress.
+- Built-in onboarding seed steps display in selected account language; user-created content remains unchanged.
+- Existing user data/AppData is preserved.

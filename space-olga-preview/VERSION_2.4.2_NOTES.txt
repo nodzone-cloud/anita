@@ -1,0 +1,9 @@
+S.P.A.C.E. 2.4.2
+
+Critical fix:
+- Fixed stale Service Worker / Chromium cache that could make an installed 2.4.1 display and run the older frontend.
+- Electron now clears only frontend cache/service-worker storage at launch; user login/localStorage and application database are preserved.
+- Frontend assets use 2.4.2 cache-busting URLs.
+- Service Worker cache updated to space-v2.4.2 and uses network-first behavior for local application assets.
+
+The 2.4.1 features remain included: Profile/Settings menu, RU/EN/FI selector, School, per-user onboarding progress, improved materials/media/tasks/notifications.

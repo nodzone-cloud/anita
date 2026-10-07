@@ -1,0 +1,11 @@
+S.P.A.C.E. 2.2.0
+Developed & supported by Alex Node Web Design Studio
+Website: https://alexnode.fi
+Support email: an@alexnode.fi
+Support phone: +358 45 852 5293
+
+Anna / first client becomes role OWNER after the one-time first login.
+Owner cannot be demoted from the normal UI.
+Alex Node support is visible in the Support section and a dedicated Support chat room.
+
+IMPORTANT: true live support chat between client PC and Alex Node requires the shared S.P.A.C.E. server. In the current local-only build, support messages are stored only on that PC.

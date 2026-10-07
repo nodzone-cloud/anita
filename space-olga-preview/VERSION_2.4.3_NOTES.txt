@@ -1,0 +1,10 @@
+S.P.A.C.E. 2.4.3
+
+- Fixed Owner controls hidden by .admin-only CSS.
+- Owner has full management access to Events, School and Onboarding.
+- Events: create, edit and delete.
+- School: create, edit and delete courses.
+- Onboarding: add, edit and delete shared steps; completion progress remains per-user.
+- Reworked RU/EN/FI interface translation so language can switch immediately without reload.
+- User-entered content is not automatically translated.
+- Cache version bumped to 2.4.3.
