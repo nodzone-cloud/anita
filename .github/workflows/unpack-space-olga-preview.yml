@@ -1,0 +1,32 @@
+name: Unpack SPACE Olga Preview
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/unpack-space-olga-preview.yml'
+      - 'space-olga-preview/*.zip'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack preview
+        shell: bash
+        run: |
+          set -e
+          cd space-olga-preview
+          ZIP="$(ls -1 SPACE_2.4.9_ONLINE_OLGA_PREVIEW_Source*.zip | head -n 1)"
+          unzip -o "$ZIP"
+          rm -f SPACE_2.4.9_ONLINE_OLGA_PREVIEW_Source*.zip
+      - name: Commit unpacked preview
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add space-olga-preview
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Unpack S.P.A.C.E. Olga online preview"
+          git push
